@@ -1,0 +1,11 @@
+[package]
+name = "k5tool"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Aaron Griffith <aargri@gmail.com>"]
+
+[dependencies]
+anyhow = "1"
+crc = "3"
+gumdrop = "0.8"
