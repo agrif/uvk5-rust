@@ -1,0 +1,17 @@
+[package]
+name = "k5firmware"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Aaron Griffith <aargri@gmail.com>"]
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
+dp32g030 = { path = "../dp32g030" }
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
