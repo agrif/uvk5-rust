@@ -1,0 +1,19 @@
+[package]
+name = "dp32g030"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Aaron Griffith <aargri@gmail.com>"]
+
+[dependencies]
+critical-section = { version = "1.0", optional = true }
+cortex-m = "0.7.6"
+cortex-m-rt = { version = "0.7.3", optional = true }
+vcell = "0.1.2"
+
+[package.metadata.docs.rs]
+features = ["critical-section", "rt"]
+
+[features]
+default = ["critical-section", "rt"]
+rt = ["cortex-m-rt/device"]

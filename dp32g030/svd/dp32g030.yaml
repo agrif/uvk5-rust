@@ -1,0 +1,199 @@
+_svd: "dp32g030.vendor.svd"
+
+_modify:
+  cpu:
+    mpuPresent: "false"
+    fpuPresent: "false"
+    vendorSystickConfig: "false" # FIXME technically untrue
+
+WWDT:
+  _add:
+    _interrupts:
+      WWDT:
+        description: WWDT Interrupt
+        value: 0
+
+IWDT:
+  _add:
+    _interrupts:
+      IWDT:
+        description: IWDT Interrupt
+        value: 1
+
+RTC:
+  _add:
+    _interrupts:
+      RTC:
+        description: RTC Interrupt
+        value: 2
+
+DMA:
+  _add:
+    _interrupts:
+      DMA:
+        description: DMA Interrupt
+        value: 3
+
+SARADC:
+  _add:
+    _interrupts:
+      SARADC:
+        description: SARADC Interrupt
+        value: 4
+      CMP: # FIXME this goes on COMP but COMP is not there!
+        description: CMP Interrupt
+        value: 20
+
+TIMER_BASE0:
+  _add:
+    _interrupts:
+      TIMER_BASE0:
+        description: TIMER_BASE0 Interrupt
+        value: 5
+
+TIMER_BASE1:
+  _add:
+    _interrupts:
+      TIMER_BASE1:
+        description: TIMER_BASE1 Interrupt
+        value: 6
+
+TIMER_PLUS0:
+  _add:
+    _interrupts:
+      TIMER_PLUS0:
+        description: TIMER_PLUS0 Interrupt
+        value: 7
+
+TIMER_PLUS1:
+  _add:
+    _interrupts:
+      TIMER_PLUS1:
+        description: TIMER_PLUS1 Interrupt
+        value: 8
+
+PWM_BASE0:
+  _add:
+    _interrupts:
+      PWM_BASE0:
+        description: PWM_BASE0 Interrupt
+        value: 9
+
+PWM_BASE1:
+  _add:
+    _interrupts:
+      PWM_BASE1:
+        description: PWM_BASE1 Interrupt
+        value: 10
+
+PWM_PLUS0:
+  _add:
+    _interrupts:
+      PWM_PLUS0:
+        description: PWM_PLUS0 Interrupt
+        value: 11
+
+PWM_PLUS1:
+  _add:
+    _interrupts:
+      PWM_PLUS1:
+        description: PWM_PLUS1 Interrupt
+        value: 12
+
+UART0:
+  _add:
+    _interrupts:
+      UART0:
+        description: UART0 Interrupt
+        value: 13
+
+UART1:
+  _add:
+    _interrupts:
+      UART1:
+        description: UART1 Interrupt
+        value: 14
+
+UART2:
+  _add:
+    _interrupts:
+      UART2:
+        description: UART2 Interrupt
+        value: 15
+
+SPI0:
+  _add:
+    _interrupts:
+      SPI0:
+        description: SPI0 Interrupt
+        value: 16
+
+SPI1:
+  _add:
+    _interrupts:
+      SPI1:
+        description: SPI1 Interrupt
+        value: 17
+
+IIC0:
+  _add:
+    _interrupts:
+      IIC0:
+        description: IIC0 Interrupt
+        value: 18
+
+IIC1:
+  _add:
+    _interrupts:
+      IIC1:
+        description: IIC1 Interrupt
+        value: 19
+
+TIMER_BASE2:
+  _add:
+    _interrupts:
+      TIMER_BASE2:
+        description: TIMER_BASE2 Interrupt
+        value: 21
+
+GPIOA:
+  _add:
+    _interrupts:
+      GPIOA5:
+        description: GPIOA5 Interrupt
+        value: 22
+      GPIOA6:
+        description: GPIOA6 Interrupt
+        value: 23
+      GPIOA7:
+        description: GPIOA7 Interrupt
+        value: 24
+      GPIOA:
+        description: GPIOA Interrupt
+        value: 29
+
+GPIOB:
+  _add:
+    _interrupts:
+      GPIOB0:
+        description: GPIOB0 Interrupt
+        value: 25
+      GPIOB1:
+        description: GPIOB1 Interrupt
+        value: 26
+      GPIOB:
+        description: GPIOB Interrupt
+        value: 30
+
+GPIOC:
+  _add:
+    _interrupts:
+      GPIOC0:
+        description: GPIOC0 Interrupt
+        value: 27
+      GPIOC1:
+        description: GPIOC1 Interrupt
+        value: 28
+      GPIOC:
+        description: GPIOC Interrupt
+        value: 31
