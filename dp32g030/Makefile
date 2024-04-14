@@ -7,7 +7,7 @@ SVDTOOL=svd
 all : src/lib.rs
 
 clean :
-	rm -f svd/dp32g030.svd
+	rm -f svd/dp32g030.svd svd/dp32g030.vendor.svd.patched
 	rm -f lib.rs build.rs device.x
 	rm -rf src/
 

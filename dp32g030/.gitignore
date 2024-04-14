@@ -1,3 +1,11 @@
 /target
 # library, don't check in lockfile
 /Cargo.lock
+
+# generated files
+/src
+/build.rs
+/device.x
+/lib.rs
+/svd/dp32g030.svd
+/svd/dp32g030.vendor.svd.patched
