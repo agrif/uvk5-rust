@@ -15,8 +15,9 @@ _modify:
     mpuPresent: "false"
     fpuPresent: "false"
     # FIXME technically untrue
-    # see 5.4.3, page 46
+    # section 5.4.3, page 46
     vendorSystickConfig: "false"
 
 _include:
   - interrupts.yaml
+  - pmu.yaml

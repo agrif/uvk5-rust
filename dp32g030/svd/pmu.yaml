@@ -1,0 +1,264 @@
+# section 5.5, page 64
+
+PMU:
+  _modify:
+    # fix up some descriptions and names
+    TRIM_RCHF:
+      description: "RCHF clock module TRIM register"
+    TRIM_RCLF:
+      description: "RCLF clock module TRIM register"
+    TRIM_OPA:
+      description: "OPA module TRIM register"
+    TRIM_PLL:
+      description: "PLL module TRIM register"
+    TRIM_LOCK:
+      description: "TRIM lock register"
+    DATA_BAKE0:
+      name: "DATA_BAK0"
+      description: "Non-power-off domain data backup register 0"
+    DATA_BAKE1:
+      name: "DATA_BAK1"
+      description: "Non-power-off domain data backup register 1"
+    DATA_BAKE2:
+      name: "DATA_BAK2"
+      description: "Non-power-off domain data backup register 2"
+    DATA_BAKE3:
+      name: "DATA_BAK3"
+      description: "Non-power-off domain data backup register 3"
+
+  LPOW_MD:
+    _add:
+      STOP:
+        description: "Write 1 to this register to enter STOP mode."
+        bitRange: "[3:3]"
+        modifiedWriteValues: clear
+      DEEPSLEEP:
+        description: "Write 1 to this register to enter DEEPSLEEP mode."
+        bitRange: "[2:2]"
+        modifiedWriteValues: clear
+      SLEEP:
+        description: "Write 1 to this register to enter SLEEP mode."
+        bitRange: "[1:1]"
+        modifiedWriteValues: clear
+
+    STOP:
+      DISABLED: [0, "Do not enter STOP mode."]
+      ENABLED: [1, "Enter STOP mode."]
+    DEEPSLEEP:
+      DISABLED: [0, "Do not enter DEEPSLEEP mode."]
+      ENABLED: [1, "Enter DEEPSLEEP mode."]
+    SLEEP:
+      DISABLED: [0, "Do not enter SLEEP mode."]
+      ENABLED: [1, "Enter SLEEP mode."]
+
+  LPMD_WKEN:
+    _add:
+      IO_WKEN:
+        description: "In low power mode, IO wake-up is enabled."
+        bitRange: "[2:2]"
+      RTC_TIM_WKEN:
+        description: "In low power mode, RTC time signal wake-up is enabled."
+        bitRange: "[1:1]"
+      RTC_ALA_WKEN:
+        description: "In low power mode, RTC alarm signal wake-up is enabled."
+        bitRange: "[0:0]"
+
+    IO_WKEN:
+      DISABLED: [0, "Disable IO wake-up."]
+      ENABLED: [1, "Enable IO wake-up."]
+    RTC_TIM_WKEN:
+      DISABLED: [0, "Disable RTC time wake-up."]
+      ENABLED: [1, "Enable RTC time wake-up."]
+    RTC_ALA_WKEN:
+      DISABLED: [0, "Disable RTC alarm wake-up."]
+      ENABLED: [1, "Enable RTC alarm wake-up."]
+
+  LPMD_WKST:
+    _add:
+      IO_WKST:
+        description: "In low power mode, IO wake-up flag."
+        bitRange: "[2:2]"
+      RTC_TIM_WKST:
+        description: "In low power mode, RTC time signal wake-up flag."
+        bitRange: "[1:1]"
+      RTC_ALA_WKST:
+        description: "In low power mode, RTC alarm signal wake-up flag."
+        bitRange: "[0:0]"
+
+    IO_WKST:
+      UNSET: [0, "IO wake-up did not occur."]
+      SET: [1, "IO wake-up occurred."]
+    RTC_TIM_WKST:
+      UNSET: [0, "RTC time wake-up did not occur."]
+      SET: [1, "RTC time wake-up occurred."]
+    RTC_ALA_WKST:
+      UNSET: [0, "RTC alarm wake-up did not occur."]
+      SET: [1, "RTC alarm wake-up occurred."]
+
+  CHIP_RST_ST:
+    _add:
+      WWDT_RST_ST:
+        description: "WWDT reset status flag register."
+        bitRange: "[2:2]"
+        modifiedWriteValues: oneToClear
+      IWDT_RST_ST:
+        description: "IWDT reset status flag register."
+        bitRange: "[1:1]"
+        modifiedWriteValues: oneToClear
+      POR_RST_ST:
+        description: "Power-on reset status flag register."
+        bitRange: "[0:0]"
+        modifiedWriteValues: oneToClear
+
+    WWDT_RST_ST:
+      _read: # FIXME these read-only variants don't seem to work
+        UNSET: [0, "WWDT reset did not occur."]
+        SET: [1, "WWDT reset occurred."]
+    IWDT_RST_ST:
+      _read:
+        UNSET: [0, "IWDT reset did not occur."]
+        SET: [1, "IWDT reset occurred."]
+    POR_RST_ST:
+      _read:
+        UNSET: [0, "Power-on reset did not occur."]
+        SET: [1, "Power-on reset occurred."]
+
+  SRC_CFG:
+    _add:
+      RTC_CLK_SEL:
+        description: "RTC clock selection."
+        bitRange: "[4:4]"
+      XTAL_EN:
+        description: "XTAL enable control bit."
+        bitRange: "[3:3]"
+      XTAH_EN:
+        description: "XTAH enable control bit."
+        bitRange: "[2:2]"
+      RCHF_FSEL:
+        description: "RCHF frequency selection control bit."
+        bitRange: "[1:1]"
+      RCHF_EN:
+        description: "RCHF enable control bit."
+        bitRange: "[0:0]"
+
+    RTC_CLK_SEL:
+      RCLF: [0, "Select RCLF for RTC clock."]
+      XTAL: [1, "Select XTAL for RTC clock."]
+    XTAL_EN:
+      DISABLED: [0, "Disable XTAL."]
+      ENABLED: [1, "Enable XTAL."]
+    XTAH_EN:
+      DISABLED: [0, "Disable XTAH."]
+      ENABLED: [1, "Enable XTAH."]
+    RCHF_FSEL:
+      F_48MHZ: [0, "Use 48MHz for RCHF."]
+      F_24MHZ: [1, "Use 24MHz for RCHF."]
+    RCHF_EN:
+      DISABLED: [0, "Disable RCHF."]
+      ENABLED: [1, "Enable RCHF."]
+
+  TRIM_POW0:
+    _add:
+      TRIM_TEMPCO_HPBG:
+        description: "HPBG temperature trim bits."
+        bitRange: "[10:8]"
+      TRIM_I_HP:
+        description: "HPBG current trim bits."
+        bitRange: "[7:4]"
+      TRIM_V_HP:
+        description: "HPBG voltage trim bits."
+        bitRange: "[3:0]"
+
+  TRIM_POW1:
+    _add:
+      TRIM_V_LP:
+        description: "LPBG voltage trim bits."
+        bitRange: "[7:4]"
+      TRIM_TEMPCO_LPBG:
+        description: "LPBG temperature trim bits."
+        bitRange: "[3:0]"
+
+  # TRIM_POW2 is all reserved
+
+  TRIM_POW3:
+    _add:
+      TRIM_HPLDO_H:
+        description: "HPLDO voltage adjust to 1.264V."
+        bitRange: "[3:3]"
+      TRIM_LPLDO:
+        description: "LPLDO voltage output trim bits."
+        bitRange: "[2:1]"
+      TRIM_PD_UVLO:
+        description: "UVLO33 trim bits."
+        bitRange: "[0:0]"
+
+    TRIM_HPLDO_H:
+      DISABLED: [0, "Do not adjust voltage."]
+      ENABLED: [1, "Adjust upward to 1.264V."]
+    TRIM_LPLDO:
+      V1_1: [0b00, "1.1V"]
+      V1_0: [0b01, "1.0V"]
+      V0_9: [0b10, "0.9V"]
+      V0_8: [0b11, "0.8V"]
+    TRIM_PD_UVLO:
+      # FIXME what the heck even
+      V1_8: [0, "In SLEEP, when power supply voltage drops to 1.8V, the chip is reset. (?)"]
+      V1_3: [1, "In SLEEP, when power supply voltage drops to 1.3V, the chip is reset. (?)"]
+
+  TRIM_RCHF:
+    _add:
+      TRIM_N:
+        description: "RCHF N trim bits."
+        bitRange: "[11:8]"
+      TRIM_P:
+        description: "RCHF P trim bits."
+        bitRange: "[3:0]"
+
+  TRIM_RCLF:
+    _add:
+      TRIM_CS:
+        description: "RCLF coarse trim bits."
+        bitRange: "[11:8]"
+      TRIM_FINE:
+        description: "RCLF fine trim bits."
+        bitRange: "[4:0]"
+
+  TRIM_OPA:
+    _add:
+      OPA1_TRIMP:
+        description: "P-side trim bits of OPA1."
+        bitRange: "[19:15]"
+      OPA1_TRIMN:
+        description: "N-side trim bits of OPA1."
+        bitRange: "[14:10]"
+      OPA0_TRIMP:
+        description: "P-side trim bits of OPA0."
+        bitRange: "[9:5]"
+      OPA0_TRIMN:
+        description: "N-side trim bits of OPA0."
+        bitRange: "[4:0]"
+
+  TRIM_PLL:
+    _add:
+      PLL_R_TRIM:
+        description: "PLL R value trim bits."
+        bitRange: "[3:0]"
+
+  TRIM_LOCK:
+    _add:
+      TRIM_UNLOCK:
+        description: "Write 0xAA to this register to unlock trim registers."
+        bitRange: "[15:8]"
+        access: write-only
+      TRIM_LOCK:
+        description: "Write 0x55 to this register to lock trim registers."
+        bitRange: "[7:0]"
+        access: write-only
+
+    TRIM_UNLOCK:
+      UNLOCKED: [0xAA, "Unlock trim registers."]
+
+    TRIM_LOCK:
+      LOCKED: [0x55, "Lock trim registers."]
+
+  # DATA_BAK[0123] are all unstructured
