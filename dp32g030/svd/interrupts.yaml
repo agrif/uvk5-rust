@@ -1,10 +1,4 @@
-_svd: "dp32g030.vendor.svd"
-
-_modify:
-  cpu:
-    mpuPresent: "false"
-    fpuPresent: "false"
-    vendorSystickConfig: "false" # FIXME technically untrue
+# see 5.3, page 42
 
 WWDT:
   _add:

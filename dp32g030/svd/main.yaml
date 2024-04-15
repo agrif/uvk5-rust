@@ -1,0 +1,22 @@
+# references and page numbers are from the datasheet available here:
+# https://dnsj88.com/dp32g030lq32
+# page numbers are PDF page numbers
+
+# at the time of writing, it has a SHA1 hash of:
+# ab62b960db866f10396af5315fafa75540433e93
+
+# archived here:
+# https://web.archive.org/web/20240415043402/https://download.wezhan.cn/contents/sitefiles2050/10251177/files/493463..pdf?response-content-disposition=inline%3Bfilename%3DDP32G030ReferenceManualV1.23_20220221.pdf&response-content-type=application%2Fpdf&auth_key=1713155600-73cf00120f0342b2b2e954b22b4aa1c3-0-84a22d3c9dbcc21c9222e159fb9ff197
+
+_svd: "dp32g030.vendor.svd"
+
+_modify:
+  cpu:
+    mpuPresent: "false"
+    fpuPresent: "false"
+    # FIXME technically untrue
+    # see 5.4.3, page 46
+    vendorSystickConfig: "false"
+
+_include:
+  - interrupts.yaml

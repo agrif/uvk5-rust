@@ -11,8 +11,8 @@ clean :
 	rm -f lib.rs build.rs device.x
 	rm -rf src/
 
-svd/dp32g030.svd : svd/dp32g030.vendor.svd svd/dp32g030.yaml
-	svd patch svd/dp32g030.yaml
+svd/dp32g030.svd : svd/dp32g030.vendor.svd svd/*.yaml
+	svd patch svd/main.yaml
 	mv svd/dp32g030.vendor.svd.patched svd/dp32g030.svd
 
 src/lib.rs : svd/dp32g030.svd
