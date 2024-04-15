@@ -1,0 +1,287 @@
+# section 5.6, page 81
+
+SYSCON:
+  _modify:
+    # fix up some descriptions
+    VREF_VOLT_DELTA:
+      description: "VREF True Voltage Difference Register"
+
+  CLK_SEL:
+    _add:
+      PLL_CLK_SEL_R:
+        description: "PLL input clock selection (read-only)."
+        bitRange: "[11:11]"
+        access: read-only
+      SARADC_SMPL_CLK_SEL_W:
+        description: "SARADC sample clock selection (write-only)."
+        bitRange: "[11:10]"
+        access: write-only
+      SARADC_SMPL_CLK_SEL_R:
+        description: "SARADC sample clock selection (read-only)."
+        bitRange: "[10:9]"
+        access: read-only
+      PLL_CLK_SEL_W:
+        description: "PLL input clock selection (write-only)."
+        bitRange: "[7:7]"
+        access: write-only
+      SRC_CLK_SEL:
+        description: "Divider source clock selection."
+        bitRange: "[6:4]"
+      DIV_CLK_SEL:
+        description: "Divider selection."
+        bitRange: "[3:1]"
+      SYS_CLK_SEL:
+        description: "System clock selection."
+        bitRange: "[0:0]"
+
+    PLL_CLK_SEL_R: # FIXME using a matcher here won't compile
+      RCHF: [0, "Use RCHF input to PLL."]
+      XTAH: [1, "Use XTAH input to PLL."]
+    PLL_CLK_SEL_W:
+      RCHF: [0, "Use RCHF input to PLL."]
+      XTAH: [1, "Use XTAH input to PLL."]
+    SARADC_SMPL_CLK_SEL_R: # FIXME same here, unified enum won't compile
+      DIV1: [0b00, "Use system clock divided by 1."]
+      DIV2: [0b01, "Use system clock divided by 2."]
+      DIV4: [0b10, "Use system clock divided by 4."]
+      DIV8: [0b11, "Use system clock divided by 8."]
+    SARADC_SMPL_CLK_SEL_W: # FIXME same here, unified enum won't compile
+      DIV1: [0b00, "Use system clock divided by 1."]
+      DIV2: [0b01, "Use system clock divided by 2."]
+      DIV4: [0b10, "Use system clock divided by 4."]
+      DIV8: [0b11, "Use system clock divided by 8."]
+    SRC_CLK_SEL:
+      RCHF: [0b000, "Use RCHF as divider input."]
+      RCLF: [0b001, "Use RCLF as divider input."]
+      XTAH: [0b010, "Use XTAH as divider input."]
+      XTAL: [0b011, "Use XTAL as divider input."]
+      PLL: [0b100, "Use PLL as divider input."]
+    DIV_CLK_SEL:
+      DIV1: [0b000, "Divide input by 1."]
+      DIV2: [0b001, "Divide input by 2."]
+      DIV4: [0b010, "Divide input by 4."]
+      DIV8: [0b011, "Divide input by 8."]
+      DIV16: [0b100, "Divide input by 16."]
+      DIV32: [0b101, "Divide input by 32."]
+    SYS_CLK_SEL:
+      RCHF: [0, "Use RCHF as system clock."]
+      DIV_CLK: [1, "Use clock divider output as system clock."]
+
+  DIV_CLK_GATE:
+    _add:
+      DIV_CLK_GATE:
+        description: "Clock divider gate."
+        bitRange: "[0:0]"
+
+    DIV_CLK_GATE:
+      DISABLED: [0, "Disable the clock divider output."]
+      ENABLED: [1, "Enable the clock divider output."]
+
+  DEV_CLK_GATE:
+    _add:
+      AES_CLK_GATE:
+        description: "AES128 module clock gating."
+        bitRange: "[28:28]"
+      CRC_CLK_GATE:
+        description: "CRC module clock gating."
+        bitRange: "[27:27]"
+      SARADC_CLK_GATE:
+        description: "SARADC module clock gating."
+        bitRange: "[25:25]"
+      WWDT_CLK_GATE:
+        description: "WWDT module clock gating."
+        bitRange: "[24:24]"
+      IWDT_CLK_GATE:
+        description: "IWDT module clock gating."
+        bitRange: "[23:23]"
+      RTC_CLK_GATE:
+        description: "RTC module clock gating."
+        bitRange: "[22:22]"
+      PWM_PLUS1_CLK_GATE:
+        description: "PWM_PLUS1 module clock gating."
+        bitRange: "[21:21]"
+      PWM_PLUS0_CLK_GATE:
+        description: "PWM_PLUS0 module clock gating."
+        bitRange: "[20:20]"
+      PWM_BASE1_CLK_GATE:
+        description: "PWM_BASE1 module clock gating."
+        bitRange: "[18:18]"
+      PWM_BASE0_CLK_GATE:
+        description: "PWM_BASE0 module clock gating."
+        bitRange: "[17:17]"
+      TIMER_PLUS1_CLK_GATE:
+        description: "TIMER_PLUS1 module clock gating."
+        bitRange: "[16:16]"
+      TIMER_PLUS0_CLK_GATE:
+        description: "TIMER_PLUS0 module clock gating."
+        bitRange: "[15:15]"
+      TIMER_BASE2_CLK_GATE:
+        description: "TIMER_BASE2 module clock gating."
+        bitRange: "[14:14]"
+      TIMER_BASE1_CLK_GATE:
+        description: "TIMER_BASE1 module clock gating."
+        bitRange: "[13:13]"
+      TIMER_BASE0_CLK_GATE:
+        description: "TIMER_BASE0 module clock gating."
+        bitRange: "[12:12]"
+      SPI1_CLK_GATE:
+        description: "SPI1 module clock gating."
+        bitRange: "[11:11]"
+      SPI0_CLK_GATE:
+        description: "SPI0 module clock gating."
+        bitRange: "[10:10]"
+      UART2_CLK_GATE:
+        description: "UART2 module clock gating."
+        bitRange: "[8:8]"
+      UART1_CLK_GATE:
+        description: "UART1 module clock gating."
+        bitRange: "[7:7]"
+      UART0_CLK_GATE:
+        description: "UART0 module clock gating."
+        bitRange: "[6:6]"
+      IIC1_CLK_GATE:
+        description: "IIC1 module clock gating."
+        bitRange: "[5:5]"
+      IIC0_CLK_GATE:
+        description: "IIC0 module clock gating."
+        bitRange: "[4:4]"
+      GPIOC_CLK_GATE:
+        description: "GPIOC module clock gating."
+        bitRange: "[2:2]"
+      GPIOB_CLK_GATE:
+        description: "GPIOB module clock gating."
+        bitRange: "[1:1]"
+      GPIOA_CLK_GATE:
+        description: "GPIOA module clock gating."
+        bitRange: "[0:0]"
+
+    "*_CLK_GATE":
+      DISABLED: [0, "Disable the module."]
+      ENABLED: [1, "Enable the module."]
+
+  RC_FREQ_DELTA:
+    _add:
+      RCHF_SIG:
+        description: "Sign of RCHF_DELTA."
+        bitRange: "[31:31]"
+      RCHF_DELTA:
+        description: "The difference between RCHF frequency and 48MHz."
+        bitRange: "[30:11]"
+      RCLF_SIG:
+        description: "Sign of RCLF_DELTA"
+        bitRange: "[10:10]"
+      RCLF_DELTA:
+        description: "The difference between RCLF and 32.768kHz."
+        bitRange: "[9:0]"
+
+    "*_SIG":
+      POSITIVE: [1, "The delta is positive."]
+      NEGATIVE: [0, "The delta is negative."]
+
+  VREF_VOLT_DELTA:
+    _add:
+      VREF_SIG:
+        description: "Sign of VREF_DELTA."
+        bitRange: "[6:6]"
+      VREF_DELTA:
+        description: "The difference between Vref and the spec (in mV)."
+        bitRange: "[5:0]"
+
+    VREF_SIG:
+      POSITIVE: [1, "The delta is positive."]
+      NEGATIVE: [0, "The delta is negative."]
+
+  # CHIP_ID[0123] are all unstructured
+
+  PLL_CTRL:
+    _add:
+      PLL_M:
+        description: "PLL reference clock divider."
+        bitRange: "[10:6]"
+      PLL_N:
+        description: "PLL feedback clock divider."
+        bitRange: "[5:1]"
+      PLL_EN:
+        description: "PLL enable control bit."
+        bitRange: "[0:0]"
+
+    PLL_M:
+      DIV1: [0b00000, "Divide by 1."]
+      DIV2: [0b00001, "Divide by 2."]
+      DIV3: [0b00010, "Divide by 3."]
+      DIV4: [0b00011, "Divide by 4."]
+      DIV5: [0b00100, "Divide by 5."]
+      DIV6: [0b00101, "Divide by 6."]
+      DIV7: [0b00110, "Divide by 7."]
+      DIV8: [0b00111, "Divide by 8."]
+      DIV9: [0b01000, "Divide by 9."]
+      DIV10: [0b01001, "Divide by 10."]
+      DIV11: [0b01010, "Divide by 11."]
+      DIV12: [0b01011, "Divide by 12."]
+      DIV13: [0b01100, "Divide by 13."]
+      DIV14: [0b01101, "Divide by 14."]
+      DIV15: [0b01110, "Divide by 15."]
+      DIV16: [0b01111, "Divide by 16."]
+      DIV17: [0b10000, "Divide by 17."]
+      DIV18: [0b10001, "Divide by 18."]
+      DIV19: [0b10010, "Divide by 19."]
+      DIV20: [0b10011, "Divide by 20."]
+      DIV21: [0b10100, "Divide by 21."]
+      DIV22: [0b10101, "Divide by 22."]
+      DIV23: [0b10110, "Divide by 23."]
+      DIV24: [0b10111, "Divide by 24."]
+      DIV25: [0b11000, "Divide by 25."]
+      DIV26: [0b11001, "Divide by 26."]
+      DIV27: [0b11010, "Divide by 27."]
+      DIV28: [0b11011, "Divide by 28."]
+      DIV29: [0b11100, "Divide by 29."]
+      DIV30: [0b11101, "Divide by 30."]
+      DIV31: [0b11110, "Divide by 31."]
+      DIV32: [0b11111, "Divide by 32."]
+    PLL_N:
+      DIV2: [0b00000, "Divide by 2."]
+      DIV4: [0b00001, "Divide by 4."]
+      DIV6: [0b00010, "Divide by 6."]
+      DIV8: [0b00011, "Divide by 8."]
+      DIV10: [0b00100, "Divide by 10."]
+      DIV12: [0b00101, "Divide by 12."]
+      DIV14: [0b00110, "Divide by 14."]
+      DIV16: [0b00111, "Divide by 16."]
+      DIV18: [0b01000, "Divide by 18."]
+      DIV20: [0b01001, "Divide by 20."]
+      DIV22: [0b01010, "Divide by 22."]
+      DIV24: [0b01011, "Divide by 24."]
+      DIV26: [0b01100, "Divide by 26."]
+      DIV28: [0b01101, "Divide by 28."]
+      DIV30: [0b01110, "Divide by 30."]
+      DIV32: [0b01111, "Divide by 32."]
+      DIV34: [0b10000, "Divide by 34."]
+      DIV36: [0b10001, "Divide by 36."]
+      DIV38: [0b10010, "Divide by 38."]
+      DIV40: [0b10011, "Divide by 40."]
+      DIV42: [0b10100, "Divide by 42."]
+      DIV44: [0b10101, "Divide by 44."]
+      DIV46: [0b10110, "Divide by 46."]
+      DIV48: [0b10111, "Divide by 48."]
+      DIV50: [0b11000, "Divide by 50."]
+      DIV52: [0b11001, "Divide by 52."]
+      DIV54: [0b11010, "Divide by 54."]
+      DIV56: [0b11011, "Divide by 56."]
+      DIV58: [0b11100, "Divide by 58."]
+      DIV60: [0b11101, "Divide by 60."]
+      DIV62: [0b11110, "Divide by 62."]
+      DIV64: [0b11111, "Divide by 64."]
+    PLL_EN:
+      DISABLED: [0, "Disable the PLL."]
+      ENABLED: [1, "Enable the PLL."]
+
+  PLL_ST:
+    _add:
+      PLL_LOCK:
+        description: "PLL lock status bit."
+        bitRange: "[0:0]"
+        access: read-only
+
+    PLL_LOCK:
+      UNLOCKED: [0, "PLL is unlocked."]
+      LOCKED: [1, "PLL is locked."]
