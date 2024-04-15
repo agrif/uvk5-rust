@@ -191,7 +191,29 @@ SYSCON:
       POSITIVE: [1, "The delta is positive."]
       NEGATIVE: [0, "The delta is negative."]
 
-  # CHIP_ID[0123] are all unstructured
+  CHIP_ID0:
+    _add:
+      CHIP_ID0:
+        description: "Device ID register 0."
+        bitRange: "[31:0]"
+
+  CHIP_ID1:
+    _add:
+      CHIP_ID1:
+        description: "Device ID register 1."
+        bitRange: "[31:0]"
+
+  CHIP_ID2:
+    _add:
+      CHIP_ID2:
+        description: "Device ID register 2."
+        bitRange: "[31:0]"
+
+  CHIP_ID3:
+    _add:
+      CHIP_ID3:
+        description: "Device ID register 3."
+        bitRange: "[31:0]"
 
   PLL_CTRL:
     _add:

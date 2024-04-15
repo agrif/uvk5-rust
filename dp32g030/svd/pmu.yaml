@@ -261,4 +261,26 @@ PMU:
     TRIM_LOCK:
       LOCKED: [0x55, "Lock trim registers."]
 
-  # DATA_BAK[0123] are all unstructured
+  DATA_BAK0:
+    _add:
+      DATA_BAK0:
+        description: "Data backup 0."
+        bitRange: "[31:0]"
+
+  DATA_BAK1:
+    _add:
+      DATA_BAK1:
+        description: "Data backup 1."
+        bitRange: "[31:0]"
+
+  DATA_BAK2:
+    _add:
+      DATA_BAK2:
+        description: "Data backup 2."
+        bitRange: "[31:0]"
+
+  DATA_BAK3:
+    _add:
+      DATA_BAK3:
+        description: "Data backup 3."
+        bitRange: "[31:0]"
