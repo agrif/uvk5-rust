@@ -9,3 +9,4 @@
 /lib.rs
 /svd/dp32g030.svd
 /svd/dp32g030.vendor.svd.patched
+/svd/memorymap.txt
