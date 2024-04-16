@@ -18,6 +18,7 @@ struct ToolOptions {
 #[derive(Options, Debug)]
 enum ToolCommand {
     Unpack(UnpackOpts),
+    Pack(PackOpts),
 }
 
 impl ToolRun for ToolCommand {
@@ -25,6 +26,7 @@ impl ToolRun for ToolCommand {
         use ToolCommand::*;
         match self {
             Unpack(o) => o.run(),
+            Pack(o) => o.run(),
         }
     }
 }
@@ -36,7 +38,6 @@ struct UnpackOpts {
 
     #[options(free, required)]
     unpacked: String,
-    
 }
 
 impl ToolRun for UnpackOpts {
@@ -54,6 +55,29 @@ impl ToolRun for UnpackOpts {
         }
 
         std::fs::write(&self.unpacked, &unpacked[..])?;
+        Ok(())
+    }
+}
+
+#[derive(Options, Debug)]
+struct PackOpts {
+    #[options(free, required)]
+    version: String,
+
+    #[options(free, required)]
+    unpacked: String,
+
+    #[options(free, required)]
+    packed: String,
+}
+
+impl ToolRun for PackOpts {
+    fn run(&self) -> anyhow::Result<()> {
+        let version = k5tool::Version::from_str(&self.version)?;
+        let unpacked = k5tool::UnpackedFirmware::new(std::fs::read(&self.unpacked)?);
+        let packed = unpacked.pack(version)?;
+
+        std::fs::write(&self.packed, &packed[..])?;
         Ok(())
     }
 }

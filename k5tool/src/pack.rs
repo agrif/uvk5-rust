@@ -9,23 +9,41 @@ const OBFUSCATION: [u8; 128] = [
     0xAF, 0x30, 0xF4, 0x2C, 0x77, 0xB2, 0x7D, 0xBB, 0x3F, 0x29, 0x28, 0x57, 0x22, 0xD6, 0x92, 0x8B,
 ];
 
-pub fn obfuscate_skip(data: &[u8], skip: usize) -> Vec<u8> {
-    data.iter()
-        .zip(OBFUSCATION.iter().cycle().skip(skip))
-        .map(|(d, o)| d ^ o)
-        .collect()
+const VERSION_LOC: usize = 0x2000;
+const VERSION_LEN: usize = 16;
+
+pub fn obfuscate_skip(data: &mut [u8], skip: usize) {
+    let mut i = skip % OBFUSCATION.len();
+    for x in data.iter_mut() {
+        *x = *x ^ OBFUSCATION[i];
+        i = (i + 1) % OBFUSCATION.len();
+    }
 }
 
-pub fn obfuscate(data: &[u8]) -> Vec<u8> {
-    obfuscate_skip(data, 0)
+pub fn obfuscate(data: &mut [u8]) {
+    obfuscate_skip(data, 0);
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Version([u8; 16]);
+pub struct Version([u8; VERSION_LEN]);
 
 impl Version {
-    pub fn new(data: [u8; 16]) -> Self {
+    pub fn new(data: [u8; VERSION_LEN]) -> Self {
         Self(data)
+    }
+
+    pub fn from_str(name: &str) -> anyhow::Result<Self> {
+        let bytes = name.as_bytes();
+        if bytes.len() > VERSION_LEN {
+            anyhow::bail!("version must be {:?} bytes or less", VERSION_LEN);
+        }
+
+        let mut data = [0; VERSION_LEN];
+        for (i, b) in bytes.iter().enumerate() {
+            data[i] = *b;
+        }
+
+        Ok(Self(data))
     }
 
     pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
@@ -47,10 +65,10 @@ pub struct PackedFirmware {
 
 impl PackedFirmware {
     pub fn new(data: Vec<u8>) -> anyhow::Result<Self> {
-        if data.len() < 0x2000 + 16 + 2 {
+        if data.len() < VERSION_LOC + VERSION_LEN + 2 {
             anyhow::bail!(
                 "packed firmware must be at least {:?} bytes",
-                0x2000 + 16 + 2
+                VERSION_LOC + VERSION_LEN + 2
             );
         }
 
@@ -82,11 +100,13 @@ impl PackedFirmware {
     pub fn unpack_unchecked(&self) -> (UnpackedFirmware, Version) {
         // obfuscate is xor -- deobfuscating is the same as obfuscating
         // last two bytes are crc, ignore those (unchecked)
-        let mut deobfuscated = obfuscate(&self.data[..self.data.len() - 2]);
+        let mut deobfuscated = self.data.clone();
+        deobfuscated.truncate(deobfuscated.len() - 2);
+        obfuscate(&mut deobfuscated[..]);
 
         // splice out the 16 bytes of version at 0x2000
         let version = deobfuscated
-            .splice(0x2000..0x2000 + 16, std::iter::empty())
+            .splice(VERSION_LOC..VERSION_LOC + VERSION_LEN, std::iter::empty())
             .collect::<Vec<u8>>()
             .try_into()
             .unwrap();
@@ -113,6 +133,31 @@ impl UnpackedFirmware {
 
     pub fn new_cloned(data: &[u8]) -> Self {
         Self::new(data.to_owned())
+    }
+
+    pub fn pack(&self, version: Version) -> anyhow::Result<PackedFirmware> {
+        let mut work = self.data.clone();
+        if work.len() < VERSION_LOC {
+            // pad with zeros until we reach version location
+            work.resize(VERSION_LOC, 0);
+        }
+
+        // insert version
+        work.splice(VERSION_LOC..VERSION_LOC, version.iter().copied());
+
+        // obfuscate
+        obfuscate(&mut work[..]);
+
+        // shuffle on a checksum, little-endian
+        let crc = crc::Crc::<u16>::new(&crc::CRC_16_XMODEM);
+        let checksum = crc.checksum(&work[..]);
+        work.extend(
+            [(checksum & 0xff) as u8, ((checksum >> 8) & 0xff) as u8]
+                .iter()
+                .copied(),
+        );
+
+        PackedFirmware::new(work)
     }
 }
 
