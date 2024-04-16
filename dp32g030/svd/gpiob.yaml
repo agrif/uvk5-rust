@@ -1,0 +1,167 @@
+# section 5.8, page 120
+
+GPIOB:
+  _strip:
+    - "GPIOB_"
+
+  _modify:
+    # fix some descriptions and names
+    INTRAWSTAUS:
+      name: "INTRAWSTATUS"
+      description: "Indicates that the corresponding interrupt is triggered, ignoring interrupt enable"
+      access: read-only
+      # FIXME does writing 1 to either of these INTSTATUS clear it?
+    INTSTAUS:
+      name: "INTSTATUS"
+      description: "Indicates that the corresponding interrupt is triggered"
+      access: read-only
+    INTCLR:
+      description: "Clear the corresponding interrupt"
+      access: write-only
+
+  DATA:
+    _add:
+      DATA:
+        description: "Data register."
+        bitRange: "[15:0]"
+    _split:
+      DATA:
+        name: "DATA%s"
+        description: "Data for GPIOB%s."
+    _array:
+      "DATA*": {}
+
+    "DATA*":
+      LOW: [0, "Pin is low."]
+      HIGH: [1, "Pin is high."]
+
+  DIR:
+    _add:
+      DIR:
+        description: "Set GPIO pin dirction."
+        bitRange: "[15:0]"
+    _split:
+      DIR:
+        name: "DIR%s"
+        description: "Direction for GPIOB%s."
+    _array:
+      "DIR*": {}
+
+    "DIR*":
+      OUTPUT: [1, "Pin is an output."]
+      INPUT: [0, "Pin is an input."]
+
+  INTLVLTRG:
+    _add:
+      INTLVLTRG:
+        description: "Set GPIO pin interrupt condition."
+        bitRange: "[15:0]"
+    _split:
+      INTLVLTRG:
+        name: "INTLVLTRG%s"
+        description: "Interrupt condition for GPIOB%s interrupts."
+    _array:
+      "INTLVLTRG*": {}
+
+    "INTLVLTRG*":
+      LEVEL: [1, "Interrupt is level-triggered."]
+      EDGE: [0, "Interrupt is edge-triggered."]
+
+  INTBE:
+    _add:
+      INTBE:
+        description: "Set GPIO pin interrupt edge trigger mode."
+        bitRange: "[15:0]"
+    _split:
+      INTBE:
+        name: "INTBE%s"
+        description: "Edge trigger mode for GPIOB%s interrupts."
+    _array:
+      "INTBE*": {}
+
+    "INTBE*":
+      DOUBLE: [1, "Interrupt is double-edge triggered."]
+      SINGLE: [0, "Interrupt is single-edge triggered."]
+
+  INTRISEEN:
+    _add:
+      INTRISEEN:
+        description: "Set GPIO pin interrupt edge polarity mode."
+        bitRange: "[15:0]"
+    _split:
+      INTRISEEN:
+        name: "INTRISEEN%s"
+        description: "Edge polarity mode for GPIOB%s interrupts."
+    _array:
+      "INTRISEEN*": {}
+
+    "INTRISEEN*":
+      RISING: [1, "Interrupt is rising-edge triggered."]
+      FALLING: [0, "Interrupt is falling-edge triggered."]
+
+  INTEN:
+    _add:
+      INTEN:
+        description: "Set GPIO pin interrupt enable."
+        bitRange: "[15:0]"
+    _split:
+      INTEN:
+        name: "INTEN%s"
+        description: "Interrupt enable for GPIOB%s."
+    _array:
+      "INTEN*": {}
+
+    "INTEN*":
+      ENABLED: [1, "Interrupt is enabled."]
+      DISABLED: [0, "Interrupt is disabled."]
+
+  INTRAWSTATUS:
+    _add:
+      INTRAWSTATUS:
+        description: "GPIO interrupt triggered, ignoring enable."
+        bitRange: "[15:0]"
+        access: read-only
+    _split:
+      INTRAWSTATUS:
+        name: "INTRAWSTATUS%s"
+        description: "Interrupt triggered for GPIOB%s."
+        access: read-only
+    _array:
+      "INTRAWSTATUS*": {}
+
+    "INTRAWSTATUS*":
+      DETECTED: [1, "Interrupt was detected."]
+      NOT_DETECTED: [0, "Interrupt was not detected."]
+
+  INTSTATUS:
+    _add:
+      INTSTATUS:
+        description: "GPIO interrupt triggered."
+        bitRange: "[15:0]"
+        access: read-only
+    _split:
+      INTSTATUS:
+        name: "INTSTATUS%s"
+        description: "Interrupt triggered for GPIOB%s."
+        access: read-only
+    _array:
+      "INTSTATUS*": {}
+
+    "INTSTATUS*":
+      DETECTED: [1, "Interrupt was detected."]
+      NOT_DETECTED: [0, "Interrupt was not detected."]
+
+  INTCLR:
+    _add:
+      INTCLR:
+        description: "Clear interrupts in INTRAWSTATUS and INTSTATUS."
+        bitRange: "[15:0]"
+    _split:
+      INTCLR:
+        name: "INTCLR%s"
+        description: "Clear interrupt for GPIOB%s."
+    _array:
+      "INTCLR*": {}
+
+    "INTCLR*":
+      CLEAR: [1, "Clear this interrupt."]

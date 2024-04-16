@@ -19,6 +19,9 @@ _modify:
     vendorSystickConfig: "false"
 
 _include:
+  - gpioa.yaml
+  - gpiob.yaml
+  - gpioc.yaml
   - interrupts.yaml
   - pmu.yaml
   - portcon.yaml
