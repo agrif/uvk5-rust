@@ -21,4 +21,5 @@ _modify:
 _include:
   - interrupts.yaml
   - pmu.yaml
+  - portcon.yaml
   - syscon.yaml

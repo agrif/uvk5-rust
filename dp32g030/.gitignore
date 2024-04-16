@@ -8,4 +8,5 @@
 /device.x
 /lib.rs
 /svd/dp32g030.vendor.svd.patched
+/svd/dp32g030.vendor.svd.formatted
 /svd/memorymap.txt

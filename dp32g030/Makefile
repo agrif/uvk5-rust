@@ -6,18 +6,22 @@ SVDTOOLS=svd
 CARGO=cargo
 SVD2RUST=svd2rust
 FORM=form
+XMLLINT=xmllint
 
 SVDFILE=svd/dp32g030.vendor.svd
 
-all : src/lib.rs svd/memorymap.txt
+all : src/lib.rs svd/memorymap.txt ${SVDFILE}.formatted
 
 clean :
-	rm -f svd/dp32g030.vendor.svd.patched svd/memorymap.txt
+	rm -f ${SVDFILE}.patched ${SVDFILE}.formatted svd/memorymap.txt
 	rm -f lib.rs build.rs device.x
 	rm -rf src/
 
 ${SVDFILE}.patched : ${SVDFILE} svd/*.yaml
 	${SVDTOOLS} patch svd/main.yaml
+
+${SVDFILE}.formatted : ${SVDFILE}.patched
+	${XMLLINT} ${SVDFILE}.patched --format -o ${SVDFILE}.formatted
 
 svd/memorymap.txt : ${SVDFILE}.patched
 	${SVDTOOLS} mmap ${SVDFILE}.patched > svd/memorymap.txt

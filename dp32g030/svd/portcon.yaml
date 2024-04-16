@@ -1,0 +1,759 @@
+# section 5.7, page 95
+
+PORTCON:
+  _modify:
+    # fix up some descriptions
+    PORTA_SEL0:
+      description: "PORTA Function Select Register A0-A7"
+    PORTA_SEL1:
+      description: "PORTA Function Select Register A8-A15"
+    PORTB_SEL0:
+      description: "PORTB Function Select Register B0-B7"
+    PORTB_SEL1:
+      description: "PORTB Function Select Register B8-B15"
+    PORTC_SEL0:
+      description: "PORTC Function Select Register C0-C7"
+    PORTA_WK_SEL:
+      description: "PORTA wakeup IO edge selection register"
+    PORTB_WK_SEL:
+      description: "PORTB wakeup IO edge selection register"
+    PORTC_WK_SEL:
+      description: "PORTC wakeup IO edge selection register"
+
+  PORTA_SEL0:
+    _add:
+      PORTA7:
+        description: "A7 function selector."
+        bitRange: "[31:28]"
+      PORTA6:
+        description: "A6 function selector."
+        bitRange: "[27:24]"
+      PORTA5:
+        description: "A5 function selector."
+        bitRange: "[23:20]"
+      PORTA4:
+        description: "A4 function selector."
+        bitRange: "[19:16]"
+      PORTA3:
+        description: "A3 function selector."
+        bitRange: "[15:12]"
+      PORTA2:
+        description: "A2 function selector."
+        bitRange: "[11:8]"
+      PORTA1:
+        description: "A1 function selector."
+        bitRange: "[7:4]"
+      PORTA0:
+        description: "A0 function selector."
+        bitRange: "[3:0]"
+
+    PORTA7:
+      GPIOA7: [0b0000, "GPIOA7"]
+      UART1_TX: [0b0001, "UART1_TX"]
+      TIMERP0_IN0: [0b0010, "TIMERP0_IN0"]
+      TIMERP0_OUT_L: [0b0011, "TIMERP0_OUT_L"]
+      SARADC_CH2: [0b0100, "SARADC_CH2"]
+      OPA0_VP: [0b0101, "OPA0_VP"]
+
+    PORTA6:
+      GPIOA6: [0b0000, "GPIOA6"]
+      UART1_RTS: [0b0001, "UART1_RTS"]
+      TIMERP1_IN1: [0b0010, "TIMERP1_IN1"]
+      TIMERP1_OUT_H: [0b0011, "TIMERP1_OUT_H"]
+      SARADC_CH1: [0b0100, "SARADC_CH1"]
+      OPA0_OUT: [0b0101, "OPA0_OUT"]
+
+    PORTA5:
+      GPIOA5: [0b0000, "GPIOA5"]
+      UART1_CTS: [0b0001, "UART1_CTS"]
+      PWMP1_PLUS1: [0b0010, "PWMP1_PLUS1"]
+      TIMERP1_IN0: [0b0011, "TIMERP1_IN0"]
+      TIMERP1_OUT_L: [0b0100, "TIMERP1_OUT_L"]
+      WAKEUP1: [0b0101, "WAKEUP1"]
+      SARADC_CH0: [0b0110, "SARADC_CH0"]
+
+    PORTA4:
+      GPIOA4: [0b0000, "GPIOA4"]
+      CMP0_VP: [0b0001, "CMP0_VP"]
+      XTAH_XO: [0b0010, "XTAH_XO"]
+
+    PORTA3:
+      GPIOA3: [0b0000, "GPIOA3"]
+      CMP0_VN: [0b0001, "CMP0_VN"]
+      XTAH_XI: [0b0010, "XTAH_XI"]
+
+    PORTA2:
+      GPIOA2: [0b0000, "GPIOA2"]
+      XTAL_XO: [0b0001, "XTAL_XO"]
+
+    PORTA1:
+      GPIOA1: [0b0000, "GPIOA1"]
+      XTAL_XI: [0b0001, "XTAL_XI"]
+
+    PORTA0:
+      GPIOA0: [0b0000, "GPIOA0"]
+      PWMP1_PLUS0: [0b0001, "PWMP1_PLUS0"]
+      PWMP0_PLUS1: [0b0010, "PWMP0_PLUS1"]
+      TM: [0b0011, "TM"]
+      WAKEUP0: [0b0100, "WAKEUP0"]
+
+  PORTA_SEL1:
+    _add:
+      PORTA15:
+        description: "A15 function selector."
+        bitRange: "[31:28]"
+      PORTA14:
+        description: "A14 function selector."
+        bitRange: "[27:24]"
+      PORTA13:
+        description: "A13 function selector."
+        bitRange: "[23:20]"
+      PORTA12:
+        description: "A12 function selector."
+        bitRange: "[19:16]"
+      PORTA11:
+        description: "A11 function selector."
+        bitRange: "[15:12]"
+      PORTA10:
+        description: "A10 function selector."
+        bitRange: "[11:8]"
+      PORTA9:
+        description: "A9 function selector."
+        bitRange: "[7:4]"
+      PORTA8:
+        description: "A8 function selector."
+        bitRange: "[3:0]"
+
+    PORTA15:
+      GPIOA15: [0b0000, "GPIOA15"]
+      PWMB1_CH1: [0b0001, "PWMB1_CH1"]
+      PWMP0_CH0: [0b0010, "PWMP0_CH0"]
+      TIMERP1_IN1: [0b0011, "TIMERP1_IN1"]
+      TIMERP1_OUT_H: [0b0100, "TIMERP1_OUT_H"]
+
+    PORTA14:
+      GPIOA14: [0b0000, "GPIOA14"]
+      PWMB1_CH0: [0b0001, "PWMB1_CH0"]
+      PWMP0_CH2N: [0b0010, "PWMP0_CH2N"]
+      TIMERP1_IN0: [0b0011, "TIMERP1_IN0"]
+      TIMERP1_OUT_L: [0b0100, "TIMERP1_OUT_L"]
+      SARADC_CH9: [0b0101, "SARADC_CH9"]
+
+    PORTA13:
+      GPIOA13: [0b0000, "GPIOA13"]
+      PWMB0_CH2: [0b0001, "PWMB0_CH2"]
+      PWMP0_CH1N: [0b0010, "PWMP0_CH1N"]
+      TIMERP0_IN1: [0b0011, "TIMERP0_IN1"]
+      TIMERP0_OUT_H: [0b0100, "TIMERP0_OUT_H"]
+      SARADC_CH8: [0b0101, "SARADC_CH8"]
+
+    PORTA12:
+      GPIOA12: [0b0000, "GPIOA12"]
+      SPI0_MOSI: [0b0001, "SPI0_MOSI"]
+      PWMB0_CH1: [0b0010, "PWMB0_CH1"]
+      PWMP0_CH0N: [0b0011, "PWMP0_CH0N"]
+      TIMERP0_IN0: [0b0100, "TIMERP0_IN0"]
+      TIMERP0_OUT_L: [0b0101, "TIMERP0_OUT_L"]
+      SARADC_CH7: [0b0110, "SARADC_CH7"]
+
+    PORTA11:
+      GPIOA11: [0b0000, "GPIOA11"]
+      SPI0_MISO: [0b0001, "SPI0_MISO"]
+      PWMB0_CH0: [0b0010, "PWMB0_CH0"]
+      PWMP0_BRAKE0: [0b0011, "PWMP0_BRAKE0"]
+      TIMERP1_IN1: [0b0100, "TIMERP1_IN1"]
+      TIMERP1_OUT_H: [0b0101, "TIMERP1_OUT_H"]
+      SARADC_CH6: [0b0110, "SARADC_CH6"]
+
+    PORTA10:
+      GPIOA10: [0b0000, "GPIOA10"]
+      SPI0_CLK: [0b0001, "SPI0_CLK"]
+      SARADC_CH5: [0b0010, "SARADC_CH5"]
+      CMP1_VP: [0b0011, "CMP1_VP"]
+
+    PORTA9:
+      GPIOA9: [0b0000, "GPIOA9"]
+      SPI0_SSN: [0b0001, "SPI0_SSN"]
+      TIMERP1_IN0: [0b0010, "TIMERP1_IN0"]
+      TIMERP1_OUT_L: [0b0011, "TIMERP1_OUT_L"]
+      TM: [0b0100, "TM"]
+      SARADC_CH4: [0b0101, "SARADC_CH4"]
+      CMP1_VN: [0b0110, "CMP1_VN"]
+
+    PORTA8:
+      GPIOA8: [0b0000, "GPIOA8"]
+      UART1_RX: [0b0001, "UART1_RX"]
+      TIMERP0_IN1: [0b0010, "TIMERP0_IN1"]
+      TIMERP0_OUT_H: [0b0011, "TIMERP0_OUT_H"]
+      SARADC_CH3: [0b0100, "SARADC_CH3"]
+      OPA0_VN: [0b0101, "OPA0_VN"]
+
+  PORTB_SEL0:
+    _add:
+      PORTB7:
+        description: "B7 function selector."
+        bitRange: "[31:28]"
+      PORTB6:
+        description: "B6 function selector."
+        bitRange: "[27:24]"
+      PORTB5:
+        description: "B5 function selector."
+        bitRange: "[23:20]"
+      PORTB4:
+        description: "B4 function selector."
+        bitRange: "[19:16]"
+      PORTB3:
+        description: "B3 function selector."
+        bitRange: "[15:12]"
+      PORTB2:
+        description: "B2 function selector."
+        bitRange: "[11:8]"
+      PORTB1:
+        description: "B1 function selector."
+        bitRange: "[7:4]"
+      PORTB0:
+        description: "B0 function selector."
+        bitRange: "[3:0]"
+
+    PORTB7:
+      GPIOB7: [0b0000, "GPIOB7"]
+      SPI0_SSN: [0b0001, "SPI0_SSN"]
+      UART0_TX: [0b0010, "UART0_TX"]
+      IIC0_SCL: [0b0011, "IIC0_SCL"]
+      PWMP1_BRAKE0: [0b0100, "PWMP1_BRAKE0"]
+      PWMP0_CH1: [0b0101, "PWMP0_CH1"]
+
+    PORTB6:
+      GPIOB6: [0b0000, "GPIOB6"]
+      PWMP0_CH0: [0b0001, "PWMP0_CH0"]
+      TIMERP0_IN1: [0b0010, "TIMERP0_IN1"]
+      TIMERP0_OUT_H: [0b0011, "TIMERP0_OUT_H"]
+
+    PORTB5:
+      GPIOB5: [0b0000, "GPIOB5"]
+      SPI1_MOSI: [0b0001, "SPI1_MOSI"]
+      PWMP1_CH0N: [0b0010, "PWMP1_CH0N"]
+      PWMP0_CH2N: [0b0011, "PWMP0_CH2N"]
+      TIMERP0_IN0: [0b0100, "TIMERP0_IN0"]
+      TIMERP0_OUT_L: [0b0101, "TIMERP0_OUT_L"]
+
+    PORTB4:
+      GPIOB4: [0b0000, "GPIOB4"]
+      SPI1_MISO: [0b0001, "SPI1_MISO"]
+      IIC2_SCL: [0b0010, "IIC1_SCL"]
+      PWMP1_CH0: [0b0011, "PWMP1_CH0"]
+      PWMP0_CH1N: [0b0100, "PWMP0_CH1N"]
+      TIMERP1_HALL2: [0b0101, "TIMERP1_HALL2"]
+
+    PORTB3:
+      GPIOB3: [0b0000, "GPIOB3"]
+      SPI1_CLK: [0b0001, "SPI1_CLK"]
+      IIC1_SDA: [0b0010, "IIC1_SDA"]
+      PWMP0_CH0N: [0b0011, "PWMP0_CH0N"]
+      TIMERP1_HALL1: [0b0100, "TIMERP1_HALL1"]
+
+    PORTB2:
+      GPIOB2: [0b0000, "GPIOB2"]
+      SPI1_SSN: [0b0001, "SPI1_SSN"]
+      PWMP0_BRAKE1: [0b0010, "PWMP0_BRAKE1"]
+      TIMERP1_HALL0: [0b0011, "TIMERP1_HALL0"]
+
+    PORTB1:
+      GPIOB1: [0b0000, "GPIOB1"]
+      UART2_RX: [0b0001, "UART2_RX"]
+      IIC0_SDA: [0b0010, "IIC0_SDA"]
+      PWMP0_CH2: [0b0011, "PWMP0_CH2"]
+
+    PORTB0:
+      GPIOB0: [0b0000, "GPIOB0"]
+      UART2_TX: [0b0001, "UART2_TX"]
+      IIC0_SCL: [0b0010, "IIC0_SCL"]
+      PWMB1_CH2: [0b0011, "PWMB1_CH2"]
+      PWMP0_CH1: [0b0100, "PWMP0_CH1"]
+
+  PORTB_SEL1:
+    # why on earth do these alone exist in the original svd
+    _delete:
+      "PORTB*": null
+    _add:
+      PORTB15:
+        description: "B15 function selector."
+        bitRange: "[31:28]"
+      PORTB14:
+        description: "B14 function selector."
+        bitRange: "[27:24]"
+      PORTB13:
+        description: "B13 function selector."
+        bitRange: "[23:20]"
+      PORTB12:
+        description: "B12 function selector."
+        bitRange: "[19:16]"
+      PORTB11:
+        description: "B11 function selector."
+        bitRange: "[15:12]"
+      PORTB10:
+        description: "B10 function selector."
+        bitRange: "[11:8]"
+      PORTB9:
+        description: "B9 function selector."
+        bitRange: "[7:4]"
+      PORTB8:
+        description: "B8 function selector."
+        bitRange: "[3:0]"
+
+    PORTB15:
+      GPIOB15: [0b0000, "GPIOB15"]
+      SPI1_SSN: [0b0001, "SPI1_SSN"]
+      UART2_RX: [0b0010, "UART2_RX"]
+
+    PORTB14:
+      GPIOB14: [0b0000, "GPIOB14"]
+      SWCLK: [0b0001, "SWCLK"]
+      UART2_TX: [0b0010, "UART2_TX"]
+      PWMP1_CH2N: [0b0011, "PWMP1_CH2N"]
+
+    PORTB13:
+      GPIOB13: [0b0000, "GPIOB13"]
+      UART1_RX: [0b0001, "UART1_RX"]
+      IIC1_SDA: [0b0010, "IIC1_SDA"]
+      PWMP1_CH1N: [0b0011, "PWMP1_CH1N"]
+
+    PORTB12:
+      GPIOB12: [0b0000, "GPIOB12"]
+      UART1_TX: [0b0001, "UART1_TX"]
+      IIC1_SCL: [0b0010, "IIC1_SCL"]
+      PWMP1_CH0N: [0b0011, "PWMP1_CH0N"]
+
+    PORTB11:
+      GPIOB11: [0b0000, "GPIOB11"]
+      SWDIO: [0b0001, "SWDIO"]
+      PWMP1_CH2: [0b0010, "PWMP1_CH2"]
+      PWMP0_BRAKE2: [0b0011, "PWMP0_BRAKE2"]
+
+    PORTB10:
+      GPIOB10: [0b0000, "GPIOB10"]
+      SPI0_MOSI: [0b0001, "SPI0_MOSI"]
+      UART0_RTS: [0b0010, "UART0_RTS"]
+      PWMB0_CH2: [0b0011, "PWMB0_CH2"]
+      PWMP1_CH1: [0b0100, "PWMP1_CH1"]
+      PWMP0_PLUS0: [0b0101, "PWMP0_PLUS0"]
+      TIMERP1_IN0: [0b0110, "TIMERP1_IN0"]
+      TIMERP1_OUT_L: [0b0111, "TIMERP1_OUT_L"]
+
+    PORTB9:
+      GPIOB9: [0b0000, "GPIOB9"]
+      SPI0_MISO: [0b0001, "SPI0_MISO"]
+      UART0_CTS: [0b0010, "UART0_CTS"]
+      PWMB0_CH1: [0b0011, "PWMB0_CH1"]
+      PWMP1_CH0: [0b0100, "PWMP1_CH0"]
+      TIMERP1_IN1: [0b0101, "TIMERP1_IN1"]
+      TIMERP1_OUT_H: [0b0110, "TIMERP1_OUT_H"]
+
+    PORTB8:
+      GPIOB8: [0b0000, "GPIOB8"]
+      SPI0_CLK: [0b0001, "SPI0_CLK"]
+      UART0_RX: [0b0010, "UART0_RX"]
+      IIC0_SDA: [0b0011, "IIC0_SDA"]
+      PWMB0_CH0: [0b0100, "PWMB0_CH0"]
+      PWMP1_BRAKE1: [0b0101, "PWMP1_BRAKE1"]
+      PWMP0_CH2: [0b0110, "PWMP0_CH2"]
+
+  PORTC_SEL0:
+    _add:
+      PORTC7:
+        description: "C7 function selector."
+        bitRange: "[31:28]"
+      PORTC6:
+        description: "C6 function selector."
+        bitRange: "[27:24]"
+      PORTC5:
+        description: "C5 function selector."
+        bitRange: "[23:20]"
+      PORTC4:
+        description: "C4 function selector."
+        bitRange: "[19:16]"
+      PORTC3:
+        description: "C3 function selector."
+        bitRange: "[15:12]"
+      PORTC2:
+        description: "C2 function selector."
+        bitRange: "[11:8]"
+      PORTC1:
+        description: "C1 function selector."
+        bitRange: "[7:4]"
+      PORTC0:
+        description: "C0 function selector."
+        bitRange: "[3:0]"
+
+    PORTC7:
+      GPIOC7: [0b0000, "GPIOC7"]
+      IIC1_SDA: [0b0001, "IIC1_SDA"]
+      PWMP1_CH2: [0b0010, "PWMP1_CH2"]
+      TIMERP1_IN0: [0b0011, "TIMERP1_IN0"]
+      TIMERP1_OUT_L: [0b0100, "TIMERP1_OUT_L"]
+      OPA1_OUT: [0b0101, "OPA1_OUT"]
+
+    PORTC6:
+      GPIOC6: [0b0000, "GPIOC6"]
+      IIC1_SCL: [0b0001, "IIC1_SCL"]
+      PWMP1_CH1: [0b0010, "PWMP1_CH1"]
+      TIMERP1_IN1: [0b0011, "TIMERP1_IN1"]
+      TIMERP1_OUT_H: [0b0100, "TIMERP1_OUT_H"]
+      OPA1_VN: [0b0101, "OPA1_VN"]
+
+    PORTC5:
+      GPIOC5: [0b0000, "GPIOC5"]
+      TIMERP0_HALL2: [0b0001, "TIMERP0_HALL2"]
+      TM: [0b0010, "TM"]
+      OPA1_VP: [0b0011, "OPA1_VP"]
+
+    PORTC4:
+      GPIOC4: [0b0000, "GPIOC4"]
+      UART0_RX: [0b0001, "UART0_RX"]
+      IIC0_SDA: [0b0010, "IIC0_SDA"]
+      PWMP1_CH2N: [0b0011, "PWMP1_CH2N"]
+      TIMERP0_HALL1: [0b0100, "TIMERP0_HALL1"]
+      CMP2_VP: [0b0101, "CMP2_VP"]
+
+    PORTC3:
+      GPIOC3: [0b0000, "GPIOC3"]
+      UART0_TX: [0b0001, "UART0_TX"]
+      IIC0_SCL: [0b0010, "IIC0_SCL"]
+      PWMP1_CH1N: [0b0011, "PWMP1_CH1N"]
+      TIMERP0_HALL0: [0b0100, "TIMERP0_HALL0"]
+      CMP2_VN: [0b0101, "CMP2_VN"]
+
+    PORTC2:
+      GPIOC2: [0b0000, "GPIOC2"]
+      SPI1_MOSI: [0b0001, "SPI1_MOSI"]
+      PWMB1_CH2: [0b0010, "PWMB1_CH2"]
+      PWMP1_BRAKE2: [0b0011, "PWMP1_BRAKE2"]
+      TIMERP0_IN1: [0b0100, "TIMERP0_IN1"]
+      TIMERP0_OUT_H: [0b0101, "TIMERP0_OUT_H"]
+
+    PORTC1:
+      GPIOC1: [0b0000, "GPIOC1"]
+      SPI1_MISO: [0b0001, "SPI1_MISO"]
+      UART2_RTS: [0b0010, "UART2_RTS"]
+      PWMB1_CH1: [0b0011, "PWMB1_CH1"]
+      TIMERP0_IN0: [0b0100, "TIMERP0_IN0"]
+      TIMERP0_OUT_L: [0b0101, "TIMERP0_OUT_L"]
+
+    PORTC0:
+      GPIOC0: [0b0000, "GPIOC0"]
+      SPI1_CLK: [0b0001, "SPI1_CLK"]
+      UART2_CTS: [0b0010, "UART2_CTS"]
+      PWMB1_CH0: [0b0011, "PWMB1_CH0"]
+
+  PORTA_IE:
+    _add:
+      PORTA_IE:
+        description: "PORTA input enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_IE:
+        name: "PORTA%s_IE"
+        description: "PORTA%s input enable register."
+    _array:
+      "PORTA*_IE": {}
+
+    "PORTA*_IE":
+      DISABLED: [0, "Input is disabled."]
+      ENABLED: [1, "Input is enabled."]
+
+  PORTB_IE:
+    _add:
+      PORTB_IE:
+        description: "PORTB input enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_IE:
+        name: "PORTB%s_IE"
+        description: "PORTB%s input enable register."
+    _array:
+      "PORTB*_IE": {}
+
+    "PORTB*_IE":
+      DISABLED: [0, "Input is disabled."]
+      ENABLED: [1, "Input is enabled."]
+
+  PORTC_IE:
+    _add:
+      PORTC_IE:
+        description: "PORTC input enable register."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_IE:
+        name: "PORTC%s_IE"
+        description: "PORTC%s input enable register."
+    _array:
+      "PORTC*_IE": {}
+
+    "PORTC*_IE":
+      DISABLED: [0, "Input is disabled."]
+      ENABLED: [1, "Input is enabled."]
+
+  PORTA_PU:
+    _add:
+      PORTA_PU:
+        description: "PORTA pull-up enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_PU:
+        name: "PORTA%s_PU"
+        description: "PORTA%s pull-up enable register."
+    _array:
+      "PORTA*_PU": {}
+
+    "PORTA*_PU":
+      DISABLED: [0, "Pull-up is disabled."]
+      ENABLED: [1, "Pull-up is enabled."]
+
+  PORTB_PU:
+    _add:
+      PORTB_PU:
+        description: "PORTB pull-up enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_PU:
+        name: "PORTB%s_PU"
+        description: "PORTB%s pull-up enable register."
+    _array:
+      "PORTB*_PU": {}
+
+    "PORTB*_PU":
+      DISABLED: [0, "Pull-up is disabled."]
+      ENABLED: [1, "Pull-up is enabled."]
+
+  PORTC_PU:
+    _add:
+      PORTC_PU:
+        description: "PORTC pull-up enable register."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_PU:
+        name: "PORTC%s_PU"
+        description: "PORTC%s pull-up enable register."
+    _array:
+      "PORTC*_PU": {}
+
+    "PORTC*_PU":
+      DISABLED: [0, "Pull-up is disabled."]
+      ENABLED: [1, "Pull-up is enabled."]
+
+  PORTA_PD:
+    _add:
+      PORTA_PD:
+        description: "PORTA pull-down enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_PD:
+        name: "PORTA%s_PD"
+        description: "PORTA%s pull-down enable register."
+    _array:
+      "PORTA*_PD": {}
+
+    "PORTA*_PD":
+      DISABLED: [0, "Pull-down is disabled."]
+      ENABLED: [1, "Pull-down is enabled."]
+
+  PORTB_PD:
+    _add:
+      PORTB_PD:
+        description: "PORTB pull-down enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_PD:
+        name: "PORTB%s_PD"
+        description: "PORTB%s pull-down enable register."
+    _array:
+      "PORTB*_PD": {}
+
+    "PORTB*_PD":
+      DISABLED: [0, "Pull-down is disabled."]
+      ENABLED: [1, "Pull-down is enabled."]
+
+  PORTC_PD:
+    _add:
+      PORTC_PD:
+        description: "PORTC pull-down enable register."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_PD:
+        name: "PORTC%s_PD"
+        description: "PORTC%s pull-down enable register."
+    _array:
+      "PORTC*_PD": {}
+
+    "PORTC*_PD":
+      DISABLED: [0, "Pull-down is disabled."]
+      ENABLED: [1, "Pull-down is enabled."]
+
+  PORTA_OD:
+    _add:
+      PORTA_OD:
+        description: "PORTA open drain enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_OD:
+        name: "PORTA%s_OD"
+        description: "PORTA%s open drain enable register."
+    _array:
+      "PORTA*_OD": {}
+
+    "PORTA*_OD":
+      DISABLED: [0, "Open drain is disabled."]
+      ENABLED: [1, "Open drain is enabled."]
+
+  PORTB_OD:
+    _add:
+      PORTB_OD:
+        description: "PORTB open drain enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_OD:
+        name: "PORTB%s_OD"
+        description: "PORTB%s open drain enable register."
+    _array:
+      "PORTB*_OD": {}
+
+    "PORTB*_OD":
+      DISABLED: [0, "Open drain is disabled."]
+      ENABLED: [1, "Open drain is enabled."]
+
+  PORTC_OD:
+    _add:
+      PORTC_OD:
+        description: "PORTC open drain enable register."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_OD:
+        name: "PORTC%s_OD"
+        description: "PORTC%s open drain enable register."
+    _array:
+      "PORTC*_OD": {}
+
+    "PORTC*_OD":
+      DISABLED: [0, "Open drain is disabled."]
+      ENABLED: [1, "Open drain is enabled."]
+
+  PORTA_WKE:
+    _add:
+      PORTA_WKE:
+        description: "PORTA wake-up enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_WKE:
+        name: "PORTA%s_WKE"
+        description: "PORTA%s wake-up enable register."
+    _array:
+      "PORTA*_WKE": {}
+
+    "PORTA*_WKE":
+      DISABLED: [0, "Wake-up is disabled."]
+      ENABLED: [1, "Wake-up is enabled."]
+
+  PORTB_WKE:
+    _add:
+      PORTB_WKE:
+        description: "PORTB wake-up enable register."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_WKE:
+        name: "PORTB%s_WKE"
+        description: "PORTB%s wake-up enable register."
+    _array:
+      "PORTB*_WKE": {}
+
+    "PORTB*_WKE":
+      DISABLED: [0, "Wake-up is disabled."]
+      ENABLED: [1, "Wake-up is enabled."]
+
+  PORTC_WKE:
+    _add:
+      PORTC_WKE:
+        description: "PORTC wake-up enable register."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_WKE:
+        name: "PORTC%s_WKE"
+        description: "PORTC%s wake-up enable register."
+    _array:
+      "PORTC*_WKE": {}
+
+    "PORTC*_WKE":
+      DISABLED: [0, "Wake-up is disabled."]
+      ENABLED: [1, "Wake-up is enabled."]
+
+  PORT_CFG:
+    _add:
+      PORT_HYS:
+        description: "Input hysteresis level selection."
+        bitRange: "[10:10]"
+      PORTC_DS:
+        description: "PORTC driver capability selection."
+        bitRange: "[5:4]"
+      PORTB_DS:
+        description: "PORTB driver capability selection."
+        bitRange: "[3:2]"
+      PORTA_DS:
+        description: "PORTA driver capability selection."
+        bitRange: "[1:0]"
+
+    PORT_HYS:
+      LOW: [0, "Low input hysteresis (outside 0.3VDD - 0.7VDD)."]
+      HIGH: [1, "High input hysteresis (outside 0.15VDD - 0.85VDD)."]
+
+    "PORT*_DS":
+      D_5MA: [0b00, "5mA drive."]
+      D_10MA: [0b01, "10mA drive."]
+      D_15MA: [0b10, "15mA drive."]
+      D_20MA: [0b11, "20mA drive."]
+
+  PORTA_WK_SEL:
+    _add:
+      PORTA_WK_SEL:
+        description: "PORTA wake-up edge configuration."
+        bitRange: "[15:0]"
+    _split:
+      PORTA_WK_SEL:
+        name: "PORTA%s_WK_SEL"
+        description: "PORTA%s wake-up edge configuration."
+    _array:
+      "PORTA*_WK_SEL": {}
+
+    "PORTA*_WK_SEL":
+      FALLING: [0, "Wake-up on falling edge."]
+      RISING: [1, "Wake-up on rising edge."]
+
+  PORTB_WK_SEL:
+    _add:
+      PORTB_WK_SEL:
+        description: "PORTB wake-up edge configuration."
+        bitRange: "[15:0]"
+    _split:
+      PORTB_WK_SEL:
+        name: "PORTB%s_WK_SEL"
+        description: "PORTB%s wake-up edge configuration."
+    _array:
+      "PORTB*_WK_SEL": {}
+
+    "PORTB*_WK_SEL":
+      FALLING: [0, "Wake-up on falling edge."]
+      RISING: [1, "Wake-up on rising edge."]
+
+  PORTC_WK_SEL:
+    _add:
+      PORTC_WK_SEL:
+        description: "PORTC wake-up edge configuration."
+        bitRange: "[7:0]"
+    _split:
+      PORTC_WK_SEL:
+        name: "PORTC%s_WK_SEL"
+        description: "PORTC%s wake-up edge configuration."
+    _array:
+      "PORTC*_WK_SEL": {}
+
+    "PORTC*_WK_SEL":
+      FALLING: [0, "Wake-up on falling edge."]
+      RISING: [1, "Wake-up on rising edge."]
