@@ -7,23 +7,24 @@ CARGO=cargo
 SVD2RUST=svd2rust
 FORM=form
 
+SVDFILE=svd/dp32g030.vendor.svd
+
 all : src/lib.rs svd/memorymap.txt
 
 clean :
-	rm -f svd/dp32g030.svd svd/dp32g030.vendor.svd.patched svd/memorymap.txt
+	rm -f svd/dp32g030.vendor.svd.patched svd/memorymap.txt
 	rm -f lib.rs build.rs device.x
 	rm -rf src/
 
-svd/dp32g030.svd : svd/dp32g030.vendor.svd svd/*.yaml
+${SVDFILE}.patched : ${SVDFILE} svd/*.yaml
 	${SVDTOOLS} patch svd/main.yaml
-	mv svd/dp32g030.vendor.svd.patched svd/dp32g030.svd
 
-svd/memorymap.txt : svd/dp32g030.svd
-	${SVDTOOLS} mmap svd/dp32g030.svd > svd/memorymap.txt
+svd/memorymap.txt : ${SVDFILE}.patched
+	${SVDTOOLS} mmap ${SVDFILE}.patched > svd/memorymap.txt
 
-src/lib.rs : svd/dp32g030.svd
-	${SVD2RUST} -i svd/dp32g030.svd
+src/lib.rs : ${SVDFILE}.patched
+	${SVD2RUST} -c svd2rust.toml -i ${SVDFILE}.patched
 	rm -rf src
 	${FORM} -i lib.rs -o src/
 	rm lib.rs
-	${CARGO} fmt
+	${CARGO} fmt -- --config-path="rustfmt.toml"
