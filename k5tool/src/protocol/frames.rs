@@ -1,6 +1,8 @@
 use nom::error::Error;
 use nom::IResult;
 
+use super::CrcStyle;
+
 pub const FRAME_START: [u8; 2] = [0xab, 0xcd];
 pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
 
@@ -66,10 +68,11 @@ where
     }
 }
 
-/// Find a frame, and return the contents of that frame (still obfuscated).
+/// Find a frame, and return the contents of that frame (still
+/// obfuscated and CRC'd).
 ///
 /// Returns None if it only skipped data and found no complete frames.
-pub fn frame<I>(input: I) -> IResult<I, Option<I>>
+pub fn frame_raw<I>(input: I) -> IResult<I, Option<I>>
 where
     I: nom::InputTakeAtPosition<Item = u8>
         + nom::Compare<&'static [u8]>
@@ -85,7 +88,8 @@ where
         nom::combinator::verify(nom::number::streaming::le_u16::<I, Error<I>>, |l| {
             *l < MAX_FRAME_SIZE as u16
         }),
-        |l| nom::bytes::streaming::take(l),
+        // CRC at the end adds two bytes
+        |l| nom::bytes::streaming::take(l + 2),
     );
 
     // the above chunk, inside FRAME_START and FRAME_END
@@ -179,6 +183,35 @@ where
 
     pub fn to_vec(&self) -> Vec<u8> {
         self.iter().collect()
+    }
+}
+
+impl<I> Deobfuscated<I>
+where
+    Self: nom::InputIter<Item = u8>
+        + nom::InputLength
+        + nom::InputTake
+        + nom::Slice<std::ops::RangeFrom<usize>>,
+{
+    /// Returns None if CRC fails, returns body slice if it succeeds.
+    pub fn check_crc<C>(&self, crc: C) -> Option<Self>
+    where
+        C: CrcStyle,
+    {
+        use nom::{InputLength, InputTake};
+        let len = self.input_len();
+        if len < 2 {
+            None
+        } else {
+            let (suffix, prefix) = self.take_split(len - 2);
+            let calculated = crc.calculate(prefix.iter());
+            let (_, provided) = nom::number::complete::le_u16::<Self, Error<Self>>(suffix).ok()?;
+            if crc.validate(calculated, provided) {
+                Some(prefix)
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -330,8 +363,13 @@ where
 /// A possible result from framed().
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FramedResult<I, O, E = Error<Deobfuscated<I>>> {
+    /// Frame parse result
     Ok(O),
+    /// (Original frame without CRC, Error)
     ParseErr(Deobfuscated<I>, E),
+    /// CRC check failed, with whole original frame including CRC.
+    CrcErr(Deobfuscated<I>),
+    /// Only non-frame input was consumed.
     None,
 }
 
@@ -340,6 +378,7 @@ impl<I, O, E> FramedResult<I, O, E> {
         match self {
             Self::Ok(o) => Some(o),
             Self::ParseErr(_, _) => None,
+            Self::CrcErr(_) => None,
             Self::None => None,
         }
     }
@@ -351,6 +390,7 @@ impl<I, O, E> FramedResult<I, O, E> {
         match self {
             Self::Ok(o) => FramedResult::Ok(f(o)),
             Self::ParseErr(frame, err) => FramedResult::ParseErr(frame, err),
+            Self::CrcErr(frame) => FramedResult::CrcErr(frame),
             Self::None => FramedResult::None,
         }
     }
@@ -362,6 +402,7 @@ impl<I, O, E> FramedResult<I, O, E> {
         match self {
             Self::Ok(o) => FramedResult::Ok(o),
             Self::ParseErr(frame, err) => FramedResult::ParseErr(frame, f(err)),
+            Self::CrcErr(frame) => FramedResult::CrcErr(frame),
             Self::None => FramedResult::None,
         }
     }
@@ -376,8 +417,9 @@ impl<I, O, E> FramedResult<I, O, E> {
 /// removed from the input.
 ///
 /// Returns None if it only skipped data and found no complete frames.
-pub fn framed<I, P, O>(parser: P) -> impl FnMut(I) -> IResult<I, FramedResult<I, O>>
+pub fn framed<C, I, P, O>(crc: C, parser: P) -> impl FnMut(I) -> IResult<I, FramedResult<I, O>>
 where
+    C: CrcStyle,
     P: nom::Parser<Deobfuscated<I>, O, Error<Deobfuscated<I>>>,
     I: nom::InputTakeAtPosition<Item = u8>
         + nom::Compare<&'static [u8]>
@@ -391,27 +433,31 @@ where
 
     let mut parser_eof = nom::sequence::terminated(parser, nom::combinator::eof);
     move |input| {
-        let (rest, maybe_content) = frame(input)?;
+        let (rest, maybe_content) = frame_raw(input)?;
         match maybe_content {
             Some(content) => {
                 // found a frame, wrap it and feed it to our parser
                 let deobfuscated = Deobfuscated::new(content);
-                match parser_eof(deobfuscated.clone()) {
-                    Ok((_, result)) => Ok((rest, FramedResult::Ok(result))),
-                    Err(e) => match e {
-                        nom::Err::Incomplete(_) => Ok((
-                            rest,
-                            FramedResult::ParseErr(
-                                deobfuscated.clone(),
-                                Error {
-                                    input: deobfuscated,
-                                    code: nom::error::ErrorKind::Eof,
-                                },
-                            ),
-                        )),
-                        nom::Err::Error(e) => Ok((rest, FramedResult::ParseErr(deobfuscated, e))),
-                        nom::Err::Failure(e) => Ok((rest, FramedResult::ParseErr(deobfuscated, e))),
-                    },
+                if let Some(body) = deobfuscated.check_crc(&crc) {
+                    match parser_eof(body.clone()) {
+                        Ok((_, result)) => Ok((rest, FramedResult::Ok(result))),
+                        Err(e) => match e {
+                            nom::Err::Incomplete(_) => Ok((
+                                rest,
+                                FramedResult::ParseErr(
+                                    body.clone(),
+                                    Error {
+                                        input: body,
+                                        code: nom::error::ErrorKind::Eof,
+                                    },
+                                ),
+                            )),
+                            nom::Err::Error(e) => Ok((rest, FramedResult::ParseErr(body, e))),
+                            nom::Err::Failure(e) => Ok((rest, FramedResult::ParseErr(body, e))),
+                        },
+                    }
+                } else {
+                    Ok((rest, FramedResult::CrcErr(deobfuscated)))
                 }
             }
             None => {
@@ -424,6 +470,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use super::super::CrcConstant;
     use super::*;
 
     #[test]
@@ -482,77 +529,77 @@ mod test {
     }
 
     #[test]
-    fn frame_empty() {
-        assert_eq!(frame(b"".as_ref()), Ok((b"".as_ref(), None)))
+    fn frame_raw_empty() {
+        assert_eq!(frame_raw(b"".as_ref()), Ok((b"".as_ref(), None)))
     }
 
     #[test]
-    fn frame_discard_garbage() {
-        assert_eq!(frame(b"abcdef".as_ref()), Ok((b"".as_ref(), None)));
+    fn frame_raw_discard_garbage() {
+        assert_eq!(frame_raw(b"abcdef".as_ref()), Ok((b"".as_ref(), None)));
     }
 
     #[test]
-    fn frame_incomplete_prefix_imm() {
-        assert_eq!(frame(b"\xab".as_ref()), Ok((b"\xab".as_ref(), None)));
+    fn frame_raw_incomplete_prefix_imm() {
+        assert_eq!(frame_raw(b"\xab".as_ref()), Ok((b"\xab".as_ref(), None)));
     }
 
     #[test]
-    fn frame_incomplete_imm() {
+    fn frame_raw_incomplete_imm() {
         assert_eq!(
-            frame(b"\xab\xcd\x03\x00foo".as_ref()),
-            Ok((b"\xab\xcd\x03\x00foo".as_ref(), None))
+            frame_raw(b"\xab\xcd\x01\x00foo".as_ref()),
+            Ok((b"\xab\xcd\x01\x00foo".as_ref(), None))
         );
     }
 
     #[test]
-    fn frame_complete_imm() {
+    fn frame_raw_complete_imm() {
         assert_eq!(
-            frame(b"\xab\xcd\x03\x00foo\xdc\xbaafter".as_ref()),
+            frame_raw(b"\xab\xcd\x01\x00foo\xdc\xbaafter".as_ref()),
             Ok((b"after".as_ref(), Some(b"foo".as_ref())))
         );
     }
 
     #[test]
-    fn frame_incomplete_prefix() {
-        assert_eq!(frame(b"abc\xab".as_ref()), Ok((b"\xab".as_ref(), None)));
+    fn frame_raw_incomplete_prefix() {
+        assert_eq!(frame_raw(b"abc\xab".as_ref()), Ok((b"\xab".as_ref(), None)));
     }
 
     #[test]
-    fn frame_incomplete() {
+    fn frame_raw_incomplete() {
         assert_eq!(
-            frame(b"abc\xab\xcd\x03\x00foo".as_ref()),
-            Ok((b"\xab\xcd\x03\x00foo".as_ref(), None))
+            frame_raw(b"abc\xab\xcd\x01\x00foo".as_ref()),
+            Ok((b"\xab\xcd\x01\x00foo".as_ref(), None))
         );
     }
 
     #[test]
-    fn frame_complete() {
+    fn frame_raw_complete() {
         assert_eq!(
-            frame(b"abc\xab\xcd\x03\x00foo\xdc\xbaafter".as_ref()),
+            frame_raw(b"abc\xab\xcd\x01\x00foo\xdc\xbaafter".as_ref()),
             Ok((b"after".as_ref(), Some(b"foo".as_ref())))
         );
     }
 
     #[test]
-    fn frame_incomplete_prefix_2() {
+    fn frame_raw_incomplete_prefix_2() {
         assert_eq!(
-            frame(b"abc\xabdef\xab".as_ref()),
+            frame_raw(b"abc\xabdef\xab".as_ref()),
             Ok((b"\xab".as_ref(), None))
         );
     }
 
     #[test]
-    fn frame_incomplete_2() {
+    fn frame_raw_incomplete_2() {
         assert_eq!(
-            frame(b"abc\xabdef\xab\xcd\x03\x00foo".as_ref()),
-            Ok((b"\xab\xcd\x03\x00foo".as_ref(), None))
+            frame_raw(b"abc\xabdef\xab\xcd\x01\x00foo".as_ref()),
+            Ok((b"\xab\xcd\x01\x00foo".as_ref(), None))
         );
     }
 
     #[test]
-    fn frame_complete_2() {
+    fn frame_raw_complete_2() {
         assert_eq!(
-            frame(b"abc\xabdef\xab\xcd\x03\x00foo\xdc\xbaafter".as_ref()),
+            frame_raw(b"abc\xabdef\xab\xcd\x01\x00foo\xdc\xbaafter".as_ref()),
             Ok((b"after".as_ref(), Some(b"foo".as_ref())))
         );
     }
@@ -565,13 +612,19 @@ mod test {
 
     #[test]
     fn framed_empty() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(foo(b"".as_ref()), Ok((b"".as_ref(), FramedResult::None)))
     }
 
     #[test]
     fn framed_discard_garbage() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
             foo(b"abcdef".as_ref()),
             Ok((b"".as_ref(), FramedResult::None))
@@ -580,7 +633,10 @@ mod test {
 
     #[test]
     fn framed_incomplete_prefix_imm() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
             foo(b"\xab".as_ref()),
             Ok((b"\xab".as_ref(), FramedResult::None))
@@ -589,25 +645,39 @@ mod test {
 
     #[test]
     fn framed_incomplete_imm() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
-            foo(b"\xab\xcd\x03\x00\x70\x03\x7b".as_ref()),
-            Ok((b"\xab\xcd\x03\x00\x70\x03\x7b".as_ref(), FramedResult::None))
+            foo(b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
+            Ok((
+                b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
+                FramedResult::None
+            ))
         );
     }
 
     #[test]
     fn framed_complete_imm() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
-            apply_obfuscate(foo(b"\xab\xcd\x03\x00\x70\x03\x7b\xdc\xbaafter".as_ref())),
+            apply_obfuscate(foo(
+                b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
+            )),
             Ok((b"after".as_ref(), FramedResult::Ok(b"foo".to_vec())))
         );
     }
 
     #[test]
     fn framed_incomplete_prefix() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
             foo(b"abc\xab".as_ref()),
             Ok((b"\xab".as_ref(), FramedResult::None))
@@ -616,25 +686,39 @@ mod test {
 
     #[test]
     fn framed_incomplete() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
-            foo(b"abc\xab\xcd\x03\x00\x70\x03\x7b".as_ref()),
-            Ok((b"\xab\xcd\x03\x00\x70\x03\x7b".as_ref(), FramedResult::None))
+            foo(b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
+            Ok((
+                b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
+                FramedResult::None
+            ))
         );
     }
 
     #[test]
     fn framed_complete() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
-            apply_obfuscate(foo(b"abc\xab\xcd\x03\x00\x70\x03\x7b\xdc\xbaafter".as_ref())),
+            apply_obfuscate(foo(
+                b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
+            )),
             Ok((b"after".as_ref(), FramedResult::Ok(b"foo".to_vec())))
         );
     }
 
     #[test]
     fn framed_incomplete_prefix_2() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
             foo(b"abc\xabdef\xab".as_ref()),
             Ok((b"\xab".as_ref(), FramedResult::None))
@@ -643,19 +727,28 @@ mod test {
 
     #[test]
     fn framed_incomplete_2() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
-            foo(b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b".as_ref()),
-            Ok((b"\xab\xcd\x03\x00\x70\x03\x7b".as_ref(), FramedResult::None))
+            foo(b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
+            Ok((
+                b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
+                FramedResult::None
+            ))
         );
     }
 
     #[test]
     fn framed_complete_2() {
-        let mut foo = framed(nom::bytes::complete::tag(b"foo".as_ref()));
+        let mut foo = framed(
+            CrcConstant(0xcafe),
+            nom::bytes::complete::tag(b"foo".as_ref()),
+        );
         assert_eq!(
             apply_obfuscate(foo(
-                b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\xdc\xbaafter".as_ref()
+                b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
             )),
             Ok((b"after".as_ref(), FramedResult::Ok(b"foo".to_vec())))
         );
