@@ -19,6 +19,7 @@ struct ToolOptions {
 enum ToolCommand {
     Unpack(UnpackOpts),
     Pack(PackOpts),
+    ParseDump(ParseDumpOpts),
 }
 
 impl ToolRun for ToolCommand {
@@ -27,6 +28,7 @@ impl ToolRun for ToolCommand {
         match self {
             Unpack(o) => o.run(),
             Pack(o) => o.run(),
+            ParseDump(o) => o.run(),
         }
     }
 }
@@ -78,6 +80,66 @@ impl ToolRun for PackOpts {
         let packed = unpacked.pack(version)?;
 
         std::fs::write(&self.packed, &packed[..])?;
+        Ok(())
+    }
+}
+
+#[derive(Options, Debug)]
+struct ParseDumpOpts {
+    #[options(free, required)]
+    dump: String,
+}
+
+impl ToolRun for ParseDumpOpts {
+    fn run(&self) -> anyhow::Result<()> {
+        let rawdata = std::fs::read(&self.dump)?;
+        let mut raw = &rawdata[..];
+
+        let xmodem = k5tool::protocol::CrcXModem::new();
+        let dummy = k5tool::protocol::CrcConstant(0xffff);
+
+        loop {
+            if raw.len() < 3 {
+                break;
+            }
+            let dir = raw[0];
+            let len = ((raw[1] as u16) | ((raw[2] as u16) << 8)) as usize;
+            let frameraw = &raw[3..3 + len];
+            raw = &raw[3 + len..];
+
+            use k5tool::protocol::Deobfuscated;
+            let allparse = nom::combinator::rest::<
+                Deobfuscated<&[u8]>,
+                nom::error::Error<Deobfuscated<&[u8]>>,
+            >;
+
+            let frame = if dir == 0 {
+                println!("radio -> computer, {} bytes", len);
+                let (rest, frame) = k5tool::protocol::framed(&dummy, allparse)(frameraw)
+                    .map_err(|_| anyhow::anyhow!("frame parser failed"))?;
+                anyhow::ensure!(rest.len() == 0, "leftover data after parse!");
+                frame
+            } else {
+                println!("computer -> radio, {} bytes", len);
+                let (rest, frame) = k5tool::protocol::framed(&xmodem, allparse)(frameraw)
+                    .map_err(|_| anyhow::anyhow!("frame parser failed"))?;
+                anyhow::ensure!(rest.len() == 0, "leftover data after parse!");
+                frame
+            };
+
+            use k5tool::protocol::FramedResult;
+            match frame {
+                FramedResult::Ok(o) => {
+                    println!();
+                    hexdump::hexdump(o.to_vec().as_ref());
+                },
+                FramedResult::ParseErr(_f, e) => println!("Parse error!!! {:?}", e),
+                FramedResult::CrcErr(_f) => println!("CRC error!!!"),
+                FramedResult::None => println!("Ate some input."),
+            }
+
+            println!();
+        }
         Ok(())
     }
 }

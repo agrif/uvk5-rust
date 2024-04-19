@@ -9,4 +9,5 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 anyhow = "1"
 crc = "3"
 gumdrop = "0.8"
+hexdump = "0.1"
 nom = "7"
