@@ -431,7 +431,7 @@ where
 {
     // FIXME crc??
 
-    let mut parser_eof = nom::sequence::terminated(parser, nom::combinator::eof);
+    let mut parser_all = nom::combinator::all_consuming(parser);
     move |input| {
         let (rest, maybe_content) = frame_raw(input)?;
         match maybe_content {
@@ -439,7 +439,7 @@ where
                 // found a frame, wrap it and feed it to our parser
                 let deobfuscated = Deobfuscated::new(content);
                 if let Some(body) = deobfuscated.check_crc(&crc) {
-                    match parser_eof(body.clone()) {
+                    match parser_all(body.clone()) {
                         Ok((_, result)) => Ok((rest, FramedResult::Ok(result))),
                         Err(e) => match e {
                             nom::Err::Incomplete(_) => Ok((
@@ -448,7 +448,7 @@ where
                                     body.clone(),
                                     Error {
                                         input: body,
-                                        code: nom::error::ErrorKind::Eof,
+                                        code: nom::error::ErrorKind::Complete,
                                     },
                                 ),
                             )),
