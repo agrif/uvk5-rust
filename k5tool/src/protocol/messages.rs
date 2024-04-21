@@ -83,7 +83,7 @@ where
 /// A trait for information about message types.
 pub trait MessageInfo: Sized {
     /// Message type.
-    fn message_type() -> u16;
+    const MESSAGE_TYPE: u16;
 }
 
 /// 0x0514 Hello, host message.
@@ -91,13 +91,11 @@ pub trait MessageInfo: Sized {
 pub struct Hello {
     /// Timestamp on all host messages. All further messages must use
     /// this same timestamp or they will be ignored.
-    timestamp: u32,
+    pub timestamp: u32,
 }
 
 impl MessageInfo for Hello {
-    fn message_type() -> u16 {
-        0x0514
-    }
+    const MESSAGE_TYPE: u16 = 0x0514;
 }
 
 impl Hello {
@@ -115,25 +113,23 @@ impl Hello {
 pub struct Version {
     /// Version, provided by the radio.
     /// Assume UTF-8, or at least, ASCII, padded by zeros.
-    version: crate::Version,
+    pub version: crate::Version,
 
     /// Radio is using custom AES key.
-    has_custom_aes_key: bool,
+    pub has_custom_aes_key: bool,
 
     /// Radio is in the lock screen.
-    is_in_lock_screen: bool,
+    pub is_in_lock_screen: bool,
 
     /// Unknown or unused.
-    padding: [u8; 2],
+    pub padding: [u8; 2],
 
     /// AES challenge. See 0x052D.
-    challenge: [u32; 4],
+    pub challenge: [u32; 4],
 }
 
 impl MessageInfo for Version {
-    fn message_type() -> u16 {
-        0x0515
-    }
+    const MESSAGE_TYPE: u16 = 0x0515;
 }
 
 impl Version {
