@@ -234,6 +234,8 @@ where
     }
 }
 
+/// Parse a message type and length, and provide it to a function that
+/// returns a parser for that message type.
 pub fn message<I, F, P, O>(mut parser: F) -> impl FnMut(I) -> IResult<I, O>
 where
     F: FnMut(u16) -> P,

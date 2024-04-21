@@ -190,7 +190,7 @@ fn parse_message_body(
     typ: u16,
     body: k5tool::protocol::Deobfuscated<&[u8]>,
 ) -> anyhow::Result<k5tool::protocol::Message> {
-    let (rest, msg) = k5tool::protocol::any_message(typ)(body)
+    let (rest, msg) = k5tool::protocol::any_message_body(typ)(body)
         .map_err(|_| anyhow::anyhow!("Message body parser falied."))?;
     anyhow::ensure!(rest.len() == 0, "Message body parser left leftover data.");
     Ok(msg)

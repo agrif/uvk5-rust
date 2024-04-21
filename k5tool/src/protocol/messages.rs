@@ -30,14 +30,14 @@ pub enum Message {
     Radio(RadioMessage),
 }
 
-/// Parses any message.
-pub fn any_message<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, Message>
+/// Parses any message, given the message type.
+pub fn any_message_body<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, Message>
 where
     I: InputParse,
 {
     nom::branch::alt((
-        nom::combinator::map(host_message(typ), Message::Host),
-        nom::combinator::map(radio_message(typ), Message::Radio),
+        nom::combinator::map(host_message_body(typ), Message::Host),
+        nom::combinator::map(radio_message_body(typ), Message::Radio),
     ))
 }
 
@@ -48,8 +48,8 @@ pub enum HostMessage {
     Hello(Hello),
 }
 
-/// Parses a host message.
-pub fn host_message<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, HostMessage>
+/// Parses a host message, given the message type.
+pub fn host_message_body<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, HostMessage>
 where
     I: InputParse,
 {
@@ -67,8 +67,8 @@ pub enum RadioMessage {
     Version(Version),
 }
 
-/// Parses a radio message.
-pub fn radio_message<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, RadioMessage>
+/// Parses a radio message, given the message type.
+pub fn radio_message_body<I>(typ: u16) -> impl FnMut(I) -> nom::IResult<I, RadioMessage>
 where
     I: InputParse,
 {
