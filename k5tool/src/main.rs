@@ -53,7 +53,7 @@ impl ToolRun for UnpackOpts {
         if let Ok(s) = version.as_str() {
             println!("version: {}", s);
         } else {
-            println!("version: {:?}", &version[..]);
+            println!("version: {:?}", version.as_bytes());
         }
 
         std::fs::write(&self.unpacked, &unpacked[..])?;

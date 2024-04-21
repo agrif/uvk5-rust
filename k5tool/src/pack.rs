@@ -24,10 +24,14 @@ pub fn obfuscate(data: &mut [u8]) {
     obfuscate_skip(data, 0);
 }
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Version([u8; VERSION_LEN]);
 
 impl Version {
+    pub fn new_empty() -> Self {
+        Self([0; VERSION_LEN])
+    }
+
     pub fn new(data: [u8; VERSION_LEN]) -> Self {
         Self(data)
     }
@@ -49,12 +53,35 @@ impl Version {
     pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
         std::str::from_utf8(&self.0).map(|s| s.trim_end_matches('\0'))
     }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn as_mut_bytes(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
+impl std::fmt::Debug for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self.as_str() {
+            Ok(s) => f.debug_tuple("Version").field(&s).finish(),
+            Err(_) => f.debug_tuple("Version").field(&self.as_bytes()).finish(),
+        }
+    }
 }
 
 impl std::ops::Deref for Version {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.as_bytes()
+    }
+}
+
+impl std::ops::DerefMut for Version {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_bytes()
     }
 }
 
