@@ -119,7 +119,7 @@ impl ToolRun for ParseDumpOpts {
 
             match parse_frame(crc, frameraw) {
                 Ok(o) => {
-                    hexdump::hexdump(o.to_vec().as_ref());
+                    println!("{:?}", o);
                     println!();
                 }
                 Err(e) => {
@@ -134,7 +134,7 @@ impl ToolRun for ParseDumpOpts {
     }
 }
 
-fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5tool::protocol::Deobfuscated<&[u8]>>
+fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5tool::protocol::Message>
 where
     C: k5tool::protocol::CrcStyle,
 {
@@ -166,7 +166,7 @@ where
 
 fn parse_message(
     data: k5tool::protocol::Deobfuscated<&[u8]>,
-) -> anyhow::Result<k5tool::protocol::Deobfuscated<&[u8]>> {
+) -> anyhow::Result<k5tool::protocol::Message> {
     let (rest, (typ, body)) = k5tool::protocol::message(|t| {
         nom::combinator::map(nom::combinator::rest, move |r| (t, r))
     })(data)
@@ -174,7 +174,26 @@ fn parse_message(
     anyhow::ensure!(rest.len() == 0, "Message parser left leftover data.");
 
     println!("Message type: {:x?}", typ);
-    Ok(body)
+
+    match parse_message_body(typ, body.clone()) {
+        Ok(o) => Ok(o),
+        Err(e) => {
+            println!("Unparsed message body:");
+            hexdump::hexdump(body.to_vec().as_ref());
+            println!();
+            anyhow::bail!(e);
+        }
+    }
+}
+
+fn parse_message_body(
+    typ: u16,
+    body: k5tool::protocol::Deobfuscated<&[u8]>,
+) -> anyhow::Result<k5tool::protocol::Message> {
+    let (rest, msg) = k5tool::protocol::any_message(typ)(body)
+        .map_err(|_| anyhow::anyhow!("Message body parser falied."))?;
+    anyhow::ensure!(rest.len() == 0, "Message body parser left leftover data.");
+    Ok(msg)
 }
 
 fn main() -> anyhow::Result<()> {
