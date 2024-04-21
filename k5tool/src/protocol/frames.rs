@@ -234,6 +234,29 @@ where
     }
 }
 
+pub fn message<I, F, P, O>(mut parser: F) -> impl FnMut(I) -> IResult<I, O>
+where
+    F: FnMut(u16) -> P,
+    P: nom::Parser<I, O, Error<I>>,
+    I: nom::InputLength
+        + nom::InputTake
+        + nom::InputIter<Item = u8>
+        + nom::Slice<std::ops::RangeFrom<usize>>,
+{
+    move |input| {
+        // u16le message type
+        let (rest, typ) = nom::number::complete::le_u16(input)?;
+        // u16le message length (which should be everything)
+        // we could use all_consuming here, but:
+        //  1. this will fail if there is not enough data
+        //  2. if this is wrapped in framed(..), it will also fail if there
+        //     is too much data.
+        // So, we don't.
+        let (_, body) = nom::multi::length_data(nom::number::complete::le_u16)(rest)?;
+        parser(typ).parse(body)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::super::CrcConstant;

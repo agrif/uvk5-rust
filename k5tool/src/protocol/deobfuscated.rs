@@ -64,6 +64,16 @@ where
 
 impl<I> Deobfuscated<I>
 where
+    Self: nom::InputLength,
+{
+    pub fn len(&self) -> usize {
+        use nom::InputLength;
+        self.input_len()
+    }
+}
+
+impl<I> Deobfuscated<I>
+where
     Self: nom::InputIter<Item = u8>
         + nom::InputLength
         + nom::InputTake

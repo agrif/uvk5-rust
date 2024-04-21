@@ -23,6 +23,36 @@ where
     }
 }
 
+/// A CRC that is one of two possible implementations.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CrcEither<A, B> {
+    Left(A),
+    Right(B),
+}
+
+impl<A, B> CrcStyle for CrcEither<A, B>
+where
+    A: CrcStyle,
+    B: CrcStyle,
+{
+    fn calculate<I>(&self, it: I) -> u16
+    where
+        I: Iterator<Item = u8>,
+    {
+        match self {
+            Self::Left(a) => a.calculate(it),
+            Self::Right(b) => b.calculate(it),
+        }
+    }
+
+    fn validate(&self, calculated: u16, provided: u16) -> bool {
+        match self {
+            Self::Left(a) => a.validate(calculated, provided),
+            Self::Right(b) => b.validate(calculated, provided),
+        }
+    }
+}
+
 /// A CRC that is always a specific given value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrcConstant(pub u16);

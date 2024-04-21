@@ -107,41 +107,74 @@ impl ToolRun for ParseDumpOpts {
             let frameraw = &raw[3..3 + len];
             raw = &raw[3 + len..];
 
-            use k5tool::protocol::Deobfuscated;
-            let allparse = nom::combinator::rest::<
-                Deobfuscated<&[u8]>,
-                nom::error::Error<Deobfuscated<&[u8]>>,
-            >;
-
-            let frame = if dir == 0 {
+            let crc = if dir == 0 {
                 println!("radio -> computer, {} bytes", len);
-                let (rest, frame) = k5tool::protocol::framed(&dummy, allparse)(frameraw)
-                    .map_err(|_| anyhow::anyhow!("frame parser failed"))?;
-                anyhow::ensure!(rest.len() == 0, "leftover data after parse!");
-                frame
+                k5tool::protocol::CrcEither::Left(&dummy)
             } else {
                 println!("computer -> radio, {} bytes", len);
-                let (rest, frame) = k5tool::protocol::framed(&xmodem, allparse)(frameraw)
-                    .map_err(|_| anyhow::anyhow!("frame parser failed"))?;
-                anyhow::ensure!(rest.len() == 0, "leftover data after parse!");
-                frame
+                k5tool::protocol::CrcEither::Right(&xmodem)
             };
 
-            use k5tool::protocol::FramedResult;
-            match frame {
-                FramedResult::Ok(o) => {
-                    println!();
-                    hexdump::hexdump(o.to_vec().as_ref());
-                },
-                FramedResult::ParseErr(_f, e) => println!("Parse error!!! {:?}", e),
-                FramedResult::CrcErr(_f) => println!("CRC error!!!"),
-                FramedResult::None => println!("Ate some input."),
-            }
-
             println!();
+
+            match parse_frame(crc, frameraw) {
+                Ok(o) => {
+                    hexdump::hexdump(o.to_vec().as_ref());
+                    println!();
+                }
+                Err(e) => {
+                    println!("Unparsed frame:");
+                    hexdump::hexdump(frameraw);
+                    println!();
+                    anyhow::bail!(e);
+                }
+            }
         }
         Ok(())
     }
+}
+
+fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5tool::protocol::Deobfuscated<&[u8]>>
+where
+    C: k5tool::protocol::CrcStyle,
+{
+    let (rest, frame) = k5tool::protocol::framed(crc, nom::combinator::rest)(data)
+        .map_err(|_| anyhow::anyhow!("Frame parser failed."))?;
+    anyhow::ensure!(rest.len() == 0, "Frame parser left leftover data.");
+
+    use k5tool::protocol::FramedResult;
+    match frame {
+        FramedResult::Ok(framebody) => match parse_message(framebody.clone()) {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                println!("Deobfuscated frame:");
+                hexdump::hexdump(framebody.to_vec().as_ref());
+                println!();
+                Err(e)
+            }
+        },
+        FramedResult::ParseErr(_f, e) => anyhow::bail!("Frame parse error: {:?}", e.code),
+        FramedResult::CrcErr(f) => {
+            println!("Deobfuscated frame + CRC:");
+            hexdump::hexdump(f.to_vec().as_ref());
+            println!();
+            anyhow::bail!("CRC error.");
+        }
+        FramedResult::None => anyhow::bail!("Frame parser found no frames."),
+    }
+}
+
+fn parse_message(
+    data: k5tool::protocol::Deobfuscated<&[u8]>,
+) -> anyhow::Result<k5tool::protocol::Deobfuscated<&[u8]>> {
+    let (rest, (typ, body)) = k5tool::protocol::message(|t| {
+        nom::combinator::map(nom::combinator::rest, move |r| (t, r))
+    })(data)
+    .map_err(|_| anyhow::anyhow!("Message parser falied."))?;
+    anyhow::ensure!(rest.len() == 0, "Message parser left leftover data.");
+
+    println!("Message type: {:x?}", typ);
+    Ok(body)
 }
 
 fn main() -> anyhow::Result<()> {
