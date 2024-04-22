@@ -213,7 +213,7 @@ impl<I, O, E> FramedResult<I, O, E> {
 /// are removed from the input.
 ///
 /// Wrap in Result::Ok to turn this into a nom parser.
-pub fn framed<C, I, P, O>(crc: C, parser: P) -> impl FnMut(I) -> (I, FramedResult<I, O>)
+pub fn framed<C, I, P, O>(crc: C, parser: P, input: I) -> (I, FramedResult<I, O>)
 where
     C: CrcStyle,
     P: nom::Parser<Deobfuscated<I>, O, Error<Deobfuscated<I>>>,
@@ -221,38 +221,36 @@ where
 {
     let mut parser_all = nom::combinator::all_consuming(parser);
 
-    move |input| {
-        let (rest, maybe_content) = frame_raw(input);
-        match maybe_content {
-            Some(content) => {
-                // found a frame, wrap it and feed it to our parser
-                let deobfuscated = Deobfuscated::new(content);
-                if let Some(body) = deobfuscated.check_crc(&crc) {
-                    match parser_all(body.clone()) {
-                        Ok((_, result)) => (rest, FramedResult::Ok(result)),
-                        Err(e) => match e {
-                            nom::Err::Incomplete(_) => (
-                                rest,
-                                FramedResult::ParseErr(
-                                    body.clone(),
-                                    Error {
-                                        input: body,
-                                        code: nom::error::ErrorKind::Complete,
-                                    },
-                                ),
+    let (rest, maybe_content) = frame_raw(input);
+    match maybe_content {
+        Some(content) => {
+            // found a frame, wrap it and feed it to our parser
+            let deobfuscated = Deobfuscated::new(content);
+            if let Some(body) = deobfuscated.check_crc(&crc) {
+                match parser_all(body.clone()) {
+                    Ok((_, result)) => (rest, FramedResult::Ok(result)),
+                    Err(e) => match e {
+                        nom::Err::Incomplete(_) => (
+                            rest,
+                            FramedResult::ParseErr(
+                                body.clone(),
+                                Error {
+                                    input: body,
+                                    code: nom::error::ErrorKind::Complete,
+                                },
                             ),
-                            nom::Err::Error(e) => (rest, FramedResult::ParseErr(body, e)),
-                            nom::Err::Failure(e) => (rest, FramedResult::ParseErr(body, e)),
-                        },
-                    }
-                } else {
-                    (rest, FramedResult::CrcErr(deobfuscated))
+                        ),
+                        nom::Err::Error(e) => (rest, FramedResult::ParseErr(body, e)),
+                        nom::Err::Failure(e) => (rest, FramedResult::ParseErr(body, e)),
+                    },
                 }
+            } else {
+                (rest, FramedResult::CrcErr(deobfuscated))
             }
-            None => {
-                // no frame found, only ate input
-                (rest, FramedResult::None)
-            }
+        }
+        None => {
+            // no frame found, only ate input
+            (rest, FramedResult::None)
         }
     }
 }
