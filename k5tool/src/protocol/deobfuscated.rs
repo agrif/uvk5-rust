@@ -8,16 +8,16 @@ pub const OBFUSCATION: [u8; 16] = [
 
 /// Infinite deobfuscation key iterator.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct Key {
+pub struct Key {
     index: usize,
 }
 
 impl Key {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { index: 0 }
     }
 
-    fn next(&mut self) -> u8 {
+    pub fn next(&mut self) -> u8 {
         let v = OBFUSCATION[self.index];
         self.index += 1;
         if self.index >= OBFUSCATION.len() {
@@ -26,7 +26,11 @@ impl Key {
         v
     }
 
-    fn advance(&self, num: usize) -> Self {
+    pub fn apply(&mut self, val: u8) -> u8 {
+        val ^ self.next()
+    }
+
+    pub fn advance(&self, num: usize) -> Self {
         let index = (self.index + num) % OBFUSCATION.len();
         Self { index }
     }

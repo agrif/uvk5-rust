@@ -9,16 +9,43 @@ pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
 /// Total guess, here.
 pub const MAX_FRAME_SIZE: usize = 0x200;
 
+/// A helpful short name for a whole bundle of useful parser traits.
+pub trait InputParse:
+    nom::InputTakeAtPosition<Item = u8>
+    + nom::Compare<&'static [u8]>
+    + nom::InputLength
+    + nom::InputTake
+    + nom::InputIter<Item = u8>
+    + nom::Slice<std::ops::Range<usize>>
+    + nom::Slice<std::ops::RangeFrom<usize>>
+    + nom::Slice<std::ops::RangeFull>
+    + nom::Slice<std::ops::RangeTo<usize>>
+    + Clone
+    + PartialEq
+{
+}
+
+impl<T> InputParse for T where
+    T: nom::InputTakeAtPosition<Item = u8>
+        + nom::Compare<&'static [u8]>
+        + nom::InputLength
+        + nom::InputTake
+        + nom::InputIter<Item = u8>
+        + nom::Slice<std::ops::Range<usize>>
+        + nom::Slice<std::ops::RangeFrom<usize>>
+        + nom::Slice<std::ops::RangeFull>
+        + nom::Slice<std::ops::RangeTo<usize>>
+        + Clone
+        + PartialEq
+{
+}
+
 /// Eats input until it sees a frame start, then leaves it intact.
 ///
 /// Returns true when it found a frame start, false otherwise.
 pub fn frame_start<I>(input: I) -> IResult<I, bool>
 where
-    I: nom::InputTakeAtPosition<Item = u8>
-        + nom::Compare<&'static [u8]>
-        + nom::InputLength
-        + nom::InputTake
-        + Clone,
+    I: InputParse,
 {
     let mut loop_input = input;
     loop {
@@ -70,13 +97,7 @@ where
 /// Returns None if it only skipped data and found no complete frames.
 pub fn frame_raw<I>(input: I) -> IResult<I, Option<I>>
 where
-    I: nom::InputTakeAtPosition<Item = u8>
-        + nom::Compare<&'static [u8]>
-        + nom::InputLength
-        + nom::InputTake
-        + nom::InputIter<Item = u8>
-        + nom::Slice<std::ops::RangeFrom<usize>>
-        + Clone,
+    I: InputParse,
 {
     // a chunk of data, prefixed by a little-endian u16 length
     // only succeeds when frame is smaller than MAX_FRAME_SIZE
@@ -187,16 +208,8 @@ pub fn framed<C, I, P, O>(crc: C, parser: P) -> impl FnMut(I) -> IResult<I, Fram
 where
     C: CrcStyle,
     P: nom::Parser<Deobfuscated<I>, O, Error<Deobfuscated<I>>>,
-    I: nom::InputTakeAtPosition<Item = u8>
-        + nom::Compare<&'static [u8]>
-        + nom::InputLength
-        + nom::InputTake
-        + nom::InputIter<Item = u8>
-        + nom::Slice<std::ops::RangeFrom<usize>>
-        + Clone,
+    I: InputParse,
 {
-    // FIXME crc??
-
     let mut parser_all = nom::combinator::all_consuming(parser);
     move |input| {
         let (rest, maybe_content) = frame_raw(input)?;
@@ -240,10 +253,7 @@ pub fn message<I, F, P, O>(mut parser: F) -> impl FnMut(I) -> IResult<I, O>
 where
     F: FnMut(u16) -> P,
     P: nom::Parser<I, O, Error<I>>,
-    I: nom::InputLength
-        + nom::InputTake
-        + nom::InputIter<Item = u8>
-        + nom::Slice<std::ops::RangeFrom<usize>>,
+    I: InputParse,
 {
     move |input| {
         // u16le message type
@@ -256,6 +266,33 @@ where
         // So, we don't.
         let (_, body) = nom::multi::length_data(nom::number::complete::le_u16)(rest)?;
         parser(typ).parse(body)
+    }
+}
+
+/// A trait for parseable messages.
+pub trait MessageParse: Sized {
+    /// Parse the body of a message, given the message type.
+    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
+    where
+        I: InputParse;
+
+    /// Parse an entire message, including type and length header.
+    fn parse_frame_body<I>() -> impl nom::Parser<I, Self, Error<I>>
+    where
+        I: InputParse,
+    {
+        message(Self::parse_body)
+    }
+
+    /// Parse an entire frame containing a message.
+    ///
+    /// This includes frame start/end, length, obfuscation, and CRC.
+    fn parse_frame<C, I>(crc: &C) -> impl nom::Parser<I, FramedResult<I, Self>, Error<I>>
+    where
+        C: CrcStyle,
+        I: InputParse,
+    {
+        framed(crc, Self::parse_frame_body())
     }
 }
 
