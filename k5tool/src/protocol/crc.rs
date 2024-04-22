@@ -1,8 +1,13 @@
 /// Generic CRC style, for encoding and decoding frames.
 pub trait CrcStyle {
-    fn calculate<I>(&self, it: I) -> u16
+    type Digest<'a>
     where
-        I: Iterator<Item = u8>;
+        Self: 'a;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a>;
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]);
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16;
+
     fn validate(&self, calculated: u16, provided: u16) -> bool {
         calculated == provided
     }
@@ -12,12 +17,20 @@ impl<C> CrcStyle for &C
 where
     C: CrcStyle,
 {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
-        (*self).calculate(it)
+    type Digest<'a> = C::Digest<'a> where Self: 'a;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        (*self).digest()
     }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        (*self).update(digest, bytes)
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
+        (*self).finalize(digest)
+    }
+
     fn validate(&self, calculated: u16, provided: u16) -> bool {
         (*self).validate(calculated, provided)
     }
@@ -35,13 +48,54 @@ where
     A: CrcStyle,
     B: CrcStyle,
 {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
+    type Digest<'a> = CrcEither<A::Digest<'a>, B::Digest<'a>> where Self: 'a;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
         match self {
-            Self::Left(a) => a.calculate(it),
-            Self::Right(b) => b.calculate(it),
+            Self::Left(a) => Self::Digest::Left(a.digest()),
+            Self::Right(b) => Self::Digest::Right(b.digest()),
+        }
+    }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        match self {
+            Self::Left(a) => {
+                if let Self::Digest::Left(ref mut ad) = digest {
+                    a.update(ad, bytes)
+                } else {
+                    // left crc always makes left digest
+                    unreachable!();
+                }
+            }
+            Self::Right(b) => {
+                if let Self::Digest::Right(ref mut bd) = digest {
+                    b.update(bd, bytes)
+                } else {
+                    // right crc always makes right digest
+                    unreachable!();
+                }
+            }
+        }
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
+        match self {
+            Self::Left(a) => {
+                if let Self::Digest::Left(ad) = digest {
+                    a.finalize(ad)
+                } else {
+                    // left crc always makes left digest
+                    unreachable!();
+                }
+            }
+            Self::Right(b) => {
+                if let Self::Digest::Right(bd) = digest {
+                    b.finalize(bd)
+                } else {
+                    // right crc always makes right digest
+                    unreachable!();
+                }
+            }
         }
     }
 
@@ -58,10 +112,15 @@ where
 pub struct CrcConstant(pub u16);
 
 impl CrcStyle for CrcConstant {
-    fn calculate<I>(&self, _it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
+    type Digest<'a> = ();
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        ()
+    }
+
+    fn update<'a>(&'a self, _digest: &mut Self::Digest<'a>, _bytes: &[u8]) {}
+
+    fn finalize<'a>(&'a self, _digest: Self::Digest<'a>) -> u16 {
         self.0
     }
 }
@@ -71,10 +130,15 @@ impl CrcStyle for CrcConstant {
 pub struct CrcConstantIgnore(pub u16);
 
 impl CrcStyle for CrcConstantIgnore {
-    fn calculate<I>(&self, _it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
+    type Digest<'a> = ();
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        ()
+    }
+
+    fn update<'a>(&'a self, _digest: &mut Self::Digest<'a>, _bytes: &[u8]) {}
+
+    fn finalize<'a>(&'a self, _digest: Self::Digest<'a>) -> u16 {
         self.0
     }
 
@@ -94,53 +158,65 @@ impl CrcXModem {
 }
 
 impl CrcStyle for CrcXModem {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
-        let mut digest = self.0.digest();
-        for v in it {
-            digest.update(&[v]);
-        }
+    type Digest<'a> = crc::Digest<'a, u16, crc::Table<1>>;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        self.0.digest()
+    }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        digest.update(bytes)
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
         digest.finalize()
     }
 }
 
 impl CrcStyle for crc::Crc<u16, crc::NoTable> {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
-        let mut digest = self.digest();
-        for v in it {
-            digest.update(&[v]);
-        }
+    type Digest<'a> = crc::Digest<'a, u16, crc::NoTable>;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        self.digest()
+    }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        digest.update(bytes)
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
         digest.finalize()
     }
 }
 
 impl CrcStyle for crc::Crc<u16, crc::Table<1>> {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
-        let mut digest = self.digest();
-        for v in it {
-            digest.update(&[v]);
-        }
+    type Digest<'a> = crc::Digest<'a, u16, crc::Table<1>>;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        self.digest()
+    }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        digest.update(bytes)
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
         digest.finalize()
     }
 }
 
 impl CrcStyle for crc::Crc<u16, crc::Table<16>> {
-    fn calculate<I>(&self, it: I) -> u16
-    where
-        I: Iterator<Item = u8>,
-    {
-        let mut digest = self.digest();
-        for v in it {
-            digest.update(&[v]);
-        }
+    type Digest<'a> = crc::Digest<'a, u16, crc::Table<16>>;
+
+    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+        self.digest()
+    }
+
+    fn update<'a>(&'a self, digest: &mut Self::Digest<'a>, bytes: &[u8]) {
+        digest.update(bytes)
+    }
+
+    fn finalize<'a>(&'a self, digest: Self::Digest<'a>) -> u16 {
         digest.finalize()
     }
 }

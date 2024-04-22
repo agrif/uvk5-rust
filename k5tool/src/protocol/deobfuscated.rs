@@ -90,7 +90,13 @@ where
             None
         } else {
             let (suffix, prefix) = self.take_split(len - 2);
-            let calculated = crc.calculate(prefix.iter());
+
+            let mut digest = crc.digest();
+            for b in prefix.iter() {
+                crc.update(&mut digest, &[b]);
+            }
+            let calculated = crc.finalize(digest);
+
             let (_, provided) = nom::number::complete::le_u16::<Self, Error<Self>>(suffix).ok()?;
             if crc.validate(calculated, provided) {
                 Some(prefix)
