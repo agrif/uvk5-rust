@@ -1,21 +1,17 @@
-use gumdrop::Options;
-
 trait ToolRun {
     fn run(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }
 
-#[derive(Options, Debug)]
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
 struct ToolOptions {
-    #[options(help = "print help message")]
-    help: bool,
-
-    #[options(command, required)]
-    command: Option<ToolCommand>,
+    #[command(subcommand)]
+    command: ToolCommand,
 }
 
-#[derive(Options, Debug)]
+#[derive(clap::Subcommand, Debug)]
 enum ToolCommand {
     Unpack(UnpackOpts),
     Pack(PackOpts),
@@ -33,12 +29,9 @@ impl ToolRun for ToolCommand {
     }
 }
 
-#[derive(Options, Debug)]
+#[derive(clap::Args, Debug)]
 struct UnpackOpts {
-    #[options(free, required)]
     packed: String,
-
-    #[options(free, required)]
     unpacked: String,
 }
 
@@ -61,15 +54,10 @@ impl ToolRun for UnpackOpts {
     }
 }
 
-#[derive(Options, Debug)]
+#[derive(clap::Args, Debug)]
 struct PackOpts {
-    #[options(free, required)]
     version: String,
-
-    #[options(free, required)]
     unpacked: String,
-
-    #[options(free, required)]
     packed: String,
 }
 
@@ -84,9 +72,8 @@ impl ToolRun for PackOpts {
     }
 }
 
-#[derive(Options, Debug)]
+#[derive(clap::Args, Debug)]
 struct ParseDumpOpts {
-    #[options(free, required)]
     dump: String,
 }
 
@@ -201,10 +188,8 @@ fn parse_message_body(
 }
 
 fn main() -> anyhow::Result<()> {
-    let opts = ToolOptions::parse_args_default_or_exit();
-    if let Some(subcommand) = opts.command {
-        subcommand.run()
-    } else {
-        anyhow::bail!("subcommand not provided");
-    }
+    use clap::Parser;
+    let opts = ToolOptions::parse();
+
+    opts.command.run()
 }
