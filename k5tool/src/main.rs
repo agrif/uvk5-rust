@@ -44,7 +44,7 @@ struct UnpackOpts {
 
 impl ToolRun for UnpackOpts {
     fn run(&self) -> anyhow::Result<()> {
-        let packed = k5tool::PackedFirmware::new(std::fs::read(&self.packed)?)?;
+        let packed = k5lib::PackedFirmware::new(std::fs::read(&self.packed)?)?;
         if !packed.check() {
             anyhow::bail!("CRC check failed, cannot unpack")
         }
@@ -75,8 +75,8 @@ struct PackOpts {
 
 impl ToolRun for PackOpts {
     fn run(&self) -> anyhow::Result<()> {
-        let version = k5tool::Version::from_str(&self.version)?;
-        let unpacked = k5tool::UnpackedFirmware::new(std::fs::read(&self.unpacked)?);
+        let version = k5lib::Version::from_str(&self.version)?;
+        let unpacked = k5lib::UnpackedFirmware::new(std::fs::read(&self.unpacked)?);
         let packed = unpacked.pack(version)?;
 
         std::fs::write(&self.packed, &packed[..])?;
@@ -95,8 +95,8 @@ impl ToolRun for ParseDumpOpts {
         let rawdata = std::fs::read(&self.dump)?;
         let mut raw = &rawdata[..];
 
-        let xmodem = k5tool::protocol::CrcXModem::new();
-        let dummy = k5tool::protocol::CrcConstant(0xffff);
+        let xmodem = k5lib::protocol::CrcXModem::new();
+        let dummy = k5lib::protocol::CrcConstant(0xffff);
 
         loop {
             if raw.len() < 3 {
@@ -109,10 +109,10 @@ impl ToolRun for ParseDumpOpts {
 
             let crc = if dir == 0 {
                 println!("radio -> computer, {} bytes", len);
-                k5tool::protocol::CrcEither::Left(&dummy)
+                k5lib::protocol::CrcEither::Left(&dummy)
             } else {
                 println!("computer -> radio, {} bytes", len);
-                k5tool::protocol::CrcEither::Right(&xmodem)
+                k5lib::protocol::CrcEither::Right(&xmodem)
             };
 
             println!();
@@ -134,15 +134,15 @@ impl ToolRun for ParseDumpOpts {
     }
 }
 
-fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5tool::protocol::Message>
+fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5lib::protocol::Message>
 where
-    C: k5tool::protocol::CrcStyle,
+    C: k5lib::protocol::CrcStyle,
 {
-    let (rest, frame) = k5tool::protocol::framed(crc, nom::combinator::rest)(data)
+    let (rest, frame) = k5lib::protocol::framed(crc, nom::combinator::rest)(data)
         .map_err(|_| anyhow::anyhow!("Frame parser failed."))?;
     anyhow::ensure!(rest.len() == 0, "Frame parser left leftover data.");
 
-    use k5tool::protocol::FramedResult;
+    use k5lib::protocol::FramedResult;
     match frame {
         FramedResult::Ok(framebody) => match parse_message(framebody.clone()) {
             Ok(o) => Ok(o),
@@ -165,9 +165,9 @@ where
 }
 
 fn parse_message(
-    data: k5tool::protocol::Deobfuscated<&[u8]>,
-) -> anyhow::Result<k5tool::protocol::Message> {
-    let (rest, (typ, body)) = k5tool::protocol::message(|t| {
+    data: k5lib::protocol::Deobfuscated<&[u8]>,
+) -> anyhow::Result<k5lib::protocol::Message> {
+    let (rest, (typ, body)) = k5lib::protocol::message(|t| {
         nom::combinator::map(nom::combinator::rest, move |r| (t, r))
     })(data)
     .map_err(|_| anyhow::anyhow!("Message parser falied."))?;
@@ -188,12 +188,12 @@ fn parse_message(
 
 fn parse_message_body(
     typ: u16,
-    body: k5tool::protocol::Deobfuscated<&[u8]>,
-) -> anyhow::Result<k5tool::protocol::Message> {
-    use k5tool::protocol::MessageParse;
+    body: k5lib::protocol::Deobfuscated<&[u8]>,
+) -> anyhow::Result<k5lib::protocol::Message> {
+    use k5lib::protocol::MessageParse;
     use nom::Parser;
 
-    let (rest, msg) = k5tool::protocol::Message::parse_body(typ)
+    let (rest, msg) = k5lib::protocol::Message::parse_body(typ)
         .parse(body)
         .map_err(|_| anyhow::anyhow!("Message body parser falied."))?;
     anyhow::ensure!(rest.len() == 0, "Message body parser left leftover data.");

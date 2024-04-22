@@ -1,5 +1,5 @@
 [package]
-name = "k5tool"
+name = "k5lib"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,10 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 
 [dependencies]
 anyhow = "1"
-gumdrop = "0.8"
-hexdump = "0.1"
-k5lib = { path = "../k5lib" }
+crc = "3"
 nom = "7"
+void = "1"
+
+[dev-dependencies]
+quickcheck = "1"
+quickcheck_macros = "1"
