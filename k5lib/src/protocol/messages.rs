@@ -192,7 +192,7 @@ mod test {
         msg.frame(&mut ser, &crc).unwrap();
         let serialized = ser.done();
 
-        let (rest, unserialized) = M::parse_frame(&crc).parse(&serialized[..]).unwrap();
+        let (rest, unserialized) = M::parse_frame(&crc, &serialized[..]);
         let unserialized = unserialized.ignore_error().unwrap();
         return (rest.len() == 0) && (msg == unserialized);
     }

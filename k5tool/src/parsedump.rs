@@ -51,8 +51,7 @@ fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5lib::protocol::Messag
 where
     C: k5lib::protocol::CrcStyle,
 {
-    let (rest, frame) = k5lib::protocol::framed(crc, nom::combinator::rest)(data)
-        .map_err(|_| anyhow::anyhow!("Frame parser failed."))?;
+    let (rest, frame) = k5lib::protocol::framed(crc, nom::combinator::rest)(data);
     anyhow::ensure!(rest.len() == 0, "Frame parser left leftover data.");
 
     use k5lib::protocol::FramedResult;
