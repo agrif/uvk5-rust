@@ -180,9 +180,12 @@ impl MessageParse for Version {
 mod test {
     use super::*;
 
-    fn roundtrip<M>(msg: M)
+    use quickcheck::{Arbitrary, Gen};
+    use quickcheck_macros::quickcheck;
+
+    fn roundtrip<M>(msg: M) -> bool
     where
-        M: MessageParse + MessageSerialize + std::fmt::Debug + PartialEq + Eq,
+        M: MessageParse + MessageSerialize + PartialEq + Eq,
     {
         let crc = super::super::CrcXModem::new();
         let mut ser = super::super::SerializerWrap::new(Vec::new());
@@ -191,25 +194,44 @@ mod test {
 
         let (rest, unserialized) = M::parse_frame(&crc).parse(&serialized[..]).unwrap();
         let unserialized = unserialized.ignore_error().unwrap();
-        assert_eq!(rest.len(), 0);
-        assert_eq!(msg, unserialized);
+        return (rest.len() == 0) && (msg == unserialized);
     }
 
-    #[test]
-    fn roundtrip_hello() {
-        roundtrip(super::Hello {
-            timestamp: 0x12345678,
-        })
+    impl Arbitrary for Hello {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                timestamp: u32::arbitrary(g),
+            }
+        }
     }
 
-    #[test]
-    fn roundtrip_version() {
-        roundtrip(super::Version {
-            version: crate::Version::from_str("0123456789abcdef").unwrap(),
-            has_custom_aes_key: false,
-            is_in_lock_screen: true,
-            padding: [0x12, 0x34],
-            challenge: [0x8badf00d, 0x0d15ea5e, 0xfeedface, 0x567890ab],
-        })
+    #[quickcheck]
+    fn roundtrip_hello(msg: Hello) -> bool {
+        roundtrip(msg)
+    }
+
+    impl Arbitrary for Version {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut version = Vec::<u8>::arbitrary(g);
+            version.truncate(crate::VERSION_LEN);
+
+            Self {
+                version: crate::Version::from_bytes(&version).unwrap(),
+                has_custom_aes_key: bool::arbitrary(g),
+                is_in_lock_screen: bool::arbitrary(g),
+                padding: [u8::arbitrary(g), u8::arbitrary(g)],
+                challenge: [
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                ],
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_version(msg: Version) -> bool {
+        roundtrip(msg)
     }
 }

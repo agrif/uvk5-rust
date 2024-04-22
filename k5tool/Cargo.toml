@@ -12,3 +12,7 @@ gumdrop = "0.8"
 hexdump = "0.1"
 nom = "7"
 void = "1"
+
+[dev-dependencies]
+quickcheck = "1"
+quickcheck_macros = "1"

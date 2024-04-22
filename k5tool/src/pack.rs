@@ -10,7 +10,7 @@ const OBFUSCATION: [u8; 128] = [
 ];
 
 const VERSION_LOC: usize = 0x2000;
-const VERSION_LEN: usize = 16;
+pub const VERSION_LEN: usize = 16;
 
 pub fn obfuscate_skip(data: &mut [u8], skip: usize) {
     let mut i = skip % OBFUSCATION.len();
@@ -37,7 +37,10 @@ impl Version {
     }
 
     pub fn from_str(name: &str) -> anyhow::Result<Self> {
-        let bytes = name.as_bytes();
+        Self::from_bytes(name.as_bytes())
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
         if bytes.len() > VERSION_LEN {
             anyhow::bail!("version must be {:?} bytes or less", VERSION_LEN);
         }
