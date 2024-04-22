@@ -51,12 +51,12 @@ fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5lib::protocol::Messag
 where
     C: k5lib::protocol::crc::CrcStyle,
 {
-    let (rest, frame) = k5lib::protocol::frames::framed(crc, nom::combinator::rest)(data);
+    let (rest, frame) = k5lib::protocol::parse::framed(crc, nom::combinator::rest)(data);
     anyhow::ensure!(rest.len() == 0, "Frame parser left leftover data.");
 
-    use k5lib::protocol::FramedResult;
+    use k5lib::protocol::ParseResult;
     match frame {
-        FramedResult::Ok(framebody) => match parse_message(framebody.clone()) {
+        ParseResult::Ok(framebody) => match parse_message(framebody.clone()) {
             Ok(o) => Ok(o),
             Err(e) => {
                 println!("Deobfuscated frame:");
@@ -65,22 +65,22 @@ where
                 Err(e)
             }
         },
-        FramedResult::ParseErr(_f, e) => anyhow::bail!("Frame parse error: {:?}", e.code),
-        FramedResult::CrcErr(f) => {
+        ParseResult::ParseErr(_f, e) => anyhow::bail!("Frame parse error: {:?}", e.code),
+        ParseResult::CrcErr(f) => {
             println!("Deobfuscated frame + CRC:");
             hexdump::hexdump(f.to_vec().as_ref());
             println!();
             anyhow::bail!("CRC error.");
         }
-        FramedResult::None => anyhow::bail!("Frame parser found no frames."),
+        ParseResult::None => anyhow::bail!("Frame parser found no frames."),
     }
 }
 
 fn parse_message(
-    data: k5lib::protocol::deobfuscated::Deobfuscated<&[u8]>,
+    data: k5lib::protocol::obfuscation::Deobfuscated<&[u8]>,
 ) -> anyhow::Result<k5lib::protocol::Message> {
     let (rest, (typ, body)) =
-        k5lib::protocol::frames::message(|t| nom::combinator::map(nom::combinator::rest, move |r| (t, r)))(
+        k5lib::protocol::parse::message(|t| nom::combinator::map(nom::combinator::rest, move |r| (t, r)))(
             data,
         )
         .map_err(|_| anyhow::anyhow!("Message parser falied."))?;
@@ -101,7 +101,7 @@ fn parse_message(
 
 fn parse_message_body(
     typ: u16,
-    body: k5lib::protocol::deobfuscated::Deobfuscated<&[u8]>,
+    body: k5lib::protocol::obfuscation::Deobfuscated<&[u8]>,
 ) -> anyhow::Result<k5lib::protocol::Message> {
     use k5lib::protocol::MessageParse;
     use nom::Parser;

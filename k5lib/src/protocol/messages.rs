@@ -1,6 +1,6 @@
 use nom::{error::Error, Parser};
 
-use super::frames::{InputParse, MessageParse};
+use super::parse::{InputParse, MessageParse};
 use super::serialize::{MessageSerialize, Serializer};
 
 /// Any kind of message.

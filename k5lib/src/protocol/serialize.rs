@@ -233,14 +233,14 @@ where
 /// A serializer that also computes a CRC on the side.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SerializerObfuscated<T> {
-    key: super::deobfuscated::Key,
+    key: super::obfuscation::Key,
     inner: T,
 }
 
 impl<T> SerializerObfuscated<T> {
     pub fn new(inner: T) -> Self {
         Self {
-            key: super::deobfuscated::Key::new(),
+            key: super::obfuscation::Key::new(),
             inner,
         }
     }

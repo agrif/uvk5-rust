@@ -6,10 +6,10 @@ pub const MAX_FRAME_SIZE: usize = 0x200;
 
 pub mod crc;
 
-pub mod deobfuscated;
+pub mod obfuscation;
 
-pub mod frames;
-pub use frames::{FramedResult, InputParse, MessageParse};
+pub mod parse;
+pub use parse::{InputParse, MessageParse, ParseResult};
 
 mod messages;
 pub use messages::*;
@@ -26,7 +26,7 @@ pub use serialize::MessageSerialize;
 /// This includes frame start/end, length, obfuscation, and CRC.
 ///
 /// Wrap in Result::Ok to turn this into a nom parser.
-pub fn parse<C, I, M>(crc: &C, input: I) -> (I, FramedResult<I, M>)
+pub fn parse<C, I, M>(crc: &C, input: I) -> (I, ParseResult<I, M>)
 where
     C: crc::CrcStyle,
     I: InputParse,

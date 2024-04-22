@@ -2,7 +2,7 @@ use nom::error::Error;
 use nom::IResult;
 
 use super::crc::CrcStyle;
-use super::deobfuscated::Deobfuscated;
+use super::obfuscation::Deobfuscated;
 use super::{FRAME_END, FRAME_START, MAX_FRAME_SIZE};
 
 /// A helpful short name for a whole bundle of useful parser traits.
@@ -152,7 +152,7 @@ where
 
 /// A possible result from framed().
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum FramedResult<I, O, E = Error<Deobfuscated<I>>> {
+pub enum ParseResult<I, O, E = Error<Deobfuscated<I>>> {
     /// Frame parse result
     Ok(O),
     /// (Original frame without CRC, Error)
@@ -163,7 +163,7 @@ pub enum FramedResult<I, O, E = Error<Deobfuscated<I>>> {
     None,
 }
 
-impl<I, O, E> FramedResult<I, O, E> {
+impl<I, O, E> ParseResult<I, O, E> {
     pub fn ignore_error(self) -> Option<O> {
         match self {
             Self::Ok(o) => Some(o),
@@ -173,27 +173,27 @@ impl<I, O, E> FramedResult<I, O, E> {
         }
     }
 
-    pub fn map<F, Op>(self, f: F) -> FramedResult<I, Op, E>
+    pub fn map<F, Op>(self, f: F) -> ParseResult<I, Op, E>
     where
         F: FnOnce(O) -> Op,
     {
         match self {
-            Self::Ok(o) => FramedResult::Ok(f(o)),
-            Self::ParseErr(frame, err) => FramedResult::ParseErr(frame, err),
-            Self::CrcErr(frame) => FramedResult::CrcErr(frame),
-            Self::None => FramedResult::None,
+            Self::Ok(o) => ParseResult::Ok(f(o)),
+            Self::ParseErr(frame, err) => ParseResult::ParseErr(frame, err),
+            Self::CrcErr(frame) => ParseResult::CrcErr(frame),
+            Self::None => ParseResult::None,
         }
     }
 
-    pub fn map_parse_err<F, Ep>(self, f: F) -> FramedResult<I, O, Ep>
+    pub fn map_parse_err<F, Ep>(self, f: F) -> ParseResult<I, O, Ep>
     where
         F: FnOnce(E) -> Ep,
     {
         match self {
-            Self::Ok(o) => FramedResult::Ok(o),
-            Self::ParseErr(frame, err) => FramedResult::ParseErr(frame, f(err)),
-            Self::CrcErr(frame) => FramedResult::CrcErr(frame),
-            Self::None => FramedResult::None,
+            Self::Ok(o) => ParseResult::Ok(o),
+            Self::ParseErr(frame, err) => ParseResult::ParseErr(frame, f(err)),
+            Self::CrcErr(frame) => ParseResult::CrcErr(frame),
+            Self::None => ParseResult::None,
         }
     }
 }
@@ -209,7 +209,7 @@ impl<I, O, E> FramedResult<I, O, E> {
 /// are removed from the input.
 ///
 /// Wrap in Result::Ok to turn this into a nom parser.
-pub fn framed<C, I, P, O>(crc: C, parser: P) -> impl FnMut(I) -> (I, FramedResult<I, O>)
+pub fn framed<C, I, P, O>(crc: C, parser: P) -> impl FnMut(I) -> (I, ParseResult<I, O>)
 where
     C: CrcStyle,
     P: nom::Parser<Deobfuscated<I>, O, Error<Deobfuscated<I>>>,
@@ -225,11 +225,11 @@ where
                 let deobfuscated = Deobfuscated::new(content);
                 if let Some(body) = deobfuscated.check_crc(&crc) {
                     match parser_all(body.clone()) {
-                        Ok((_, result)) => (rest, FramedResult::Ok(result)),
+                        Ok((_, result)) => (rest, ParseResult::Ok(result)),
                         Err(e) => match e {
                             nom::Err::Incomplete(_) => (
                                 rest,
-                                FramedResult::ParseErr(
+                                ParseResult::ParseErr(
                                     body.clone(),
                                     Error {
                                         input: body,
@@ -237,17 +237,17 @@ where
                                     },
                                 ),
                             ),
-                            nom::Err::Error(e) => (rest, FramedResult::ParseErr(body, e)),
-                            nom::Err::Failure(e) => (rest, FramedResult::ParseErr(body, e)),
+                            nom::Err::Error(e) => (rest, ParseResult::ParseErr(body, e)),
+                            nom::Err::Failure(e) => (rest, ParseResult::ParseErr(body, e)),
                         },
                     }
                 } else {
-                    (rest, FramedResult::CrcErr(deobfuscated))
+                    (rest, ParseResult::CrcErr(deobfuscated))
                 }
             }
             None => {
                 // no frame found, only ate input
-                (rest, FramedResult::None)
+                (rest, ParseResult::None)
             }
         }
     }
@@ -300,7 +300,7 @@ pub trait MessageParse: Sized {
     /// This includes frame start/end, length, obfuscation, and CRC.
     ///
     /// Wrap in Result::Ok to turn this into a nom parser.
-    fn parse_frame<C, I>(crc: &C, input: I) -> (I, FramedResult<I, Self>)
+    fn parse_frame<C, I>(crc: &C, input: I) -> (I, ParseResult<I, Self>)
     where
         C: CrcStyle,
         I: InputParse,
@@ -443,8 +443,8 @@ mod test {
     }
 
     fn apply_obfuscate<'a>(
-        result: (&'a [u8], FramedResult<&'a [u8], Deobfuscated<&'a [u8]>>),
-    ) -> (&'a [u8], FramedResult<&'a [u8], Vec<u8>>) {
+        result: (&'a [u8], ParseResult<&'a [u8], Deobfuscated<&'a [u8]>>),
+    ) -> (&'a [u8], ParseResult<&'a [u8], Vec<u8>>) {
         (result.0, result.1.map(|deob| deob.to_vec()))
     }
 
@@ -454,7 +454,7 @@ mod test {
             CrcConstant(0xcafe),
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(foo(b"".as_ref()), (b"".as_ref(), FramedResult::None))
+        assert_eq!(foo(b"".as_ref()), (b"".as_ref(), ParseResult::None))
     }
 
     #[test]
@@ -463,7 +463,7 @@ mod test {
             CrcConstant(0xcafe),
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(foo(b"abcdef".as_ref()), (b"".as_ref(), FramedResult::None));
+        assert_eq!(foo(b"abcdef".as_ref()), (b"".as_ref(), ParseResult::None));
     }
 
     #[test]
@@ -472,10 +472,7 @@ mod test {
             CrcConstant(0xcafe),
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(
-            foo(b"\xab".as_ref()),
-            (b"\xab".as_ref(), FramedResult::None)
-        );
+        assert_eq!(foo(b"\xab".as_ref()), (b"\xab".as_ref(), ParseResult::None));
     }
 
     #[test]
@@ -488,7 +485,7 @@ mod test {
             foo(b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
             (
                 b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
-                FramedResult::None
+                ParseResult::None
             )
         );
     }
@@ -503,7 +500,7 @@ mod test {
             apply_obfuscate(foo(
                 b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
             )),
-            (b"after".as_ref(), FramedResult::Ok(b"foo".to_vec()))
+            (b"after".as_ref(), ParseResult::Ok(b"foo".to_vec()))
         );
     }
 
@@ -515,7 +512,7 @@ mod test {
         );
         assert_eq!(
             foo(b"abc\xab".as_ref()),
-            (b"\xab".as_ref(), FramedResult::None)
+            (b"\xab".as_ref(), ParseResult::None)
         );
     }
 
@@ -529,7 +526,7 @@ mod test {
             foo(b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
             (
                 b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
-                FramedResult::None
+                ParseResult::None
             )
         );
     }
@@ -544,7 +541,7 @@ mod test {
             apply_obfuscate(foo(
                 b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
             )),
-            (b"after".as_ref(), FramedResult::Ok(b"foo".to_vec()))
+            (b"after".as_ref(), ParseResult::Ok(b"foo".to_vec()))
         );
     }
 
@@ -556,7 +553,7 @@ mod test {
         );
         assert_eq!(
             foo(b"abc\xabdef\xab".as_ref()),
-            (b"\xab".as_ref(), FramedResult::None)
+            (b"\xab".as_ref(), ParseResult::None)
         );
     }
 
@@ -570,7 +567,7 @@ mod test {
             foo(b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref()),
             (
                 b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".as_ref(),
-                FramedResult::None
+                ParseResult::None
             )
         );
     }
@@ -585,7 +582,7 @@ mod test {
             apply_obfuscate(foo(
                 b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".as_ref()
             )),
-            (b"after".as_ref(), FramedResult::Ok(b"foo".to_vec()))
+            (b"after".as_ref(), ParseResult::Ok(b"foo".to_vec()))
         );
     }
 }
