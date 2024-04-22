@@ -1,6 +1,7 @@
 use nom::{error::Error, Parser};
 
-use super::{InputParse, MessageParse, MessageSerialize, Serializer};
+use super::frames::{InputParse, MessageParse};
+use super::serialize::{MessageSerialize, Serializer};
 
 /// Any kind of message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -187,12 +188,11 @@ mod test {
     where
         M: MessageParse + MessageSerialize + PartialEq + Eq,
     {
-        let crc = super::super::CrcXModem::new();
-        let mut ser = super::super::SerializerWrap::new(Vec::new());
-        msg.frame(&mut ser, &crc).unwrap();
-        let serialized = ser.done();
+        let crc = super::super::crc::CrcXModem::new();
+        let mut serialized = Vec::new();
+        super::super::serialize(&crc, &mut serialized, &msg).unwrap();
 
-        let (rest, unserialized) = M::parse_frame(&crc, &serialized[..]);
+        let (rest, unserialized) = super::super::parse(&crc, &serialized[..]);
         let unserialized = unserialized.ignore_error().unwrap();
         return (rest.len() == 0) && (msg == unserialized);
     }

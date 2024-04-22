@@ -1,4 +1,4 @@
-use super::{CrcDigest, CrcStyle};
+use super::crc::{CrcDigest, CrcStyle};
 
 /// A trait for serializing messages.
 pub trait Serializer {
@@ -233,14 +233,14 @@ where
 /// A serializer that also computes a CRC on the side.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SerializerObfuscated<T> {
-    key: super::Key,
+    key: super::deobfuscated::Key,
     inner: T,
 }
 
 impl<T> SerializerObfuscated<T> {
     pub fn new(inner: T) -> Self {
         Self {
-            key: super::Key::new(),
+            key: super::deobfuscated::Key::new(),
             inner,
         }
     }
@@ -317,10 +317,10 @@ pub trait MessageSerialize {
 
     /// Serialize the message into a full frame, with obfuscation,
     /// CRC, and start/end markers.
-    fn frame<S, C>(&self, ser: &mut S, crc: &C) -> Result<(), S::Error>
+    fn frame<C, S>(&self, crc: &C, ser: &mut S) -> Result<(), S::Error>
     where
-        S: Serializer,
         C: CrcStyle,
+        S: Serializer,
     {
         use void::ResultVoidExt;
 

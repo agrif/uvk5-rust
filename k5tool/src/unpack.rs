@@ -6,7 +6,7 @@ pub struct UnpackOpts {
 
 impl crate::ToolRun for UnpackOpts {
     fn run(&self) -> anyhow::Result<()> {
-        let packed = k5lib::PackedFirmware::new(std::fs::read(&self.packed)?)?;
+        let packed = k5lib::pack::PackedFirmware::new(std::fs::read(&self.packed)?)?;
         if !packed.check() {
             anyhow::bail!("CRC check failed, cannot unpack")
         }

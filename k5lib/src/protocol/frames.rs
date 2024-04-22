@@ -1,13 +1,9 @@
 use nom::error::Error;
 use nom::IResult;
 
-use super::{CrcStyle, Deobfuscated};
-
-pub const FRAME_START: [u8; 2] = [0xab, 0xcd];
-pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
-
-/// Total guess, here.
-pub const MAX_FRAME_SIZE: usize = 0x200;
+use super::crc::CrcStyle;
+use super::deobfuscated::Deobfuscated;
+use super::{FRAME_END, FRAME_START, MAX_FRAME_SIZE};
 
 /// A helpful short name for a whole bundle of useful parser traits.
 pub trait InputParse:
@@ -44,7 +40,7 @@ impl<T> InputParse for T where
 ///
 /// Returns the unconsumed input and true when it found a frame start,
 /// false otherwise. Wrap in Result::Ok to turn this into a nom parser.
-pub fn frame_start<I>(input: I) -> (I, bool)
+fn frame_start<I>(input: I) -> (I, bool)
 where
     I: InputParse,
 {
@@ -98,7 +94,7 @@ where
 /// Returns unconsumed input and None if it only skipped data and
 /// found no complete frames. Wrap in Result::Ok to turn this into a
 /// nom parser.
-pub fn frame_raw<I>(input: I) -> (I, Option<I>)
+fn frame_raw<I>(input: I) -> (I, Option<I>)
 where
     I: InputParse,
 {
@@ -315,7 +311,7 @@ pub trait MessageParse: Sized {
 
 #[cfg(test)]
 mod test {
-    use super::super::CrcConstant;
+    use super::super::crc::CrcConstant;
     use super::*;
 
     #[test]

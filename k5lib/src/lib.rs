@@ -1,4 +1,6 @@
-mod pack;
-pub use pack::*;
+pub mod pack;
 
 pub mod protocol;
+
+mod version;
+pub use version::*;

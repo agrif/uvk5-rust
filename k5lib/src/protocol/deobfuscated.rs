@@ -1,6 +1,6 @@
 use nom::error::Error;
 
-use super::CrcStyle;
+use super::crc::{CrcDigest, CrcStyle};
 
 pub const OBFUSCATION: [u8; 16] = [
     0x16, 0x6c, 0x14, 0xe6, 0x2e, 0x91, 0x0d, 0x40, 0x21, 0x35, 0xd5, 0x40, 0x13, 0x03, 0xe9, 0x80,
@@ -95,7 +95,6 @@ where
         } else {
             let (suffix, prefix) = self.take_split(len - 2);
 
-            use super::CrcDigest;
             let mut digest = crc.digest();
             for b in prefix.iter() {
                 digest.update(&[b]);
