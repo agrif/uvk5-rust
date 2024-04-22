@@ -69,7 +69,6 @@ checksum = "c4a9b56eb56058f43dc66e58f40a214b2ccbc9f3df51861b63d51dec7b65bc3f"
 name = "k5lib"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "crc",
  "nom",
  "void",

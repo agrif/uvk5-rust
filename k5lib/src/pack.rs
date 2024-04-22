@@ -27,6 +27,21 @@ pub fn obfuscate(data: &mut [u8]) {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Version([u8; VERSION_LEN]);
 
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum VersionError {
+    TooLong,
+}
+
+impl std::error::Error for VersionError {}
+
+impl std::fmt::Display for VersionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            VersionError::TooLong => write!(f, "version must be {} bytes or less", VERSION_LEN),
+        }
+    }
+}
+
 impl Version {
     pub fn new_empty() -> Self {
         Self([0; VERSION_LEN])
@@ -36,13 +51,13 @@ impl Version {
         Self(data)
     }
 
-    pub fn from_str(name: &str) -> anyhow::Result<Self> {
+    pub fn from_str(name: &str) -> Result<Self, VersionError> {
         Self::from_bytes(name.as_bytes())
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
         if bytes.len() > VERSION_LEN {
-            anyhow::bail!("version must be {:?} bytes or less", VERSION_LEN);
+            return Err(VersionError::TooLong);
         }
 
         let mut data = [0; VERSION_LEN];
@@ -93,20 +108,51 @@ pub struct PackedFirmware {
     data: Vec<u8>,
 }
 
-impl PackedFirmware {
-    pub fn new(data: Vec<u8>) -> anyhow::Result<Self> {
-        if data.len() < VERSION_LOC + VERSION_LEN + 2 {
-            anyhow::bail!(
-                "packed firmware must be at least {:?} bytes",
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum PackError {
+    NotEnoughData,
+    BadChecksum,
+}
+
+impl std::error::Error for PackError {}
+
+impl std::fmt::Display for PackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            PackError::NotEnoughData => write!(
+                f,
+                "packed firmware must be at least {} bytes",
                 VERSION_LOC + VERSION_LEN + 2
-            );
+            ),
+            PackError::BadChecksum => write!(f, "bad checksum on packed firmware"),
+        }
+    }
+}
+
+impl PackedFirmware {
+    pub fn new(data: Vec<u8>) -> Result<Self, PackError> {
+        let packed = Self::new_ignore_crc(data)?;
+        if !packed.check() {
+            return Err(PackError::BadChecksum);
+        }
+
+        Ok(packed)
+    }
+
+    pub fn new_ignore_crc(data: Vec<u8>) -> Result<Self, PackError> {
+        if data.len() < VERSION_LOC + VERSION_LEN + 2 {
+            return Err(PackError::NotEnoughData);
         }
 
         Ok(Self { data })
     }
 
-    pub fn new_cloned(data: &[u8]) -> anyhow::Result<Self> {
+    pub fn new_cloned(data: &[u8]) -> Result<Self, PackError> {
         Self::new(data.to_owned())
+    }
+
+    pub fn new_cloned_ignore_crc(data: &[u8]) -> Result<Self, PackError> {
+        Self::new_ignore_crc(data.to_owned())
     }
 
     pub fn check(&self) -> bool {
@@ -119,9 +165,9 @@ impl PackedFirmware {
         checksum == crc.checksum(body)
     }
 
-    pub fn unpack(&self) -> anyhow::Result<(UnpackedFirmware, Version)> {
+    pub fn unpack(&self) -> Result<(UnpackedFirmware, Version), PackError> {
         if !self.check() {
-            anyhow::bail!("bad checksum on packed firmware");
+            return Err(PackError::BadChecksum);
         }
 
         Ok(self.unpack_unchecked())
@@ -165,7 +211,7 @@ impl UnpackedFirmware {
         Self::new(data.to_owned())
     }
 
-    pub fn pack(&self, version: Version) -> anyhow::Result<PackedFirmware> {
+    pub fn pack(&self, version: Version) -> PackedFirmware {
         let mut work = self.data.clone();
         if work.len() < VERSION_LOC {
             // pad with zeros until we reach version location
@@ -187,7 +233,12 @@ impl UnpackedFirmware {
                 .copied(),
         );
 
-        PackedFirmware::new(work)
+        // use a match here so if new errors are added, we have to check this
+        match PackedFirmware::new(work) {
+            Ok(o) => o,
+            Err(PackError::NotEnoughData) => panic!("pack did not create enough data"),
+            Err(PackError::BadChecksum) => panic!("pack created a bad checksum"),
+        }
     }
 }
 
