@@ -184,8 +184,13 @@ where
     where
         I: InputParse,
     {
-        assert_eq!(typ, Self::TYPE);
         move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
             let (input, timestamp) = nom::number::complete::le_u32(input)?;
             Ok((input, Hello { timestamp }))
         }
@@ -241,8 +246,13 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, Self::TYPE);
         move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
             let mut version = crate::Version::new_empty();
             let (input, _) =
                 nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
@@ -308,8 +318,13 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, Self::TYPE);
         move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
             // FIXME some bootloaders have different packet formats
             // I suspect they vary the chip_id field size, but...
             // I don't have any examples, so I can't know.
@@ -364,8 +379,13 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, Self::TYPE);
         move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
             let (input, padding) = nom::number::complete::u8(input)?;
@@ -450,8 +470,13 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, Self::TYPE);
         move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
             let (input, padding) = nom::number::complete::u8(input)?;
