@@ -45,7 +45,9 @@ impl Version {
     }
 
     pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
-        std::str::from_utf8(&self.0).map(|s| s.trim_end_matches('\0'))
+        // unwrap: always at least one element
+        let zero_terminated = self.0.split(|b| *b == 0).next().unwrap();
+        std::str::from_utf8(zero_terminated)
     }
 
     pub fn as_bytes(&self) -> &[u8] {
