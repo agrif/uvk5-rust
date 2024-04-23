@@ -1,3 +1,7 @@
+use k5lib::protocol::crc::{CrcConstant, CrcEither, CrcStyle, CrcXModem};
+use k5lib::protocol::obfuscation::Deobfuscated;
+use k5lib::protocol::{parse, Message, MessageParse, ParseResult};
+
 #[derive(clap::Args, Debug)]
 pub struct ParseDumpOpts {
     dump: String,
@@ -8,8 +12,8 @@ impl crate::ToolRun for ParseDumpOpts {
         let rawdata = std::fs::read(&self.dump)?;
         let mut raw = &rawdata[..];
 
-        let xmodem = k5lib::protocol::crc::CrcXModem::new();
-        let dummy = k5lib::protocol::crc::CrcConstant(0xffff);
+        let xmodem = CrcXModem::new();
+        let dummy = CrcConstant(0xffff);
 
         loop {
             if raw.len() < 3 {
@@ -22,10 +26,10 @@ impl crate::ToolRun for ParseDumpOpts {
 
             let crc = if dir == 0 {
                 println!("radio -> computer, {} bytes", len);
-                k5lib::protocol::crc::CrcEither::Left(&dummy)
+                CrcEither::Left(&dummy)
             } else {
                 println!("computer -> radio, {} bytes", len);
-                k5lib::protocol::crc::CrcEither::Right(&xmodem)
+                CrcEither::Right(&xmodem)
             };
 
             println!();
@@ -47,14 +51,13 @@ impl crate::ToolRun for ParseDumpOpts {
     }
 }
 
-fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<k5lib::protocol::Message>
+fn parse_frame<C>(crc: C, data: &[u8]) -> anyhow::Result<Message<Deobfuscated<&[u8]>>>
 where
-    C: k5lib::protocol::crc::CrcStyle,
+    C: CrcStyle,
 {
-    let (rest, frame) = k5lib::protocol::parse::framed(crc, nom::combinator::rest)(data);
+    let (rest, frame) = parse::framed(crc, nom::combinator::rest)(data);
     anyhow::ensure!(rest.len() == 0, "Frame parser left leftover data.");
 
-    use k5lib::protocol::ParseResult;
     match frame {
         ParseResult::Ok(framebody) => match parse_message(framebody.clone()) {
             Ok(o) => Ok(o),
@@ -76,14 +79,10 @@ where
     }
 }
 
-fn parse_message(
-    data: k5lib::protocol::obfuscation::Deobfuscated<&[u8]>,
-) -> anyhow::Result<k5lib::protocol::Message> {
+fn parse_message(data: Deobfuscated<&[u8]>) -> anyhow::Result<Message<Deobfuscated<&[u8]>>> {
     let (rest, (typ, body)) =
-        k5lib::protocol::parse::message(|t| nom::combinator::map(nom::combinator::rest, move |r| (t, r)))(
-            data,
-        )
-        .map_err(|_| anyhow::anyhow!("Message parser falied."))?;
+        parse::message(|t| nom::combinator::map(nom::combinator::rest, move |r| (t, r)))(data)
+            .map_err(|_| anyhow::anyhow!("Message parser falied."))?;
     anyhow::ensure!(rest.len() == 0, "Message parser left leftover data.");
 
     println!("Message type: {:x?}", typ);
@@ -101,12 +100,11 @@ fn parse_message(
 
 fn parse_message_body(
     typ: u16,
-    body: k5lib::protocol::obfuscation::Deobfuscated<&[u8]>,
-) -> anyhow::Result<k5lib::protocol::Message> {
-    use k5lib::protocol::MessageParse;
+    body: Deobfuscated<&[u8]>,
+) -> anyhow::Result<Message<Deobfuscated<&[u8]>>> {
     use nom::Parser;
 
-    let (rest, msg) = k5lib::protocol::Message::parse_body(typ)
+    let (rest, msg) = Message::parse_body(typ)
         .parse(body)
         .map_err(|_| anyhow::anyhow!("Message body parser falied."))?;
     anyhow::ensure!(rest.len() == 0, "Message body parser left leftover data.");

@@ -5,16 +5,16 @@ use super::serialize::{MessageSerialize, Serializer};
 
 /// Any kind of message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Message {
+pub enum Message<I> {
     Host(HostMessage),
-    Radio(RadioMessage),
+    Radio(RadioMessage<I>),
 }
 
-impl MessageParse for Message {
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse,
-    {
+impl<I> MessageParse<I> for Message<I>
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         nom::branch::alt((
             nom::combinator::map(HostMessage::parse_body(typ), Message::Host),
             nom::combinator::map(RadioMessage::parse_body(typ), Message::Radio),
@@ -27,15 +27,20 @@ impl MessageParse for Message {
 pub enum HostMessage {
     /// 0x0514 Hello
     Hello(Hello),
+    /// 0x051b Read EEPROM
+    ReadEeprom(ReadEeprom),
 }
 
-impl MessageParse for HostMessage {
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse,
-    {
+impl<I> MessageParse<I> for HostMessage
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
             0x0514 => Hello::parse_body(typ).map(HostMessage::Hello).parse(input),
+            0x051b => ReadEeprom::parse_body(typ)
+                .map(HostMessage::ReadEeprom)
+                .parse(input),
 
             // we don't recognize the message type
             _ => nom::combinator::fail(input),
@@ -45,18 +50,24 @@ impl MessageParse for HostMessage {
 
 /// Messages sent from the radio.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RadioMessage {
+pub enum RadioMessage<I> {
+    /// 0x0515 Version
     Version(Version),
+    /// 0x51c Read EEPROM Reply
+    ReadEepromReply(ReadEepromReply<I>),
 }
 
-impl MessageParse for RadioMessage {
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse,
-    {
+impl<I> MessageParse<I> for RadioMessage<I>
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
             0x0515 => Version::parse_body(typ)
                 .map(RadioMessage::Version)
+                .parse(input),
+            0x051c => ReadEepromReply::parse_body(typ)
+                .map(RadioMessage::ReadEepromReply)
                 .parse(input),
 
             // we don't recognize the message type
@@ -86,8 +97,11 @@ impl MessageSerialize for Hello {
     }
 }
 
-impl MessageParse for Hello {
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
+impl<I> MessageParse<I> for Hello
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>>
     where
         I: InputParse,
     {
@@ -139,11 +153,11 @@ impl MessageSerialize for Version {
     }
 }
 
-impl MessageParse for Version {
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse,
-    {
+impl<I> MessageParse<I> for Version
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         assert_eq!(typ, 0x0515);
         move |input| {
             let mut version = crate::Version::new_empty();
@@ -177,8 +191,146 @@ impl MessageParse for Version {
     }
 }
 
+/// 0x051b Read EEPROM, host message.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ReadEeprom {
+    /// Address to read.
+    pub address: u16,
+    /// Number of bytes to read from address.
+    pub len: u8,
+    /// Unknown or unused.
+    pub padding: u8,
+    /// Timestamp, must match the one provided by initial Hello.
+    pub timestamp: u32,
+}
+
+impl MessageSerialize for ReadEeprom {
+    fn message_type(&self) -> u16 {
+        0x051b
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_le_u16(self.address)?;
+        ser.write_u8(self.len)?;
+        ser.write_u8(self.padding)?;
+        ser.write_le_u32(self.timestamp)
+    }
+}
+
+impl<I> MessageParse<I> for ReadEeprom
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
+        assert_eq!(typ, 0x051b);
+        move |input| {
+            let (input, address) = nom::number::complete::le_u16(input)?;
+            let (input, len) = nom::number::complete::u8(input)?;
+            let (input, padding) = nom::number::complete::u8(input)?;
+            let (input, timestamp) = nom::number::complete::le_u32(input)?;
+            Ok((
+                input,
+                ReadEeprom {
+                    address,
+                    len,
+                    padding,
+                    timestamp,
+                },
+            ))
+        }
+    }
+}
+
+/// 0x051c Read Eeprom Reply, radio message.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ReadEepromReply<I> {
+    /// Address of data read.
+    pub address: u16,
+    /// Number of bytes of data read.
+    pub len: u8,
+    /// Unknown or unused.
+    pub padding: u8,
+    /// Data read from EEPROM.
+    pub data: I,
+}
+
+impl<I> ReadEepromReply<I> {
+    pub fn map<F, J>(self, f: F) -> ReadEepromReply<J>
+    where
+        F: FnOnce(I) -> J,
+    {
+        ReadEepromReply {
+            address: self.address,
+            len: self.len,
+            padding: self.padding,
+            data: f(self.data),
+        }
+    }
+
+    pub fn map_ref<'a, F, J>(&'a self, f: F) -> ReadEepromReply<J>
+    where
+        F: FnOnce(&'a I) -> J,
+    {
+        ReadEepromReply {
+            address: self.address,
+            len: self.len,
+            padding: self.padding,
+            data: f(&self.data),
+        }
+    }
+}
+
+impl<I> MessageSerialize for ReadEepromReply<I>
+where
+    I: InputParse,
+{
+    fn message_type(&self) -> u16 {
+        0x051c
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_le_u16(self.address)?;
+        ser.write_u8(self.len)?;
+        ser.write_u8(self.padding)?;
+        ser.write_slice(&self.data)
+    }
+}
+
+impl<I> MessageParse<I> for ReadEepromReply<I>
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
+        assert_eq!(typ, 0x051c);
+        move |input| {
+            let (input, address) = nom::number::complete::le_u16(input)?;
+            let (input, len) = nom::number::complete::u8(input)?;
+            let (input, padding) = nom::number::complete::u8(input)?;
+            let (input, data) = nom::bytes::complete::take(len as usize)(input)?;
+            Ok((
+                input,
+                ReadEepromReply {
+                    address,
+                    len,
+                    padding,
+                    data,
+                },
+            ))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use super::super::crc::CrcXModem;
+    use super::super::obfuscation::Deobfuscated;
+    use super::super::{parse, serialize};
     use super::*;
 
     use quickcheck::{Arbitrary, Gen};
@@ -186,15 +338,35 @@ mod test {
 
     fn roundtrip<M>(msg: M) -> bool
     where
-        M: MessageParse + MessageSerialize + PartialEq + Eq,
+        M: for<'a> MessageParse<Deobfuscated<&'a [u8]>> + MessageSerialize + PartialEq + Eq,
     {
-        let crc = super::super::crc::CrcXModem::new();
-        let mut serialized = Vec::new();
-        super::super::serialize(&crc, &mut serialized, &msg).unwrap();
+        let a = roundtrip_a(&msg);
+        let b = a.as_ref().and_then(|ser| roundtrip_b(ser));
+        Some(msg) == b
+    }
 
-        let (rest, unserialized) = super::super::parse(&crc, &serialized[..]);
-        let unserialized = unserialized.ignore_error().unwrap();
-        return (rest.len() == 0) && (msg == unserialized);
+    fn roundtrip_a<M>(msg: &M) -> Option<Vec<u8>>
+    where
+        M: MessageSerialize,
+    {
+        let crc = CrcXModem::new();
+        let mut serialized = Vec::new();
+        serialize(&crc, &mut serialized, msg)
+            .ok()
+            .map(|_| serialized)
+    }
+
+    fn roundtrip_b<'a, M>(serialized: &'a [u8]) -> Option<M>
+    where
+        M: MessageParse<Deobfuscated<&'a [u8]>>,
+    {
+        let crc = CrcXModem::new();
+        let (rest, unserialized) = parse(&crc, &serialized[..]);
+        if rest.len() != 0 {
+            None
+        } else {
+            unserialized.ignore_error()
+        }
     }
 
     impl Arbitrary for Hello {
@@ -233,5 +405,44 @@ mod test {
     #[quickcheck]
     fn roundtrip_version(msg: Version) -> bool {
         roundtrip(msg)
+    }
+
+    impl Arbitrary for ReadEeprom {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                address: u16::arbitrary(g),
+                len: u8::arbitrary(g),
+                padding: u8::arbitrary(g),
+                timestamp: u32::arbitrary(g),
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_read_eeprom(msg: ReadEeprom) -> bool {
+        roundtrip(msg)
+    }
+
+    impl Arbitrary for ReadEepromReply<Vec<u8>> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut data = Vec::<u8>::arbitrary(g);
+            data.truncate(0xff);
+            Self {
+                address: u16::arbitrary(g),
+                len: data.len() as u8,
+                padding: u8::arbitrary(g),
+                data,
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_read_eeprom_reply(msg: ReadEepromReply<Vec<u8>>) -> bool {
+        let a = roundtrip_a(&msg.map_ref(|d| &d[..]));
+        let b = a
+            .as_ref()
+            .and_then(|ser| roundtrip_b(&ser))
+            .map(|m: ReadEepromReply<Deobfuscated<_>>| m.map(|d| d.to_vec()));
+        Some(msg) == b
     }
 }

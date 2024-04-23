@@ -30,9 +30,9 @@ pub fn parse<C, I, M>(crc: &C, input: I) -> (I, ParseResult<I, M>)
 where
     C: crc::CrcStyle,
     I: InputParse,
-    M: MessageParse,
+    M: MessageParse<obfuscation::Deobfuscated<I>>,
 {
-    M::parse_frame(&crc, input)
+    parse::message_parse_frame(&crc, input)
 }
 
 /// Serialize a message into a full frame, with obfuscation, CRC, and

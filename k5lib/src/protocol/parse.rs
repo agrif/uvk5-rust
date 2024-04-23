@@ -276,37 +276,40 @@ where
 }
 
 /// A trait for parseable messages.
-pub trait MessageParse: Sized {
+pub trait MessageParse<I>: Sized
+where
+    I: InputParse,
+{
     /// Parse the body of a message, given the message type.
-    fn parse_body<I>(typ: u16) -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse;
+    fn parse_body(typ: u16) -> impl nom::Parser<I, Self, Error<I>>;
 
     /// Parse an entire message, including type and length header.
-    fn parse_frame_body<I>() -> impl nom::Parser<I, Self, Error<I>>
-    where
-        I: InputParse,
-    {
+    fn parse_frame_body() -> impl nom::Parser<I, Self, Error<I>> {
         message(Self::parse_body)
     }
+}
 
-    /// Parse an entire frame containing a message, skipping data
-    /// before the frame. If the frame doesn't parse as this message,
-    /// or the CRC fails, it will still consume the frame from the
-    /// input.
-    ///
-    /// Returns the unconsumed input and the parse or CRC result.
-    ///
-    /// This includes frame start/end, length, obfuscation, and CRC.
-    ///
-    /// Wrap in Result::Ok to turn this into a nom parser.
-    fn parse_frame<C, I>(crc: &C, input: I) -> (I, ParseResult<I, Self>)
-    where
-        C: CrcStyle,
-        I: InputParse,
-    {
-        framed(crc, Self::parse_frame_body())(input)
-    }
+/// Parse an entire frame containing a message, skipping data
+/// before the frame. If the frame doesn't parse as this message,
+/// or the CRC fails, it will still consume the frame from the
+/// input.
+///
+/// Returns the unconsumed input and the parse or CRC result.
+///
+/// This includes frame start/end, length, obfuscation, and CRC.
+///
+/// Wrap in Result::Ok to turn this into a nom parser.
+///
+/// This should be part of the MessageParse trait, but things get
+/// tricky when the result type takes zero-copy slices of the
+/// input. So, here we are, outside the trait.
+pub fn message_parse_frame<C, I, M>(crc: &C, input: I) -> (I, ParseResult<I, M>)
+where
+    C: CrcStyle,
+    I: InputParse,
+    M: MessageParse<Deobfuscated<I>>,
+{
+    framed(crc, M::parse_frame_body())(input)
 }
 
 #[cfg(test)]

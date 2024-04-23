@@ -1,4 +1,5 @@
 use super::crc::{CrcDigest, CrcStyle};
+use super::parse::InputParse;
 
 /// A trait for serializing messages.
 pub trait Serializer {
@@ -16,6 +17,18 @@ pub trait Serializer {
     fn write_bytes(&mut self, val: &[u8]) -> Result<(), Self::Error> {
         for b in val.iter() {
             self.write_u8(*b)?;
+        }
+        Ok(())
+    }
+
+    // this one is tricky. if this becomes a bottleneck, split out a
+    // new trait that can be implemented one-by-one on special-case I
+    fn write_slice<I>(&mut self, val: &I) -> Result<(), Self::Error>
+    where
+        I: InputParse,
+    {
+        for b in val.iter_elements() {
+            self.write_u8(b)?;
         }
         Ok(())
     }
