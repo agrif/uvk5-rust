@@ -51,8 +51,8 @@ where
 /// Messages sent from the radio.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RadioMessage<I> {
-    /// 0x0515 Version
-    Version(Version),
+    /// 0x0515 HelloReply
+    HelloReply(HelloReply),
     /// 0x0518 Bootloader Ready (bootloader mode)
     BootloaderReady(BootloaderReady),
     /// 0x51c Read EEPROM Reply
@@ -65,8 +65,8 @@ where
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
-            0x0515 => Version::parse_body(typ)
-                .map(RadioMessage::Version)
+            0x0515 => HelloReply::parse_body(typ)
+                .map(RadioMessage::HelloReply)
                 .parse(input),
             0x0518 => BootloaderReady::parse_body(typ)
                 .map(RadioMessage::BootloaderReady)
@@ -118,10 +118,10 @@ where
     }
 }
 
-/// 0x0515 Version, radio message.
+/// 0x0515 HelloReply, radio message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Version {
-    /// Version, provided by the radio.
+pub struct HelloReply {
+    /// HelloReply, provided by the radio.
     /// Assume UTF-8, or at least, ASCII, padded by zeros.
     pub version: crate::Version,
 
@@ -138,7 +138,7 @@ pub struct Version {
     pub challenge: [u32; 4],
 }
 
-impl MessageSerialize for Version {
+impl MessageSerialize for HelloReply {
     fn message_type(&self) -> u16 {
         0x0515
     }
@@ -158,7 +158,7 @@ impl MessageSerialize for Version {
     }
 }
 
-impl<I> MessageParse<I> for Version
+impl<I> MessageParse<I> for HelloReply
 where
     I: InputParse,
 {
@@ -184,7 +184,7 @@ where
 
             Ok((
                 input,
-                Version {
+                HelloReply {
                     version,
                     has_custom_aes_key,
                     is_in_lock_screen,
@@ -435,7 +435,7 @@ mod test {
         roundtrip(msg)
     }
 
-    impl Arbitrary for Version {
+    impl Arbitrary for HelloReply {
         fn arbitrary(g: &mut Gen) -> Self {
             let mut version = Vec::<u8>::arbitrary(g);
             version.truncate(crate::VERSION_LEN);
@@ -456,7 +456,7 @@ mod test {
     }
 
     #[quickcheck]
-    fn roundtrip_version(msg: Version) -> bool {
+    fn roundtrip_hello_reply(msg: HelloReply) -> bool {
         roundtrip(msg)
     }
 
