@@ -1,4 +1,4 @@
-use k5lib::protocol::crc::{CrcConstant, CrcEither, CrcStyle, CrcXModem};
+use k5lib::protocol::crc::{CrcConstantIgnore, CrcEither, CrcStyle, CrcXModem};
 use k5lib::protocol::obfuscation::Deobfuscated;
 use k5lib::protocol::{parse, Message, MessageParse, ParseResult};
 
@@ -13,7 +13,7 @@ impl crate::ToolRun for ParseDumpOpts {
         let mut raw = &rawdata[..];
 
         let xmodem = CrcXModem::new();
-        let dummy = CrcConstant(0xffff);
+        let dummy = CrcConstantIgnore(0xffff);
 
         loop {
             if raw.len() < 3 {

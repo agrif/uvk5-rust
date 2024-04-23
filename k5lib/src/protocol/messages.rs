@@ -53,6 +53,8 @@ where
 pub enum RadioMessage<I> {
     /// 0x0515 Version
     Version(Version),
+    /// 0x0518 Bootloader Ready (bootloader mode)
+    BootloaderReady(BootloaderReady),
     /// 0x51c Read EEPROM Reply
     ReadEepromReply(ReadEepromReply<I>),
 }
@@ -65,6 +67,9 @@ where
         move |input| match typ {
             0x0515 => Version::parse_body(typ)
                 .map(RadioMessage::Version)
+                .parse(input),
+            0x0518 => BootloaderReady::parse_body(typ)
+                .map(RadioMessage::BootloaderReady)
                 .parse(input),
             0x051c => ReadEepromReply::parse_body(typ)
                 .map(RadioMessage::ReadEepromReply)
@@ -187,6 +192,54 @@ where
                     challenge,
                 },
             ))
+        }
+    }
+}
+
+/// 0x0518 Bootloader Ready, radio message (bootloader mode).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BootloaderReady {
+    /// Chip ID for the radio's CPU.
+    pub chip_id: [u32; 4],
+    /// Bootloader version.
+    pub version: crate::Version,
+}
+
+impl MessageSerialize for BootloaderReady {
+    fn message_type(&self) -> u16 {
+        0x0518
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        for v in self.chip_id.iter() {
+            ser.write_le_u32(*v)?;
+        }
+        ser.write_bytes(self.version.as_bytes())
+    }
+}
+
+impl<I> MessageParse<I> for BootloaderReady
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
+        assert_eq!(typ, 0x0518);
+        move |input| {
+            // FIXME some bootloaders have different packet formats
+            // I suspect they vary the chip_id field size, but...
+            // I don't have any examples, so I can't know.
+            let mut chip_id = [0; 4];
+            let (input, _) =
+                nom::multi::fill(nom::number::complete::le_u32, &mut chip_id[..])(input)?;
+
+            let mut version = crate::Version::new_empty();
+            let (input, _) =
+                nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+
+            Ok((input, BootloaderReady { chip_id, version }))
         }
     }
 }
@@ -404,6 +457,28 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_version(msg: Version) -> bool {
+        roundtrip(msg)
+    }
+
+    impl Arbitrary for BootloaderReady {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut version = Vec::<u8>::arbitrary(g);
+            version.truncate(crate::VERSION_LEN);
+
+            Self {
+                chip_id: [
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                    u32::arbitrary(g),
+                ],
+                version: crate::Version::from_bytes(&version).unwrap(),
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_bootloader_ready(msg: BootloaderReady) -> bool {
         roundtrip(msg)
     }
 
