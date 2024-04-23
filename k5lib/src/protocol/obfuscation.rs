@@ -37,7 +37,7 @@ impl Key {
 }
 
 /// Wraps a nom input to deobfuscate it on-the-fly.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Deobfuscated<I> {
     inner: I,
     key: Key,
@@ -108,6 +108,15 @@ where
                 None
             }
         }
+    }
+}
+
+impl<I> std::fmt::Debug for Deobfuscated<I>
+where
+    Self: nom::InputIter<Item = u8>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 

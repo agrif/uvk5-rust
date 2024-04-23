@@ -152,7 +152,7 @@ where
 
 /// A possible result from framed().
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ParseResult<I, O, E = Error<Deobfuscated<I>>> {
+pub enum ParseResult<I: InputParse, O, E = Error<Deobfuscated<I>>> {
     /// Frame parse result
     Ok(O),
     /// (Original frame without CRC, Error)
@@ -163,7 +163,7 @@ pub enum ParseResult<I, O, E = Error<Deobfuscated<I>>> {
     None,
 }
 
-impl<I, O, E> ParseResult<I, O, E> {
+impl<I, O, E> ParseResult<I, O, E> where I: InputParse {
     pub fn ignore_error(self) -> Option<O> {
         match self {
             Self::Ok(o) => Some(o),
