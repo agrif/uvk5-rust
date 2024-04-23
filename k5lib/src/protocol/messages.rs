@@ -10,6 +10,28 @@ pub enum Message<I> {
     Radio(RadioMessage<I>),
 }
 
+impl<I> MessageSerialize for Message<I>
+where
+    I: InputParse,
+{
+    fn message_type(&self) -> u16 {
+        match self {
+            Self::Host(m) => m.message_type(),
+            Self::Radio(m) => m.message_type(),
+        }
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Host(m) => m.message_body(ser),
+            Self::Radio(m) => m.message_body(ser),
+        }
+    }
+}
+
 impl<I> MessageParse<I> for Message<I>
 where
     I: InputParse,
@@ -31,15 +53,34 @@ pub enum HostMessage {
     ReadEeprom(ReadEeprom),
 }
 
+impl MessageSerialize for HostMessage {
+    fn message_type(&self) -> u16 {
+        match self {
+            Self::Hello(m) => m.message_type(),
+            Self::ReadEeprom(m) => m.message_type(),
+        }
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Hello(m) => m.message_body(ser),
+            Self::ReadEeprom(m) => m.message_body(ser),
+        }
+    }
+}
+
 impl<I> MessageParse<I> for HostMessage
 where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
-            0x0514 => Hello::parse_body(typ).map(HostMessage::Hello).parse(input),
+            0x0514 => Hello::parse_body(typ).map(Self::Hello).parse(input),
             0x051b => ReadEeprom::parse_body(typ)
-                .map(HostMessage::ReadEeprom)
+                .map(Self::ReadEeprom)
                 .parse(input),
 
             // we don't recognize the message type
@@ -59,6 +100,30 @@ pub enum RadioMessage<I> {
     ReadEepromReply(ReadEepromReply<I>),
 }
 
+impl<I> MessageSerialize for RadioMessage<I>
+where
+    I: InputParse,
+{
+    fn message_type(&self) -> u16 {
+        match self {
+            Self::HelloReply(m) => m.message_type(),
+            Self::BootloaderReady(m) => m.message_type(),
+            Self::ReadEepromReply(m) => m.message_type(),
+        }
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::HelloReply(m) => m.message_body(ser),
+            Self::BootloaderReady(m) => m.message_body(ser),
+            Self::ReadEepromReply(m) => m.message_body(ser),
+        }
+    }
+}
+
 impl<I> MessageParse<I> for RadioMessage<I>
 where
     I: InputParse,
@@ -66,13 +131,13 @@ where
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
             0x0515 => HelloReply::parse_body(typ)
-                .map(RadioMessage::HelloReply)
+                .map(Self::HelloReply)
                 .parse(input),
             0x0518 => BootloaderReady::parse_body(typ)
-                .map(RadioMessage::BootloaderReady)
+                .map(Self::BootloaderReady)
                 .parse(input),
             0x051c => ReadEepromReply::parse_body(typ)
-                .map(RadioMessage::ReadEepromReply)
+                .map(Self::ReadEepromReply)
                 .parse(input),
 
             // we don't recognize the message type
