@@ -3,6 +3,11 @@ use nom::{error::Error, Parser};
 use super::parse::{InputParse, MessageParse};
 use super::serialize::{MessageSerialize, Serializer};
 
+/// A trait for messages that have statically-known message types.
+pub trait MessageType {
+    const TYPE: u16;
+}
+
 /// Any kind of message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Message<I> {
@@ -78,8 +83,8 @@ where
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
-            0x0514 => Hello::parse_body(typ).map(Self::Hello).parse(input),
-            0x051b => ReadEeprom::parse_body(typ)
+            Hello::TYPE => Hello::parse_body(typ).map(Self::Hello).parse(input),
+            ReadEeprom::TYPE => ReadEeprom::parse_body(typ)
                 .map(Self::ReadEeprom)
                 .parse(input),
 
@@ -130,13 +135,13 @@ where
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
-            0x0515 => HelloReply::parse_body(typ)
+            HelloReply::TYPE => HelloReply::parse_body(typ)
                 .map(Self::HelloReply)
                 .parse(input),
-            0x0518 => BootloaderReady::parse_body(typ)
+            BootloaderReady::TYPE => BootloaderReady::parse_body(typ)
                 .map(Self::BootloaderReady)
                 .parse(input),
-            0x051c => ReadEepromReply::parse_body(typ)
+            ReadEepromReply::<()>::TYPE => ReadEepromReply::parse_body(typ)
                 .map(Self::ReadEepromReply)
                 .parse(input),
 
@@ -154,9 +159,13 @@ pub struct Hello {
     pub timestamp: u32,
 }
 
+impl MessageType for Hello {
+    const TYPE: u16 = 0x0514;
+}
+
 impl MessageSerialize for Hello {
     fn message_type(&self) -> u16 {
-        0x0514
+        Self::TYPE
     }
 
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
@@ -175,7 +184,7 @@ where
     where
         I: InputParse,
     {
-        assert_eq!(typ, 0x0514);
+        assert_eq!(typ, Self::TYPE);
         move |input| {
             let (input, timestamp) = nom::number::complete::le_u32(input)?;
             Ok((input, Hello { timestamp }))
@@ -203,9 +212,13 @@ pub struct HelloReply {
     pub challenge: [u32; 4],
 }
 
+impl MessageType for HelloReply {
+    const TYPE: u16 = 0x0515;
+}
+
 impl MessageSerialize for HelloReply {
     fn message_type(&self) -> u16 {
-        0x0515
+        Self::TYPE
     }
 
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
@@ -228,7 +241,7 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, 0x0515);
+        assert_eq!(typ, Self::TYPE);
         move |input| {
             let mut version = crate::Version::new_empty();
             let (input, _) =
@@ -270,9 +283,13 @@ pub struct BootloaderReady {
     pub version: crate::Version,
 }
 
+impl MessageType for BootloaderReady {
+    const TYPE: u16 = 0x0518;
+}
+
 impl MessageSerialize for BootloaderReady {
     fn message_type(&self) -> u16 {
-        0x0518
+        Self::TYPE
     }
 
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
@@ -291,7 +308,7 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, 0x0518);
+        assert_eq!(typ, Self::TYPE);
         move |input| {
             // FIXME some bootloaders have different packet formats
             // I suspect they vary the chip_id field size, but...
@@ -322,9 +339,13 @@ pub struct ReadEeprom {
     pub timestamp: u32,
 }
 
+impl MessageType for ReadEeprom {
+    const TYPE: u16 = 0x051b;
+}
+
 impl MessageSerialize for ReadEeprom {
     fn message_type(&self) -> u16 {
-        0x051b
+        Self::TYPE
     }
 
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
@@ -343,7 +364,7 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, 0x051b);
+        assert_eq!(typ, Self::TYPE);
         move |input| {
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
@@ -373,6 +394,10 @@ pub struct ReadEepromReply<I> {
     pub padding: u8,
     /// Data read from EEPROM.
     pub data: I,
+}
+
+impl<I> MessageType for ReadEepromReply<I> {
+    const TYPE: u16 = 0x051c;
 }
 
 impl<I> ReadEepromReply<I> {
@@ -406,7 +431,7 @@ where
     I: InputParse,
 {
     fn message_type(&self) -> u16 {
-        0x051c
+        Self::TYPE
     }
 
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
@@ -425,7 +450,7 @@ where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
-        assert_eq!(typ, 0x051c);
+        assert_eq!(typ, Self::TYPE);
         move |input| {
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
