@@ -1,5 +1,6 @@
 mod pack;
 mod parsedump;
+mod simulate;
 mod unpack;
 
 trait ToolRun {
@@ -17,18 +18,20 @@ struct ToolOptions {
 
 #[derive(clap::Subcommand, Debug)]
 enum ToolCommand {
-    Unpack(unpack::UnpackOpts),
     Pack(pack::PackOpts),
     ParseDump(parsedump::ParseDumpOpts),
+    Simulate(simulate::SimulateOpts),
+    Unpack(unpack::UnpackOpts),
 }
 
 impl ToolRun for ToolCommand {
     fn run(&self) -> anyhow::Result<()> {
         use ToolCommand::*;
         match self {
-            Unpack(o) => o.run(),
             Pack(o) => o.run(),
             ParseDump(o) => o.run(),
+            Simulate(o) => o.run(),
+            Unpack(o) => o.run(),
         }
     }
 }

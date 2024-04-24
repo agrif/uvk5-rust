@@ -11,3 +11,4 @@ clap = { version = "4", features = ["derive", "wrap_help"] }
 hexdump = "0.1"
 k5lib = { path = "../k5lib" }
 nom = "7"
+serialport = "4"

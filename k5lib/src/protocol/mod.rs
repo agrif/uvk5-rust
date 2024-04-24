@@ -4,6 +4,8 @@ pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
 /// Total guess, here.
 pub const MAX_FRAME_SIZE: usize = 0x200;
 
+pub const BAUD_RATE: u32 = 38400;
+
 pub mod crc;
 
 pub mod obfuscation;
