@@ -40,9 +40,7 @@ impl crate::ToolRun for SimulateOpts {
 }
 
 struct Simulator<F> {
-    port: F,
-    in_crc: protocol::crc::CrcXModem,
-    out_crc: protocol::crc::CrcConstantIgnore,
+    client: k5lib::ClientRadio<F, k5lib::ArrayBuffer>,
     timestamp: u32,
 
     eeprom: Vec<u8>,
@@ -54,9 +52,7 @@ where
 {
     fn new(port: F, eeprom: Vec<u8>) -> Self {
         Self {
-            port,
-            in_crc: protocol::crc::CrcXModem::new(),
-            out_crc: protocol::crc::CrcConstantIgnore(0xffff),
+            client: k5lib::ClientRadio::new(port),
             timestamp: 0,
             eeprom,
         }
@@ -66,14 +62,9 @@ where
     where
         F: Read + Write,
     {
-        let mut buffer = [0u8; protocol::MAX_FRAME_SIZE];
-        let mut avail = 0;
         loop {
-            let amt = self.port.read(&mut buffer[avail..])?;
-            avail += amt;
-
             // try to parse a message
-            let (rest, res) = protocol::parse(&self.in_crc, &buffer[..avail]);
+            let res = self.client.read_host()?;
             match res {
                 ParseResult::Ok(msg) => self.handle_message(msg)?,
                 ParseResult::ParseErr(inp, e) => {
@@ -85,16 +76,6 @@ where
                     hexdump::hexdump(inp.to_vec().as_ref());
                 }
                 ParseResult::None => {}
-            }
-
-            let leftover = rest.len();
-            let new_start = avail - leftover;
-            buffer.copy_within(new_start..avail, 0);
-            avail = leftover;
-
-            if avail == buffer.len() {
-                // buffer overflow waiting for complete frame, dump it
-                avail = 0;
             }
         }
     }
@@ -143,7 +124,7 @@ where
         M: MessageSerialize + std::fmt::Debug,
     {
         println!(">>> {:?}", msg);
-        protocol::serialize(&self.out_crc, &mut self.port, &msg)?;
+        self.client.write(&msg)?;
         Ok(())
     }
 }
