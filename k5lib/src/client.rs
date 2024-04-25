@@ -32,6 +32,7 @@ pub trait ClientBuffer {
 }
 
 /// A ClientBuffer using a flat array.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArrayBuffer<const SIZE: usize = { MAX_FRAME_SIZE }> {
     len: usize,
     buffer: [u8; SIZE],
@@ -80,6 +81,7 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
 }
 
 /// A client for the UV-K5 serial protocol.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Client<F, B, InC, OutC> {
     port: F,
     buffer: B,
