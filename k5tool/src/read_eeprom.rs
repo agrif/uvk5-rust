@@ -12,6 +12,8 @@ const EEPROM_SIZE: u64 = 0x2000;
 pub struct ReadEepromOpts {
     #[command(flatten)]
     port: crate::common::SerialPortArgs,
+    #[command(flatten)]
+    debug: crate::common::DebugClientArgs,
     #[arg(short, long)]
     output: Option<String>,
     #[arg(long)]
@@ -32,7 +34,7 @@ impl ReadEepromOpts {
         F: Read + Write,
     {
         let timestamp = TIMESTAMP;
-        let mut client = k5lib::ClientHost::<F>::new(port);
+        let mut client = self.debug.wrap(k5lib::ClientHost::<F>::new(port));
 
         client.write(&Hello { timestamp })?;
         let m = loop {
@@ -68,7 +70,7 @@ impl ReadEepromOpts {
 
     fn read_eeprom<F, W>(
         &self,
-        mut client: k5lib::ClientHost<F>,
+        mut client: crate::common::DebugClientHost<F>,
         mut output: W,
     ) -> anyhow::Result<()>
     where

@@ -7,6 +7,8 @@ use k5lib::protocol::{HostMessage, MessageSerialize, ParseResult};
 pub struct SimulateOpts {
     #[command(flatten)]
     port: crate::common::SerialPortArgs,
+    #[command(flatten)]
+    debug: crate::common::DebugClientArgs,
     #[arg(long)]
     initial_eeprom: Option<String>,
     #[arg(long, default_value_t = 0x2000)]
@@ -22,12 +24,14 @@ impl crate::ToolRun for SimulateOpts {
             vec![0; self.empty_eeprom_size]
         };
 
-        Simulator::new(self.port.open()?, eeprom).simulate()
+        let client = k5lib::ClientRadio::new(self.port.open()?);
+        let client = self.debug.wrap(client);
+        Simulator::new(client, eeprom).simulate()
     }
 }
 
 struct Simulator<F> {
-    client: k5lib::ClientRadio<F, k5lib::ArrayBuffer>,
+    client: crate::common::DebugClientRadio<F>,
     timestamp: u32,
 
     eeprom: Vec<u8>,
@@ -37,9 +41,9 @@ impl<F> Simulator<F>
 where
     F: Read + Write,
 {
-    fn new(port: F, eeprom: Vec<u8>) -> Self {
+    fn new(client: crate::common::DebugClientRadio<F>, eeprom: Vec<u8>) -> Self {
         Self {
-            client: k5lib::ClientRadio::new(port),
+            client,
             timestamp: 0,
             eeprom,
         }
@@ -52,27 +56,17 @@ where
         loop {
             // try to parse a message
             let res = self.client.read_host()?;
-            match res {
-                ParseResult::Ok(msg) => self.handle_message(msg)?,
-                ParseResult::ParseErr(inp, e) => {
-                    println!("!!! parse error: {:?}", e);
-                    hexdump::hexdump(inp.to_vec().as_ref());
-                }
-                ParseResult::CrcErr(inp) => {
-                    println!("!!! crc error");
-                    hexdump::hexdump(inp.to_vec().as_ref());
-                }
-                ParseResult::None => {}
+            if let ParseResult::Ok(msg) = res {
+                self.handle_message(msg)?;
             }
         }
     }
 
     fn handle_message(&mut self, msg: HostMessage) -> anyhow::Result<()> {
-        println!("<<< {:?}", msg);
         match msg {
             HostMessage::Hello(m) => {
                 self.timestamp = m.timestamp;
-                self.reply(protocol::HelloReply {
+                self.client.write(&protocol::HelloReply {
                     version: k5lib::Version::from_str("k5sim")?,
                     has_custom_aes_key: false,
                     is_in_lock_screen: false,
@@ -95,26 +89,15 @@ where
                     }
 
                     let data = &self.eeprom[start..end].to_owned();
-                    self.reply(protocol::ReadEepromReply {
+                    self.client.write(&protocol::ReadEepromReply {
                         address: m.address,
                         len: data.len() as u8,
                         padding: 0,
                         data: &data[..],
                     })?;
-                } else {
-                    println!("!!! bad timestamp, ignoring")
                 }
             }
         }
-        Ok(())
-    }
-
-    fn reply<M>(&mut self, msg: M) -> anyhow::Result<()>
-    where
-        M: MessageSerialize + std::fmt::Debug,
-    {
-        println!(">>> {:?}", msg);
-        self.client.write(&msg)?;
         Ok(())
     }
 }
