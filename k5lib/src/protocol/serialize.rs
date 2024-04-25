@@ -21,6 +21,11 @@ pub trait Serializer {
         Ok(())
     }
 
+    /// Use this instead of write_bytes when the input buffer is scratch space.
+    fn write_bytes_mut(&mut self, val: &mut [u8]) -> Result<(), Self::Error> {
+        self.write_bytes(val)
+    }
+
     // this one is tricky. if this becomes a bottleneck, split out a
     // new trait that can be implemented one-by-one on special-case I
     fn write_slice<I>(&mut self, val: &I) -> Result<(), Self::Error>
@@ -34,7 +39,7 @@ pub trait Serializer {
     }
 
     fn write_le_u16(&mut self, val: u16) -> Result<(), Self::Error> {
-        self.write_bytes(&[(val & 0xff) as u8, (val >> 8) as u8])
+        self.write_bytes_mut(&mut [(val & 0xff) as u8, (val >> 8) as u8])
     }
 
     fn write_le_i16(&mut self, val: i16) -> Result<(), Self::Error> {
@@ -42,7 +47,7 @@ pub trait Serializer {
     }
 
     fn write_le_u32(&mut self, val: u32) -> Result<(), Self::Error> {
-        self.write_bytes(&[
+        self.write_bytes_mut(&mut [
             (val & 0xff) as u8,
             ((val >> 8) & 0xff) as u8,
             ((val >> 16) & 0xff) as u8,
@@ -67,6 +72,17 @@ where
 
     fn write_bytes(&mut self, val: &[u8]) -> Result<(), Self::Error> {
         (*self).write_bytes(val)
+    }
+
+    fn write_bytes_mut(&mut self, val: &mut [u8]) -> Result<(), Self::Error> {
+        (*self).write_bytes(val)
+    }
+
+    fn write_slice<I>(&mut self, val: &I) -> Result<(), Self::Error>
+    where
+        I: InputParse,
+    {
+        (*self).write_slice(val)
     }
 
     fn write_le_u16(&mut self, val: u16) -> Result<(), Self::Error> {
@@ -156,6 +172,19 @@ impl Serializer for SerializerLength {
 
     fn write_bytes(&mut self, val: &[u8]) -> Result<(), Self::Error> {
         self.len += val.len();
+        Ok(())
+    }
+
+    fn write_bytes_mut(&mut self, val: &mut [u8]) -> Result<(), Self::Error> {
+        self.len += val.len();
+        Ok(())
+    }
+
+    fn write_slice<I>(&mut self, val: &I) -> Result<(), Self::Error>
+    where
+        I: InputParse,
+    {
+        self.len += val.input_len();
         Ok(())
     }
 
@@ -291,6 +320,13 @@ where
             self.inner.write_u8(self.key.apply(*b))?;
         }
         Ok(())
+    }
+
+    fn write_bytes_mut(&mut self, val: &mut [u8]) -> Result<(), Self::Error> {
+        for b in val.iter_mut() {
+            *b = self.key.apply(*b);
+        }
+        self.inner.write_bytes_mut(val)
     }
 }
 
