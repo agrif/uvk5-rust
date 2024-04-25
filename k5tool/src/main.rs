@@ -1,3 +1,5 @@
+mod common;
+
 mod pack;
 mod parsedump;
 mod read_eeprom;

@@ -5,11 +5,8 @@ use k5lib::protocol::{HostMessage, MessageSerialize, ParseResult};
 
 #[derive(clap::Args, Debug)]
 pub struct SimulateOpts {
-    port: String,
-    #[arg(short, long, default_value_t = protocol::BAUD_RATE)]
-    baud: u32,
-    #[arg(long)]
-    plain_file: bool,
+    #[command(flatten)]
+    port: crate::common::SerialPortArgs,
     #[arg(long)]
     initial_eeprom: Option<String>,
     #[arg(long, default_value_t = 0x2000)]
@@ -25,18 +22,7 @@ impl crate::ToolRun for SimulateOpts {
             vec![0; self.empty_eeprom_size]
         };
 
-        if self.plain_file {
-            let port = std::fs::File::options()
-                .read(true)
-                .write(true)
-                .open(&self.port)?;
-
-            Simulator::new(port, eeprom).simulate()
-        } else {
-            let mut port = serialport::new(&self.port, protocol::BAUD_RATE).open()?;
-            port.set_timeout(std::time::Duration::from_secs(1))?;
-            Simulator::new(port, eeprom).simulate()
-        }
+        Simulator::new(self.port.open()?, eeprom).simulate()
     }
 }
 
