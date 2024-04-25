@@ -1,14 +1,14 @@
 use std::io::{Read, Write};
 
 use k5lib::protocol;
-use k5lib::protocol::{HostMessage, MessageSerialize, ParseResult};
+use k5lib::protocol::{HostMessage, ParseResult};
 
 #[derive(clap::Args, Debug)]
 pub struct SimulateOpts {
     #[command(flatten)]
     port: crate::common::SerialPortArgs,
     #[command(flatten)]
-    debug: crate::common::DebugClientArgs,
+    debug: crate::debug::DebugClientArgs,
     #[arg(long)]
     initial_eeprom: Option<String>,
     #[arg(long, default_value_t = 0x2000)]
@@ -31,7 +31,7 @@ impl crate::ToolRun for SimulateOpts {
 }
 
 struct Simulator<F> {
-    client: crate::common::DebugClientRadio<F>,
+    client: crate::debug::DebugClientRadio<F>,
     timestamp: u32,
 
     eeprom: Vec<u8>,
@@ -41,7 +41,7 @@ impl<F> Simulator<F>
 where
     F: Read + Write,
 {
-    fn new(client: crate::common::DebugClientRadio<F>, eeprom: Vec<u8>) -> Self {
+    fn new(client: crate::debug::DebugClientRadio<F>, eeprom: Vec<u8>) -> Self {
         Self {
             client,
             timestamp: 0,

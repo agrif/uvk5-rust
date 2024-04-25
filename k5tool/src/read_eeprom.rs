@@ -13,7 +13,7 @@ pub struct ReadEepromOpts {
     #[command(flatten)]
     port: crate::common::SerialPortArgs,
     #[command(flatten)]
-    debug: crate::common::DebugClientArgs,
+    debug: crate::debug::DebugClientArgs,
     #[arg(short, long)]
     output: Option<String>,
     #[arg(long)]
@@ -70,7 +70,7 @@ impl ReadEepromOpts {
 
     fn read_eeprom<F, W>(
         &self,
-        mut client: crate::common::DebugClientHost<F>,
+        mut client: crate::debug::DebugClientHost<F>,
         mut output: W,
     ) -> anyhow::Result<()>
     where

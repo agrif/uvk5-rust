@@ -1,4 +1,5 @@
 pub mod common;
+pub mod debug;
 
 mod pack;
 mod parsedump;
