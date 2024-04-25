@@ -11,8 +11,8 @@ pub trait ClientBuffer {
     where
         Self: 'a;
 
-    /// Modify the filled part of the buffer to keep only the last n bytes.
-    fn keep_last(&mut self, n: usize);
+    /// Modify the filled part of the buffer to remove the first n bytes.
+    fn skip(&mut self, n: usize);
 
     /// Returns true if the buffer is full.
     fn is_full(&self) -> bool;
@@ -26,9 +26,7 @@ pub trait ClientBuffer {
     fn data(&self) -> Self::Slice<'_>;
 
     /// Clear the buffer.
-    fn clear(&mut self) {
-        self.keep_last(0);
-    }
+    fn clear(&mut self);
 }
 
 /// A ClientBuffer using a flat array.
@@ -56,10 +54,9 @@ impl<const SIZE: usize> Default for ArrayBuffer<SIZE> {
 impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
     type Slice<'a> = &'a [u8];
 
-    fn keep_last(&mut self, n: usize) {
-        let new_start = self.len - n.min(self.len);
-        self.buffer.copy_within(new_start..self.len, 0);
-        self.len = n;
+    fn skip(&mut self, n: usize) {
+        self.buffer.copy_within(n..self.len, 0);
+        self.len -= n.min(self.len);
     }
 
     fn is_full(&self) -> bool {
@@ -78,6 +75,10 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
     fn data(&self) -> Self::Slice<'_> {
         &self.buffer[..self.len]
     }
+
+    fn clear(&mut self) {
+        self.len = 0;
+    }
 }
 
 /// A client for the UV-K5 serial protocol.
@@ -85,7 +86,7 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
 pub struct Client<F, B, InC, OutC> {
     port: F,
     buffer: B,
-    keep_last: Option<usize>,
+    skip: Option<usize>,
     needs_read: bool,
     in_crc: InC,
     out_crc: OutC,
@@ -162,7 +163,7 @@ where
         Self {
             port,
             buffer,
-            keep_last: None,
+            skip: None,
             needs_read: true,
             in_crc,
             out_crc,
@@ -175,11 +176,9 @@ where
         M: MessageParse<obfuscation::Deobfuscated<B::Slice<'a>>>,
         F: std::io::Read,
     {
-        use nom::InputLength;
-
-        // apply keep_last from last read cycle. see below.
-        if let Some(keep_last) = self.keep_last.take() {
-            self.buffer.keep_last(keep_last);
+        // apply skip from last read cycle. see below.
+        if let Some(skip) = self.skip.take() {
+            self.buffer.skip(skip);
         }
 
         // if the buffer is full, even now, clear it and restart
@@ -203,16 +202,18 @@ where
         }
 
         // attempt to parse it
-        let (rest, res) = protocol::parse(&self.in_crc, self.buffer.data());
+        let (skip, res) = protocol::parse(&self.in_crc, self.buffer.data());
 
         if let ParseResult::None = res {
             // we didn't find anything, not even an error, so we need more data
             self.needs_read = true;
         }
 
-        // store the keep_last value until next read, because
+        // store the skip value until next read, because
         // modifying self.buffer would interfere with the borrow in res
-        self.keep_last = Some(rest.input_len());
+        if skip > 0 {
+            self.skip = Some(skip);
+        }
         Ok(res)
     }
 

@@ -529,8 +529,8 @@ mod test {
         M: MessageParse<Deobfuscated<&'a [u8]>>,
     {
         let crc = CrcXModem::new();
-        let (rest, unserialized) = parse(&crc, &serialized[..]);
-        if rest.len() != 0 {
+        let (amt, unserialized) = parse(&crc, &serialized[..]);
+        if amt != serialized.len() {
             None
         } else {
             unserialized.ignore_error()

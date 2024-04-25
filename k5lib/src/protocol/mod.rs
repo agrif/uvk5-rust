@@ -23,18 +23,20 @@ pub use serialize::MessageSerialize;
 /// the frame. If the frame doesn't parse as this message, or the CRC
 /// fails, it will still consume the frame from the input.
 ///
-/// Returns the unconsumed input and the parse or CRC result.
+/// Returns the *number of consumed bytes* and the parse or CRC
+/// result. Note this is different from the MessageParse trait!
 ///
 /// This includes frame start/end, length, obfuscation, and CRC.
-///
-/// Wrap in Result::Ok to turn this into a nom parser.
-pub fn parse<C, I, M>(crc: &C, input: I) -> (I, ParseResult<I, M>)
+pub fn parse<C, I, M>(crc: &C, input: I) -> (usize, ParseResult<I, M>)
 where
     C: crc::CrcStyle,
     I: InputParse,
     M: MessageParse<obfuscation::Deobfuscated<I>>,
 {
-    parse::message_parse_frame(&crc, input)
+    let start_len = input.input_len();
+    let (rest, res) = parse::message_parse_frame(&crc, input);
+
+    (start_len - rest.input_len(), res)
 }
 
 /// Serialize a message into a full frame, with obfuscation, CRC, and
