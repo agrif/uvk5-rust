@@ -18,7 +18,7 @@ pub trait ClientBuffer {
     fn is_full(&self) -> bool;
 
     /// Read data from a reader into the filled part, consuming unfilled areas.
-    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<()>
+    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<usize>
     where
         R: std::io::Read;
 
@@ -66,13 +66,13 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
         self.len >= SIZE
     }
 
-    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<()>
+    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<usize>
     where
         R: std::io::Read,
     {
         let amt = reader.read(&mut self.buffer[self.len..])?;
         self.len += amt;
-        Ok(())
+        Ok(amt)
     }
 
     fn data(&self) -> Self::Slice<'_> {
@@ -86,6 +86,7 @@ pub struct Client<F, B, InC, OutC> {
     port: F,
     buffer: B,
     keep_last: Option<usize>,
+    needs_read: bool,
     in_crc: InC,
     out_crc: OutC,
 }
@@ -162,6 +163,7 @@ where
             port,
             buffer,
             keep_last: None,
+            needs_read: true,
             in_crc,
             out_crc,
         }
@@ -183,11 +185,30 @@ where
         // if the buffer is full, even now, clear it and restart
         if self.buffer.is_full() {
             self.buffer.clear();
+            self.needs_read = true;
         }
 
-        // fill some buffer and attempt to parse it
-        self.buffer.read(&mut self.port)?;
+        // if we've cleared the buffer, or if the last parse found nothing,
+        // we need to read more data
+        if self.needs_read {
+            let amt = self.buffer.read(&mut self.port)?;
+            if amt == 0 {
+                // end of file is an error
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "end of stream",
+                ));
+            }
+            self.needs_read = false;
+        }
+
+        // attempt to parse it
         let (rest, res) = protocol::parse(&self.in_crc, self.buffer.data());
+
+        if let ParseResult::None = res {
+            // we didn't find anything, not even an error, so we need more data
+            self.needs_read = true;
+        }
 
         // store the keep_last value until next read, because
         // modifying self.buffer would interfere with the borrow in res
@@ -232,6 +253,6 @@ where
         M: MessageSerialize,
     {
         protocol::serialize(&self.out_crc, &mut self.port, msg)?;
-        Ok(())
+        self.port.flush()
     }
 }
