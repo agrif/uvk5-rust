@@ -1,5 +1,6 @@
 mod pack;
 mod parsedump;
+mod read_eeprom;
 mod simulate;
 mod unpack;
 
@@ -20,6 +21,7 @@ struct ToolOptions {
 enum ToolCommand {
     Pack(pack::PackOpts),
     ParseDump(parsedump::ParseDumpOpts),
+    ReadEeprom(read_eeprom::ReadEepromOpts),
     Simulate(simulate::SimulateOpts),
     Unpack(unpack::UnpackOpts),
 }
@@ -30,6 +32,7 @@ impl ToolRun for ToolCommand {
         match self {
             Pack(o) => o.run(),
             ParseDump(o) => o.run(),
+            ReadEeprom(o) => o.run(),
             Simulate(o) => o.run(),
             Unpack(o) => o.run(),
         }

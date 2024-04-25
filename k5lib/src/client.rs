@@ -89,7 +89,7 @@ pub struct Client<F, B, InC, OutC> {
 }
 
 /// A host-sided client.
-pub type ClientHost<F, B> = Client<F, B, crc::CrcConstantIgnore, crc::CrcXModem>;
+pub type ClientHost<F, B = ArrayBuffer> = Client<F, B, crc::CrcConstantIgnore, crc::CrcXModem>;
 
 impl<F, B> ClientHost<F, B>
 where
@@ -115,7 +115,7 @@ where
 }
 
 /// A radio-sided client.
-pub type ClientRadio<F, B> = Client<F, B, crc::CrcXModem, crc::CrcConstantIgnore>;
+pub type ClientRadio<F, B = ArrayBuffer> = Client<F, B, crc::CrcXModem, crc::CrcConstantIgnore>;
 
 impl<F, B> ClientRadio<F, B>
 where

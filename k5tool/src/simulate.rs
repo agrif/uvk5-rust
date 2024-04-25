@@ -33,7 +33,8 @@ impl crate::ToolRun for SimulateOpts {
 
             Simulator::new(port, eeprom).simulate()
         } else {
-            let port = serialport::new(&self.port, protocol::BAUD_RATE).open()?;
+            let mut port = serialport::new(&self.port, protocol::BAUD_RATE).open()?;
+            port.set_timeout(std::time::Duration::from_secs(1))?;
             Simulator::new(port, eeprom).simulate()
         }
     }
@@ -95,6 +96,9 @@ where
             }
             HostMessage::ReadEeprom(m) => {
                 if m.timestamp == self.timestamp {
+                    // sleep a bit, eeprom reads are slow
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+
                     let mut start = m.address as usize;
                     let mut end = start + m.len as usize;
                     if start > self.eeprom.len() {
