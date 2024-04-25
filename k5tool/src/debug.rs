@@ -43,50 +43,48 @@ where
         F: std::io::Read,
     {
         let (buf, res) = self.client.read_debug()?;
-        match res {
-            ParseResult::Ok(ref m) => {
-                if self.args.debug >= 2 {
-                    let data = buf.data();
-                    // we know this data produced a frame, we just have to
-                    // find it. This involves some assumptions, which we check
-                    if let (rest, Some(frame)) = parse::frame_raw(data) {
-                        if self.args.debug >= 3 {
-                            let end = data.len() - rest.len();
-                            let body_end = end - FRAME_END.len();
-                            assert_eq!(data[body_end..end], FRAME_END);
-                            let body_start = body_end - frame.len();
-                            let len_start = body_start - 2; // 2 byte length
-                            let start = len_start - FRAME_START.len();
-                            assert_eq!(data[start..len_start], FRAME_START);
 
-                            let raw = &data[start..end];
+        if self.args.debug >= 2 {
+            let data = buf.data();
+            // if this data produced a frame, we have to find it. This
+            // involves some assumptions, which we check
+            if let (rest, Some(frame)) = parse::frame_raw(data) {
+                if self.args.debug >= 3 {
+                    let end = data.len() - rest.len();
+                    let body_end = end - FRAME_END.len();
+                    assert_eq!(data[body_end..end], FRAME_END);
+                    let body_start = body_end - frame.len();
+                    let len_start = body_start - 2; // 2 byte length
+                    let start = len_start - FRAME_START.len();
+                    assert_eq!(data[start..len_start], FRAME_START);
 
-                            eprintln!("<<< raw frame:");
-                            crate::common::e_hexdump("<<<   ", raw);
-                        }
+                    let raw = &data[start..end];
 
-                        let deob = obfuscation::Deobfuscated::new(frame);
-                        eprintln!("<<< deobfuscated:");
-                        crate::common::e_hexdump("<<<   ", &deob.to_vec());
-                    }
+                    eprintln!("<<< raw frame:");
+                    crate::common::e_hexdump("<<<   ", raw);
                 }
-                if self.args.debug >= 1 {
+
+                let deob = obfuscation::Deobfuscated::new(frame);
+                eprintln!("<<< deobfuscated:");
+                crate::common::e_hexdump("<<<   ", &deob.to_vec());
+            }
+        }
+
+        if self.args.debug >= 1 {
+            match res {
+                ParseResult::Ok(ref m) => {
                     eprintln!("<<< {:?}", m);
                 }
-            }
-            ParseResult::ParseErr(ref inp, ref e) => {
-                if self.args.debug >= 1 {
+                ParseResult::ParseErr(ref inp, ref e) => {
                     eprintln!("!!! parse error: {:?}", e);
                     crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
                 }
-            }
-            ParseResult::CrcErr(ref inp) => {
-                if self.args.debug >= 1 {
+                ParseResult::CrcErr(ref inp) => {
                     eprintln!("!!! crc error:");
                     crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
                 }
+                ParseResult::None => {}
             }
-            ParseResult::None => {}
         }
         Ok(res)
     }
