@@ -9,7 +9,7 @@ use k5lib::ClientBuffer;
 #[derive(clap::Args, Debug, Clone)]
 pub struct DebugClientArgs {
     #[arg(short, long, action=clap::ArgAction::Count)]
-    debug: u8,
+    pub debug: u8,
 }
 
 pub struct DebugClient<F, InC, OutC> {
@@ -74,14 +74,17 @@ where
             match res {
                 ParseResult::Ok(ref m) => {
                     eprintln!("<<< {:?}", m);
+                    eprintln!();
                 }
                 ParseResult::ParseErr(ref inp, ref e) => {
                     eprintln!("!!! parse error: {:?}", e);
                     crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
+                    eprintln!();
                 }
                 ParseResult::CrcErr(ref inp) => {
                     eprintln!("!!! crc error:");
                     crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
+                    eprintln!();
                 }
                 ParseResult::None => {}
             }
@@ -138,6 +141,7 @@ where
         }
         if self.args.debug >= 1 {
             eprintln!(">>> {:?}", msg);
+            eprintln!();
         }
         self.client.write(msg)
     }
