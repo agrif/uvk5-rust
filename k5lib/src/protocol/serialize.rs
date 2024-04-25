@@ -364,6 +364,19 @@ pub trait MessageSerialize {
         self.message_body(ser)
     }
 
+    /// Serialize the message into a frame body, with type, length, and CRC.
+    fn frame_body_crc<C, S>(&self, crc: &C, ser: &mut S) -> Result<(), S::Error>
+    where
+        C: CrcStyle,
+        S: Serializer,
+    {
+        let mut crc_ser = SerializerCrc::new(crc, ser);
+        self.frame_body(&mut crc_ser)?;
+        let (crc_val, ser) = crc_ser.finalize();
+
+        ser.write_le_u16(crc_val)
+    }
+
     /// Serialize the message into a full frame, with obfuscation,
     /// CRC, and start/end markers.
     fn frame<C, S>(&self, crc: &C, ser: &mut S) -> Result<(), S::Error>
@@ -382,13 +395,8 @@ pub trait MessageSerialize {
         ser.write_bytes(&super::FRAME_START)?;
         ser.write_le_u16(len)?;
 
-        let obfuscate = SerializerObfuscated::new(ser);
-
-        let mut crc_ser = SerializerCrc::new(crc, obfuscate);
-        self.frame_body(&mut crc_ser)?;
-        let (crc_val, mut obfuscate) = crc_ser.finalize();
-
-        obfuscate.write_le_u16(crc_val)?;
+        let mut obfuscate = SerializerObfuscated::new(ser);
+        self.frame_body_crc(crc, &mut obfuscate)?;
         let ser = obfuscate.done();
 
         ser.write_bytes(&super::FRAME_END)

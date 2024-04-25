@@ -68,8 +68,12 @@ pub fn download_bar(size: u64) -> indicatif::ProgressBar {
     bar
 }
 
-pub fn e_hexdump(bytes: &[u8]) {
+pub fn e_hexdump(prefix: &str, bytes: &[u8]) {
     for s in hexdump::hexdump_iter(bytes) {
-        eprintln!("{}", s);
+        if prefix.len() > 0 {
+            eprintln!("{} {}", prefix, s);
+        } else {
+            eprintln!("{}", s);
+        }
     }
 }

@@ -170,8 +170,24 @@ where
         }
     }
 
-    /// Read from the port and attempt to parse a message.
-    pub fn read<'a, M>(&'a mut self) -> std::io::Result<ParseResult<B::Slice<'a>, M>>
+    /// Get the underlying buffer.
+    pub fn buffer(&self) -> &B {
+        &self.buffer
+    }
+
+    /// Get the incoming CRC implementation.
+    pub fn in_crc(&self) -> &InC {
+        &self.in_crc
+    }
+
+    /// Get the outgoing CRC implementation.
+    pub fn out_crc(&self) -> &OutC {
+        &self.out_crc
+    }
+
+    /// Read from the port and attempt to parse a message, while also
+    /// returning the buffer used for parsing.
+    pub fn read_debug<'a, M>(&'a mut self) -> std::io::Result<(&'a B, ParseResult<B::Slice<'a>, M>)>
     where
         M: MessageParse<obfuscation::Deobfuscated<B::Slice<'a>>>,
         F: std::io::Read,
@@ -214,7 +230,16 @@ where
         if skip > 0 {
             self.skip = Some(skip);
         }
-        Ok(res)
+        Ok((&self.buffer, res))
+    }
+
+    /// Read from the port and attempt to parse a message.
+    pub fn read<'a, M>(&'a mut self) -> std::io::Result<ParseResult<B::Slice<'a>, M>>
+    where
+        M: MessageParse<obfuscation::Deobfuscated<B::Slice<'a>>>,
+        F: std::io::Read,
+    {
+        Ok(self.read_debug()?.1)
     }
 
     /// Read a Message.

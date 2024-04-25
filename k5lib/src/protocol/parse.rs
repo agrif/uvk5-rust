@@ -94,7 +94,7 @@ where
 /// Returns unconsumed input and None if it only skipped data and
 /// found no complete frames. Wrap in Result::Ok to turn this into a
 /// nom parser.
-fn frame_raw<I>(input: I) -> (I, Option<I>)
+pub fn frame_raw<I>(input: I) -> (I, Option<I>)
 where
     I: InputParse,
 {
@@ -163,7 +163,10 @@ pub enum ParseResult<I: InputParse, O, E = Error<Deobfuscated<I>>> {
     None,
 }
 
-impl<I, O, E> ParseResult<I, O, E> where I: InputParse {
+impl<I, O, E> ParseResult<I, O, E>
+where
+    I: InputParse,
+{
     pub fn ignore_error(self) -> Option<O> {
         match self {
             Self::Ok(o) => Some(o),
