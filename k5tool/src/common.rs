@@ -1,5 +1,6 @@
 #[derive(clap::Args, Debug, Clone)]
 pub struct SerialPortArgs {
+    #[arg(default_value_t = default_serial_port())]
     port: String,
     #[arg(short, long, default_value_t = k5lib::protocol::BAUD_RATE)]
     baud: u32,
@@ -11,6 +12,30 @@ pub struct SerialPortArgs {
 pub enum SerialPort {
     Serial(Box<dyn serialport::SerialPort>),
     File(std::fs::File),
+}
+
+pub fn default_serial_port() -> String {
+    if let Ok(infos) = serialport::available_ports() {
+        for info in infos {
+            #[cfg(target_os = "macos")]
+            if info.port_name.ends_with(".Bluetooth-Incoming-Port") {
+                // these ports are almost always *not* what we want
+                continue;
+            }
+
+            #[cfg(target_os = "macos")]
+            if info.port_name.starts_with("/dev/tty.") {
+                // macos ports with tty. have flow control we don't use
+                // use cu. ports instead!
+                continue;
+            }
+
+            return info.port_name.clone();
+        }
+    }
+
+    // not great, but reasonable fallback
+    "/dev/ttyUSB0".to_owned()
 }
 
 impl std::io::Read for SerialPort {
