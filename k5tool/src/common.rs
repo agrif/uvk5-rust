@@ -12,9 +12,9 @@ pub struct SerialPortArgs {
 
 #[derive(Debug)]
 pub enum SerialPort {
-    Serial(Box<dyn serialport::SerialPort>),
-    File(std::fs::File),
-    Tcp(std::net::TcpStream),
+    Serial(std::io::BufWriter<Box<dyn serialport::SerialPort>>),
+    File(std::io::BufWriter<std::fs::File>),
+    Tcp(std::io::BufWriter<std::net::TcpStream>),
 }
 
 pub fn default_serial_port() -> String {
@@ -44,9 +44,9 @@ pub fn default_serial_port() -> String {
 impl std::io::Read for SerialPort {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self {
-            Self::Serial(port) => port.read(buf),
-            Self::File(port) => port.read(buf),
-            Self::Tcp(port) => port.read(buf),
+            Self::Serial(port) => port.get_mut().read(buf),
+            Self::File(port) => port.get_mut().read(buf),
+            Self::Tcp(port) => port.get_mut().read(buf),
         }
     }
 }
@@ -73,18 +73,18 @@ impl SerialPortArgs {
     pub fn open(&self) -> anyhow::Result<SerialPort> {
         if self.tcp {
             let port = std::net::TcpStream::connect(&self.port)?;
-            Ok(SerialPort::Tcp(port))
+            Ok(SerialPort::Tcp(std::io::BufWriter::new(port)))
         } else if self.plain_file {
             let port = std::fs::File::options()
                 .read(true)
                 .write(true)
                 .open(&self.port)?;
 
-            Ok(SerialPort::File(port))
+            Ok(SerialPort::File(std::io::BufWriter::new(port)))
         } else {
             let mut port = serialport::new(&self.port, self.baud).open()?;
             port.set_timeout(std::time::Duration::from_secs(1))?;
-            Ok(SerialPort::Serial(port))
+            Ok(SerialPort::Serial(std::io::BufWriter::new(port)))
         }
     }
 }
