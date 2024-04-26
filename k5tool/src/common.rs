@@ -6,6 +6,8 @@ pub struct SerialPortArgs {
     baud: u32,
     #[arg(long)]
     tcp: bool,
+    #[arg(long, default_value_t = 5)]
+    timeout: u64,
 }
 
 #[derive(Debug)]
@@ -65,12 +67,15 @@ impl std::io::Write for SerialPort {
 
 impl SerialPortArgs {
     pub fn open(&self) -> anyhow::Result<SerialPort> {
+        let timeout = std::time::Duration::from_secs(self.timeout);
         if self.tcp {
             let port = std::net::TcpStream::connect(&self.port)?;
+            port.set_read_timeout(Some(timeout))?;
+            port.set_write_timeout(Some(timeout))?;
             Ok(SerialPort::Tcp(std::io::BufWriter::new(port)))
         } else {
             let mut port = serialport::new(&self.port, self.baud).open()?;
-            port.set_timeout(std::time::Duration::from_secs(1))?;
+            port.set_timeout(timeout)?;
             Ok(SerialPort::Serial(std::io::BufWriter::new(port)))
         }
     }
