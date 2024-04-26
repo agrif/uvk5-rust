@@ -34,7 +34,7 @@ impl ReadEepromOpts {
         F: Read + Write,
     {
         let timestamp = TIMESTAMP;
-        let mut client = self.debug.wrap(k5lib::ClientHost::<F>::new(port));
+        let mut client = self.debug.wrap_host(k5lib::ClientHost::<F>::new(port))?;
 
         client.write(&Hello { timestamp })?;
         let m = loop {

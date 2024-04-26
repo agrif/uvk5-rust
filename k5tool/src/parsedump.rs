@@ -1,6 +1,6 @@
 #[derive(clap::Args, Debug)]
 pub struct ParseDumpOpts {
-    dump: String,
+    dumpfile: String,
     #[command(flatten)]
     debug: crate::debug::DebugClientArgs,
 }
@@ -11,7 +11,7 @@ impl crate::ToolRun for ParseDumpOpts {
         let mut debug = self.debug.clone();
         debug.debug = debug.debug.max(1);
 
-        let rawdata = std::fs::read(&self.dump)?;
+        let rawdata = std::fs::read(&self.dumpfile)?;
         let mut raw = &rawdata[..];
 
         loop {
@@ -23,15 +23,16 @@ impl crate::ToolRun for ParseDumpOpts {
             let frameraw = &raw[3..3 + len];
             raw = &raw[3 + len..];
 
-            if dir == 0 {
+            // direction is the type this client *writes*, so to read, we flip
+            if dir == crate::debug::ClientDirection::Host.flip() as u8 {
                 // radio -> computer, so act like host
                 eprintln!("*** from radio");
-                let mut host = debug.wrap(k5lib::ClientHost::new(frameraw));
+                let mut host = debug.wrap_host(k5lib::ClientHost::new(frameraw))?;
                 host.read_radio()?;
-            } else {
+            } else if dir == crate::debug::ClientDirection::Radio.flip() as u8 {
                 // computer -> radio, so act like radio
                 eprintln!("*** from host");
-                let mut radio = debug.wrap(k5lib::ClientRadio::new(frameraw));
+                let mut radio = debug.wrap_radio(k5lib::ClientRadio::new(frameraw))?;
                 radio.read_host()?;
             }
         }

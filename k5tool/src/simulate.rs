@@ -38,7 +38,7 @@ impl crate::ToolRun for SimulateOpts {
             stream.set_read_timeout(Some(std::time::Duration::from_secs(1)))?;
 
             let client = k5lib::ClientRadio::new(stream);
-            let client = self.debug.wrap(client);
+            let client = self.debug.wrap_radio(client)?;
             match Simulator::new(client, self, &mut eeprom).simulate() {
                 Err(e) => match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
                     // an expected error, at disconnect
