@@ -5,10 +5,12 @@ use k5lib::protocol::{HostMessage, ParseResult};
 
 #[derive(clap::Args, Debug)]
 pub struct SimulateOpts {
-    #[command(flatten)]
-    port: crate::common::SerialPortArgs,
+    #[arg(default_value = "localhost:8855")]
+    bind: String,
     #[command(flatten)]
     debug: crate::debug::DebugClientArgs,
+    #[arg(long, default_value = "k5sim")]
+    version: String,
     #[arg(long)]
     initial_eeprom: Option<String>,
     #[arg(long, default_value_t = 0x2000)]
@@ -17,34 +19,60 @@ pub struct SimulateOpts {
 
 impl crate::ToolRun for SimulateOpts {
     fn run(&self) -> anyhow::Result<()> {
-        let eeprom = if let Some(ref initial_eeprom_path) = self.initial_eeprom {
+        let mut eeprom = if let Some(ref initial_eeprom_path) = self.initial_eeprom {
             std::fs::read(initial_eeprom_path)?
         } else {
             // FIXME magic eeprom size
             vec![0; self.empty_eeprom_size]
         };
 
-        let client = k5lib::ClientRadio::new(self.port.open()?);
-        let client = self.debug.wrap(client);
-        Simulator::new(client, eeprom).simulate()
+        let listener = std::net::TcpListener::bind(&self.bind)?;
+        eprintln!("Listening on {}.", self.bind);
+
+        loop {
+            let (stream, addr) = listener.accept()?;
+            eprintln!("Connected to {}.", addr);
+
+            let client = k5lib::ClientRadio::new(stream);
+            let client = self.debug.wrap(client);
+            match Simulator::new(client, self, &mut eeprom).simulate() {
+                Err(e) => match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
+                    // an expected error, at disconnect
+                    Some(std::io::ErrorKind::UnexpectedEof) => {
+                        eprintln!("Disconnected from {}.", addr);
+                        continue;
+                    }
+                    // any other error is unexpected
+                    _ => anyhow::bail!(e),
+                },
+                // statically impossible, but ! not stable
+                _ => {}
+            }
+        }
     }
 }
 
-struct Simulator<F> {
+struct Simulator<'a, F> {
     client: crate::debug::DebugClientRadio<F>,
     timestamp: u32,
 
-    eeprom: Vec<u8>,
+    opts: &'a SimulateOpts,
+    eeprom: &'a mut [u8],
 }
 
-impl<F> Simulator<F>
+impl<'a, F> Simulator<'a, F>
 where
     F: Read + Write,
 {
-    fn new(client: crate::debug::DebugClientRadio<F>, eeprom: Vec<u8>) -> Self {
+    fn new(
+        client: crate::debug::DebugClientRadio<F>,
+        opts: &'a SimulateOpts,
+        eeprom: &'a mut [u8],
+    ) -> Self {
         Self {
             client,
             timestamp: 0,
+            opts,
             eeprom,
         }
     }
@@ -67,7 +95,7 @@ where
             HostMessage::Hello(m) => {
                 self.timestamp = m.timestamp;
                 self.client.write(&protocol::HelloReply {
-                    version: k5lib::Version::from_str("k5sim")?,
+                    version: k5lib::Version::from_str(&self.opts.version)?,
                     has_custom_aes_key: false,
                     is_in_lock_screen: false,
                     padding: [0; 2],

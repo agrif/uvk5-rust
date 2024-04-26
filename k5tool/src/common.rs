@@ -6,12 +6,15 @@ pub struct SerialPortArgs {
     baud: u32,
     #[arg(long)]
     plain_file: bool,
+    #[arg(long)]
+    tcp: bool,
 }
 
 #[derive(Debug)]
 pub enum SerialPort {
     Serial(Box<dyn serialport::SerialPort>),
     File(std::fs::File),
+    Tcp(std::net::TcpStream),
 }
 
 pub fn default_serial_port() -> String {
@@ -43,6 +46,7 @@ impl std::io::Read for SerialPort {
         match self {
             Self::Serial(port) => port.read(buf),
             Self::File(port) => port.read(buf),
+            Self::Tcp(port) => port.read(buf),
         }
     }
 }
@@ -52,6 +56,7 @@ impl std::io::Write for SerialPort {
         match self {
             Self::Serial(port) => port.write(buf),
             Self::File(port) => port.write(buf),
+            Self::Tcp(port) => port.write(buf),
         }
     }
 
@@ -59,13 +64,17 @@ impl std::io::Write for SerialPort {
         match self {
             Self::Serial(port) => port.flush(),
             Self::File(port) => port.flush(),
+            Self::Tcp(port) => port.flush(),
         }
     }
 }
 
 impl SerialPortArgs {
     pub fn open(&self) -> anyhow::Result<SerialPort> {
-        if self.plain_file {
+        if self.tcp {
+            let port = std::net::TcpStream::connect(&self.port)?;
+            Ok(SerialPort::Tcp(port))
+        } else if self.plain_file {
             let port = std::fs::File::options()
                 .read(true)
                 .write(true)
