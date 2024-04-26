@@ -33,6 +33,10 @@ impl crate::ToolRun for SimulateOpts {
             let (stream, addr) = listener.accept()?;
             eprintln!("Connected to {}.", addr);
 
+            // use a low timeout, so we can send bootloader ready messages
+            // (if we need to)
+            stream.set_read_timeout(Some(std::time::Duration::from_secs(1)))?;
+
             let client = k5lib::ClientRadio::new(stream);
             let client = self.debug.wrap(client);
             match Simulator::new(client, self, &mut eeprom).simulate() {
@@ -83,9 +87,22 @@ where
     {
         loop {
             // try to parse a message
-            let res = self.client.read_host()?;
-            if let ParseResult::Ok(msg) = res {
-                self.handle_message(msg)?;
+            match self.client.read_host() {
+                Ok(ParseResult::Ok(msg)) => {
+                    self.handle_message(msg)?;
+                    continue;
+                }
+                Err(e) => {
+                    if let std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock = e.kind()
+                    {
+                        // try again if timed out
+                        continue;
+                    } else {
+                        // any other error means stop the loop
+                        anyhow::bail!(e);
+                    }
+                }
+                _ => {}
             }
         }
     }
