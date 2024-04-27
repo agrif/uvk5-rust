@@ -27,11 +27,11 @@ impl crate::ToolRun for SimulateOpts {
         };
 
         let listener = std::net::TcpListener::bind(&self.bind)?;
-        eprintln!("Listening on {}.", self.bind);
+        println!("Listening on {}.", self.bind);
 
         loop {
             let (stream, addr) = listener.accept()?;
-            eprintln!("Connected to {}.", addr);
+            println!("Connected to {}.", addr);
 
             // use a low timeout, so we can send bootloader ready messages
             // (if we need to)
@@ -43,7 +43,7 @@ impl crate::ToolRun for SimulateOpts {
                 Err(e) => match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
                     // an expected error, at disconnect
                     Some(std::io::ErrorKind::UnexpectedEof) => {
-                        eprintln!("Disconnected from {}.", addr);
+                        println!("Disconnected from {}.", addr);
                         continue;
                     }
                     // any other error is unexpected

@@ -63,8 +63,6 @@ impl ReadEepromOpts {
             }
         }
 
-        eprintln!("Done.");
-
         Ok(())
     }
 
