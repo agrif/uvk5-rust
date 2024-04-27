@@ -59,7 +59,7 @@ impl ReadEepromOpts {
             if self.raw {
                 std::io::stdout().write_all(&data)?;
             } else {
-                hexdump::hexdump(&data);
+                crate::hexdump::hexdump(&data);
             }
         }
 

@@ -116,14 +116,14 @@ where
 
                     if self.args.debug >= 3 {
                         eprintln!("<<< raw frame:");
-                        crate::common::e_hexdump("<<<   ", raw);
+                        crate::hexdump::ehexdump_prefix("<<<   ", raw);
                     }
                 }
 
                 if self.args.debug >= 2 {
                     let deob = obfuscation::Deobfuscated::new(frame);
                     eprintln!("<<< deobfuscated:");
-                    crate::common::e_hexdump("<<<   ", &deob.to_vec());
+                    crate::hexdump::ehexdump_prefix("<<<   ", &deob.to_vec());
                 }
             }
         }
@@ -136,12 +136,12 @@ where
                 }
                 ParseResult::ParseErr(ref inp, ref e) => {
                     eprintln!("!!! parse error: {:?}", e);
-                    crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
+                    crate::hexdump::ehexdump_prefix("!!!   ", inp.to_vec().as_ref());
                     eprintln!();
                 }
                 ParseResult::CrcErr(ref inp) => {
                     eprintln!("!!! crc error:");
-                    crate::common::e_hexdump("!!!   ", inp.to_vec().as_ref());
+                    crate::hexdump::ehexdump_prefix("!!!   ", inp.to_vec().as_ref());
                     eprintln!();
                 }
                 ParseResult::None => {}
@@ -198,14 +198,14 @@ where
 
             if self.args.debug >= 3 {
                 eprintln!(">>> raw frame:");
-                crate::common::e_hexdump(">>>   ", &raw);
+                crate::hexdump::ehexdump_prefix(">>>   ", &raw);
             }
         }
         if self.args.debug >= 2 {
             let mut ser = serialize::SerializerWrap::new(Vec::new());
             msg.frame_body_crc(self.client.out_crc(), &mut ser)?;
             eprintln!(">>> deobfuscated:");
-            crate::common::e_hexdump(">>>   ", &ser.done());
+            crate::hexdump::ehexdump_prefix(">>>   ", &ser.done());
         }
         if self.args.debug >= 1 {
             eprintln!(">>> {:?}", msg);
