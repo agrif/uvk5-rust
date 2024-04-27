@@ -1,12 +1,14 @@
+const WIDTH: usize = 0x10;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Line<'a, A = u16, const WIDTH: usize = 0x10> {
+pub struct Line<'a, A = u16> {
     address: A,
     data: &'a [u8],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum DedupLine<'a, A = u16, const WIDTH: usize = 0x10> {
-    Data(Line<'a, A, WIDTH>),
+pub enum DedupLine<'a, A = u16> {
+    Data(Line<'a, A>),
     Duplicate,
 }
 
@@ -18,17 +20,22 @@ pub fn printable(chr: u8) -> Option<char> {
     }
 }
 
-pub trait FormatAddr {
+pub trait FormatAddr: Sized {
     fn format_addr(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result;
+    fn from_usize(n: usize) -> Option<Self>;
 }
 
 impl FormatAddr for u16 {
     fn format_addr(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:04x}", self)
     }
+
+    fn from_usize(n: usize) -> Option<Self> {
+        n.try_into().ok()
+    }
 }
 
-impl<'a, A, const WIDTH: usize> std::fmt::Display for Line<'a, A, WIDTH>
+impl<'a, A> std::fmt::Display for Line<'a, A>
 where
     A: FormatAddr,
 {
@@ -60,7 +67,7 @@ where
     }
 }
 
-impl<'a, A, const WIDTH: usize> std::fmt::Display for DedupLine<'a, A, WIDTH>
+impl<'a, A> std::fmt::Display for DedupLine<'a, A>
 where
     A: FormatAddr,
 {
@@ -75,14 +82,14 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LineIter<'a, A = u16, const WIDTH: usize = 0x10> {
+pub struct LineIter<'a, A = u16> {
     data: &'a [u8],
     next: usize,
     endline: bool,
     _phantom: std::marker::PhantomData<A>,
 }
 
-impl<'a, A, const WIDTH: usize> LineIter<'a, A, WIDTH> {
+impl<'a, A> LineIter<'a, A> {
     pub fn new(data: &'a [u8]) -> Self {
         Self {
             data,
@@ -93,11 +100,11 @@ impl<'a, A, const WIDTH: usize> LineIter<'a, A, WIDTH> {
     }
 }
 
-impl<'a, A, const WIDTH: usize> Iterator for LineIter<'a, A, WIDTH>
+impl<'a, A> Iterator for LineIter<'a, A>
 where
-    A: TryFrom<usize>,
+    A: FormatAddr,
 {
-    type Item = Line<'a, A, WIDTH>;
+    type Item = Line<'a, A>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let start = self.next;
@@ -107,11 +114,7 @@ where
             } else {
                 self.endline = true;
                 Some(Line {
-                    address: self
-                        .next
-                        .try_into()
-                        .map_err(|_| "address too large")
-                        .unwrap(),
+                    address: A::from_usize(self.next).expect("address too large"),
                     data: &[],
                 })
             }
@@ -120,7 +123,7 @@ where
             let part = &self.data[start..end];
             self.next = end;
             Some(Line {
-                address: start.try_into().map_err(|_| "address too large").unwrap(),
+                address: A::from_usize(start).expect("address too large"),
                 data: part,
             })
         }
@@ -128,13 +131,13 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DedupLineIter<'a, A = u16, const WIDTH: usize = 0x10> {
-    inner: LineIter<'a, A, WIDTH>,
+pub struct DedupLineIter<'a, A = u16> {
+    inner: LineIter<'a, A>,
     last: Option<&'a [u8]>,
     in_duplicate: bool,
 }
 
-impl<'a, A, const WIDTH: usize> DedupLineIter<'a, A, WIDTH> {
+impl<'a, A> DedupLineIter<'a, A> {
     pub fn new(data: &'a [u8]) -> Self {
         Self {
             inner: LineIter::new(data),
@@ -144,11 +147,11 @@ impl<'a, A, const WIDTH: usize> DedupLineIter<'a, A, WIDTH> {
     }
 }
 
-impl<'a, A, const WIDTH: usize> Iterator for DedupLineIter<'a, A, WIDTH>
+impl<'a, A> Iterator for DedupLineIter<'a, A>
 where
-    A: TryFrom<usize>,
+    A: FormatAddr,
 {
-    type Item = DedupLine<'a, A, WIDTH>;
+    type Item = DedupLine<'a, A>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
