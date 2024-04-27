@@ -10,8 +10,8 @@ use k5lib::ClientBuffer;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum ClientDirection {
-    Host = 0,
-    Radio = 1,
+    Radio = 0,
+    Host = 1,
 }
 
 impl ClientDirection {
