@@ -13,16 +13,69 @@ where
 }
 
 /// Parse a statically-sized array with a parser.
-fn parse_array<I, P, A, const SIZE: usize>(parser: P) -> impl FnMut(I) -> nom::IResult<I, [A; SIZE]>
+fn parse_array<I, P, A, const LEN: usize>(parser: P) -> impl FnMut(I) -> nom::IResult<I, [A; LEN]>
 where
     I: InputParse,
     P: Fn(I) -> nom::IResult<I, A>,
     A: Default + Copy,
 {
     move |input| {
-        let mut data = [A::default(); SIZE];
+        let mut data = [A::default(); LEN];
         let (input, _) = nom::multi::fill(&parser, &mut data[..])(input)?;
         Ok((input, data))
+    }
+}
+
+/// Padding, in a struct.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Padding<const LEN: usize>([u8; LEN]);
+
+impl<const LEN: usize> Padding<LEN> {
+    pub fn new() -> Self {
+        Self::new_data([0; LEN])
+    }
+
+    pub fn new_data(data: [u8; LEN]) -> Self {
+        Self(data)
+    }
+
+    pub fn data(&self) -> &[u8; LEN] {
+        &self.0
+    }
+
+    pub fn data_mut(&mut self) -> &mut [u8; LEN] {
+        &mut self.0
+    }
+
+    pub fn parse<I>(input: I) -> nom::IResult<I, Self>
+    where
+        I: InputParse,
+    {
+        let (input, data) = parse_array(nom::number::complete::u8)(input)?;
+        Ok((input, Self::new_data(data)))
+    }
+
+    pub fn serialize<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_bytes(&self.0)
+    }
+}
+
+impl<const LEN: usize> Default for Padding<LEN> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const LEN: usize> std::fmt::Debug for Padding<LEN> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        if self.0.iter().all(|b| *b == 0) {
+            f.debug_tuple("Padding").finish()
+        } else {
+            f.debug_tuple("Padding").field(&self.0).finish()
+        }
     }
 }
 
@@ -337,8 +390,8 @@ pub struct HelloReply {
     /// Radio is in the lock screen.
     pub is_in_lock_screen: bool,
 
-    /// Unknown or unused.
-    pub padding: [u8; 2],
+    /// Alignment padding.
+    pub _pad: Padding<2>,
 
     /// AES challenge. See 0x052D.
     pub challenge: [u32; 4],
@@ -360,7 +413,7 @@ impl MessageSerialize for HelloReply {
         ser.write_bytes(self.version.as_bytes())?;
         ser.write_u8(self.has_custom_aes_key as u8)?;
         ser.write_u8(self.is_in_lock_screen as u8)?;
-        ser.write_bytes(&self.padding)?;
+        self._pad.serialize(ser)?;
         for c in self.challenge.iter() {
             ser.write_le_u32(*c)?;
         }
@@ -388,8 +441,7 @@ where
             let (input, is_in_lock_screen) = nom::number::complete::u8(input)?;
             let is_in_lock_screen = is_in_lock_screen > 0;
 
-            let (input, padding) = parse_array(nom::number::complete::u8)(input)?;
-
+            let (input, _pad) = Padding::parse(input)?;
             let (input, challenge) = parse_array(nom::number::complete::le_u32)(input)?;
 
             Ok((
@@ -398,7 +450,7 @@ where
                     version,
                     has_custom_aes_key,
                     is_in_lock_screen,
-                    padding,
+                    _pad,
                     challenge,
                 },
             ))
@@ -480,8 +532,8 @@ pub struct WriteFlash<I> {
     ///
     /// This seems to be ignored by the bootloader.
     pub len: u16,
-    /// Padding.
-    pub padding: [u8; 2],
+    /// Alignment padding.
+    pub _pad: Padding<2>,
     /// Data to write to flash. Must be 0x100 bytes!
     pub data: I,
 }
@@ -500,7 +552,7 @@ impl<I> WriteFlash<I> {
             page: self.page,
             max_page: self.max_page,
             len: self.len,
-            padding: self.padding,
+            _pad: self._pad,
             data: f(self.data),
         }
     }
@@ -514,7 +566,7 @@ impl<I> WriteFlash<I> {
             page: self.page,
             max_page: self.max_page,
             len: self.len,
-            padding: self.padding,
+            _pad: self._pad,
             data: f(&self.data),
         }
     }
@@ -536,7 +588,7 @@ where
         ser.write_le_u16(self.page)?;
         ser.write_le_u16(self.max_page)?;
         ser.write_le_u16(self.len)?;
-        ser.write_bytes(&self.padding)?;
+        self._pad.serialize(ser)?;
 
         // I don't like this assert, but this is better than
         // sending a malformed packet to the bootloader. probably.
@@ -565,7 +617,7 @@ where
             let (input, max_page) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::le_u16(input)?;
 
-            let (input, padding) = parse_array(nom::number::complete::u8)(input)?;
+            let (input, _pad) = Padding::parse(input)?;
 
             // message always has 0x100 bytes here, regardless of len
             let (input, data) = nom::bytes::complete::take(WRITE_FLASH_LEN)(input)?;
@@ -576,7 +628,7 @@ where
                     page,
                     max_page,
                     len,
-                    padding,
+                    _pad,
                     data,
                 },
             ))
@@ -649,8 +701,8 @@ pub struct ReadEeprom {
     pub address: u16,
     /// Number of bytes to read from address, usually 0x80.
     pub len: u8,
-    /// Unknown or unused.
-    pub padding: u8,
+    /// Alignment padding.
+    pub _pad: Padding<1>,
     /// Session ID, must match the one provided by initial Hello.
     pub session_id: u32,
 }
@@ -670,7 +722,7 @@ impl MessageSerialize for ReadEeprom {
     {
         ser.write_le_u16(self.address)?;
         ser.write_u8(self.len)?;
-        ser.write_u8(self.padding)?;
+        self._pad.serialize(ser)?;
         ser.write_le_u32(self.session_id)
     }
 }
@@ -689,14 +741,14 @@ where
 
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
-            let (input, padding) = nom::number::complete::u8(input)?;
+            let (input, _pad) = Padding::parse(input)?;
             let (input, session_id) = nom::number::complete::le_u32(input)?;
             Ok((
                 input,
                 ReadEeprom {
                     address,
                     len,
-                    padding,
+                    _pad,
                     session_id,
                 },
             ))
@@ -711,8 +763,8 @@ pub struct ReadEepromReply<I> {
     pub address: u16,
     /// Number of bytes of data read.
     pub len: u8,
-    /// Unknown or unused.
-    pub padding: u8,
+    /// Alignment padding.
+    pub _pad: Padding<1>,
     /// Data read from EEPROM.
     pub data: I,
 }
@@ -729,7 +781,7 @@ impl<I> ReadEepromReply<I> {
         ReadEepromReply {
             address: self.address,
             len: self.len,
-            padding: self.padding,
+            _pad: self._pad,
             data: f(self.data),
         }
     }
@@ -741,7 +793,7 @@ impl<I> ReadEepromReply<I> {
         ReadEepromReply {
             address: self.address,
             len: self.len,
-            padding: self.padding,
+            _pad: self._pad,
             data: f(&self.data),
         }
     }
@@ -761,7 +813,7 @@ where
     {
         ser.write_le_u16(self.address)?;
         ser.write_u8(self.len)?;
-        ser.write_u8(self.padding)?;
+        self._pad.serialize(ser)?;
         ser.write_slice(&self.data)
     }
 }
@@ -780,14 +832,14 @@ where
 
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
-            let (input, padding) = nom::number::complete::u8(input)?;
+            let (input, _pad) = Padding::parse(input)?;
             let (input, data) = nom::bytes::complete::take(len as usize)(input)?;
             Ok((
                 input,
                 ReadEepromReply {
                     address,
                     len,
-                    padding,
+                    _pad,
                     data,
                 },
             ))
@@ -856,6 +908,16 @@ mod test {
         }
     }
 
+    impl<const LEN: usize> Arbitrary for Padding<LEN> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut data = [0; LEN];
+            for b in data.iter_mut() {
+                *b = u8::arbitrary(g);
+            }
+            Padding::new_data(data)
+        }
+    }
+
     fn roundtrip<M>(msg: M) -> bool
     where
         M: for<'a> MessageParse<Deobfuscated<&'a [u8]>> + MessageSerialize + PartialEq + Eq,
@@ -908,7 +970,7 @@ mod test {
                 version: crate::Version::arbitrary(g),
                 has_custom_aes_key: bool::arbitrary(g),
                 is_in_lock_screen: bool::arbitrary(g),
-                padding: [u8::arbitrary(g), u8::arbitrary(g)],
+                _pad: Padding::arbitrary(g),
                 challenge: [
                     u32::arbitrary(g),
                     u32::arbitrary(g),
@@ -953,7 +1015,7 @@ mod test {
                 page: u16::arbitrary(g),
                 max_page: u16::arbitrary(g),
                 len: data.len() as u16,
-                padding: [u8::arbitrary(g), u8::arbitrary(g)],
+                _pad: Padding::arbitrary(g),
                 data,
             }
         }
@@ -989,7 +1051,7 @@ mod test {
             Self {
                 address: u16::arbitrary(g),
                 len: u8::arbitrary(g),
-                padding: u8::arbitrary(g),
+                _pad: Padding::arbitrary(g),
                 session_id: u32::arbitrary(g),
             }
         }
@@ -1007,7 +1069,7 @@ mod test {
             Self {
                 address: u16::arbitrary(g),
                 len: data.len() as u8,
-                padding: u8::arbitrary(g),
+                _pad: Padding::arbitrary(g),
                 data,
             }
         }

@@ -188,7 +188,7 @@ where
                     version: k5lib::Version::from_str(&self.opts.version)?,
                     has_custom_aes_key: false,
                     is_in_lock_screen: false,
-                    padding: [0; 2],
+                    _pad: Default::default(),
                     challenge: [0; 4],
                 })?;
             }
@@ -211,7 +211,7 @@ where
                     self.client.write(&protocol::ReadEepromReply {
                         address: m.address,
                         len: data.len() as u8,
-                        padding: 0,
+                        _pad: Default::default(),
                         data: &data[..],
                     })?;
                 }

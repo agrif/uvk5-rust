@@ -85,7 +85,7 @@ impl ReadEepromOpts {
             client.write(&ReadEeprom {
                 address,
                 len: CHUNK_SIZE,
-                padding: 0,
+                _pad: Default::default(),
                 session_id,
             })?;
             let m = loop {
