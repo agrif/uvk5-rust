@@ -8,9 +8,22 @@ fn parse_version<I>(input: I) -> nom::IResult<I, crate::Version>
 where
     I: InputParse,
 {
-    let mut version = crate::Version::new_empty();
-    let (input, _) = nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
-    Ok((input, version))
+    let (input, data) = parse_array(nom::number::complete::u8)(input)?;
+    Ok((input, crate::Version::new(data)))
+}
+
+/// Parse a statically-sized array with a parser.
+fn parse_array<I, P, A, const SIZE: usize>(parser: P) -> impl FnMut(I) -> nom::IResult<I, [A; SIZE]>
+where
+    I: InputParse,
+    P: Fn(I) -> nom::IResult<I, A>,
+    A: Default + Copy,
+{
+    move |input| {
+        let mut data = [A::default(); SIZE];
+        let (input, _) = nom::multi::fill(&parser, &mut data[..])(input)?;
+        Ok((input, data))
+    }
 }
 
 /// A trait for messages that have statically-known message types.
@@ -375,12 +388,9 @@ where
             let (input, is_in_lock_screen) = nom::number::complete::u8(input)?;
             let is_in_lock_screen = is_in_lock_screen > 0;
 
-            let mut padding = [0; 2];
-            let (input, _) = nom::multi::fill(nom::number::complete::u8, &mut padding[..])(input)?;
+            let (input, padding) = parse_array(nom::number::complete::u8)(input)?;
 
-            let mut challenge = [0; 4];
-            let (input, _) =
-                nom::multi::fill(nom::number::complete::le_u32, &mut challenge[..])(input)?;
+            let (input, challenge) = parse_array(nom::number::complete::le_u32)(input)?;
 
             Ok((
                 input,
@@ -440,10 +450,7 @@ where
             // FIXME some bootloaders have different packet formats
             // I suspect they vary the chip_id field size, but...
             // I don't have any examples, so I can't know.
-            let mut chip_id = [0; 4];
-            let (input, _) =
-                nom::multi::fill(nom::number::complete::le_u32, &mut chip_id[..])(input)?;
-
+            let (input, chip_id) = parse_array(nom::number::complete::le_u32)(input)?;
             let (input, version) = parse_version(input)?;
 
             Ok((input, BootloaderReady { chip_id, version }))
@@ -558,8 +565,7 @@ where
             let (input, max_page) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::le_u16(input)?;
 
-            let mut padding = [0; 2];
-            let (input, _) = nom::multi::fill(nom::number::complete::u8, &mut padding[..])(input)?;
+            let (input, padding) = parse_array(nom::number::complete::u8)(input)?;
 
             // message always has 0x100 bytes here, regardless of len
             let (input, data) = nom::bytes::complete::take(WRITE_FLASH_LEN)(input)?;
