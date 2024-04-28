@@ -3,6 +3,16 @@ use nom::{error::Error, Parser};
 use super::parse::{InputParse, MessageParse};
 use super::serialize::{MessageSerialize, Serializer};
 
+/// Parse a version.
+fn parse_version<I>(input: I) -> nom::IResult<I, crate::Version>
+where
+    I: InputParse,
+{
+    let mut version = crate::Version::new_empty();
+    let (input, _) = nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+    Ok((input, version))
+}
+
 /// A trait for messages that have statically-known message types.
 pub trait MessageType {
     const TYPE: u16;
@@ -357,9 +367,7 @@ where
                 input
             };
 
-            let mut version = crate::Version::new_empty();
-            let (input, _) =
-                nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+            let (input, version) = parse_version(input)?;
 
             let (input, has_custom_aes_key) = nom::number::complete::u8(input)?;
             let has_custom_aes_key = has_custom_aes_key > 0;
@@ -436,9 +444,7 @@ where
             let (input, _) =
                 nom::multi::fill(nom::number::complete::le_u32, &mut chip_id[..])(input)?;
 
-            let mut version = crate::Version::new_empty();
-            let (input, _) =
-                nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+            let (input, version) = parse_version(input)?;
 
             Ok((input, BootloaderReady { chip_id, version }))
         }
@@ -819,9 +825,7 @@ where
                 input
             };
 
-            let mut version = crate::Version::new_empty();
-            let (input, _) =
-                nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+            let (input, version) = parse_version(input)?;
 
             Ok((input, BootloaderReadyReply { version }))
         }
@@ -837,6 +841,14 @@ mod test {
 
     use quickcheck::{Arbitrary, Gen};
     use quickcheck_macros::quickcheck;
+
+    impl Arbitrary for crate::Version {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut version = Vec::<u8>::arbitrary(g);
+            version.truncate(crate::VERSION_LEN);
+            crate::Version::from_bytes(&version).unwrap()
+        }
+    }
 
     fn roundtrip<M>(msg: M) -> bool
     where
@@ -886,11 +898,8 @@ mod test {
 
     impl Arbitrary for HelloReply {
         fn arbitrary(g: &mut Gen) -> Self {
-            let mut version = Vec::<u8>::arbitrary(g);
-            version.truncate(crate::VERSION_LEN);
-
             Self {
-                version: crate::Version::from_bytes(&version).unwrap(),
+                version: crate::Version::arbitrary(g),
                 has_custom_aes_key: bool::arbitrary(g),
                 is_in_lock_screen: bool::arbitrary(g),
                 padding: [u8::arbitrary(g), u8::arbitrary(g)],
@@ -911,9 +920,6 @@ mod test {
 
     impl Arbitrary for BootloaderReady {
         fn arbitrary(g: &mut Gen) -> Self {
-            let mut version = Vec::<u8>::arbitrary(g);
-            version.truncate(crate::VERSION_LEN);
-
             Self {
                 chip_id: [
                     u32::arbitrary(g),
@@ -921,7 +927,7 @@ mod test {
                     u32::arbitrary(g),
                     u32::arbitrary(g),
                 ],
-                version: crate::Version::from_bytes(&version).unwrap(),
+                version: crate::Version::arbitrary(g),
             }
         }
     }
@@ -1013,11 +1019,8 @@ mod test {
 
     impl Arbitrary for BootloaderReadyReply {
         fn arbitrary(g: &mut Gen) -> Self {
-            let mut version = Vec::<u8>::arbitrary(g);
-            version.truncate(crate::VERSION_LEN);
-
             Self {
-                version: crate::Version::from_bytes(&version).unwrap(),
+                version: crate::Version::arbitrary(g),
             }
         }
     }
