@@ -11,8 +11,30 @@ pub trait MessageType {
 /// Any kind of message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Message<I> {
-    Host(HostMessage),
+    Host(HostMessage<I>),
     Radio(RadioMessage<I>),
+}
+
+impl<I> Message<I> {
+    pub fn map<F, J>(self, f: F) -> Message<J>
+    where
+        F: FnOnce(I) -> J,
+    {
+        match self {
+            Self::Host(o) => Message::Host(o.map(f)),
+            Self::Radio(o) => Message::Radio(o.map(f)),
+        }
+    }
+
+    pub fn map_ref<'a, F, J>(&'a self, f: F) -> Message<J>
+    where
+        F: FnOnce(&'a I) -> J,
+    {
+        match self {
+            Self::Host(o) => Message::Host(o.map_ref(f)),
+            Self::Radio(o) => Message::Radio(o.map_ref(f)),
+        }
+    }
 }
 
 impl<I> MessageSerialize for Message<I>
@@ -51,18 +73,53 @@ where
 
 /// Messages sent from the host computer.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum HostMessage {
+pub enum HostMessage<I> {
     /// 0x0514 Hello
     Hello(Hello),
+    /// 0x0519 Write Flash (bootloader mode)
+    WriteFlash(WriteFlash<I>),
     /// 0x051b Read EEPROM
     ReadEeprom(ReadEeprom),
+    /// 0x0530 Bootloader Ready Reply (bootloader mode)
+    BootloaderReadyReply(BootloaderReadyReply),
 }
 
-impl MessageSerialize for HostMessage {
+impl<I> HostMessage<I> {
+    pub fn map<F, J>(self, f: F) -> HostMessage<J>
+    where
+        F: FnOnce(I) -> J,
+    {
+        match self {
+            Self::Hello(o) => HostMessage::Hello(o),
+            Self::WriteFlash(o) => HostMessage::WriteFlash(o.map(f)),
+            Self::ReadEeprom(o) => HostMessage::ReadEeprom(o),
+            Self::BootloaderReadyReply(o) => HostMessage::BootloaderReadyReply(o),
+        }
+    }
+
+    pub fn map_ref<'a, F, J>(&'a self, f: F) -> HostMessage<J>
+    where
+        F: FnOnce(&'a I) -> J,
+    {
+        match self {
+            Self::Hello(o) => HostMessage::Hello(o.clone()),
+            Self::WriteFlash(o) => HostMessage::WriteFlash(o.map_ref(f)),
+            Self::ReadEeprom(o) => HostMessage::ReadEeprom(o.clone()),
+            Self::BootloaderReadyReply(o) => HostMessage::BootloaderReadyReply(o.clone()),
+        }
+    }
+}
+
+impl<I> MessageSerialize for HostMessage<I>
+where
+    I: InputParse,
+{
     fn message_type(&self) -> u16 {
         match self {
             Self::Hello(m) => m.message_type(),
+            Self::WriteFlash(m) => m.message_type(),
             Self::ReadEeprom(m) => m.message_type(),
+            Self::BootloaderReadyReply(m) => m.message_type(),
         }
     }
 
@@ -72,20 +129,28 @@ impl MessageSerialize for HostMessage {
     {
         match self {
             Self::Hello(m) => m.message_body(ser),
+            Self::WriteFlash(m) => m.message_body(ser),
             Self::ReadEeprom(m) => m.message_body(ser),
+            Self::BootloaderReadyReply(m) => m.message_body(ser),
         }
     }
 }
 
-impl<I> MessageParse<I> for HostMessage
+impl<I> MessageParse<I> for HostMessage<I>
 where
     I: InputParse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
             Hello::TYPE => Hello::parse_body(typ).map(Self::Hello).parse(input),
+            WriteFlash::<()>::TYPE => WriteFlash::parse_body(typ)
+                .map(Self::WriteFlash)
+                .parse(input),
             ReadEeprom::TYPE => ReadEeprom::parse_body(typ)
                 .map(Self::ReadEeprom)
+                .parse(input),
+            BootloaderReadyReply::TYPE => BootloaderReadyReply::parse_body(typ)
+                .map(Self::BootloaderReadyReply)
                 .parse(input),
 
             // we don't recognize the message type
@@ -101,8 +166,36 @@ pub enum RadioMessage<I> {
     HelloReply(HelloReply),
     /// 0x0518 Bootloader Ready (bootloader mode)
     BootloaderReady(BootloaderReady),
+    /// 0x051a Write Flash Reply (bootloader mode)
+    WriteFlashReply(WriteFlashReply),
     /// 0x51c Read EEPROM Reply
     ReadEepromReply(ReadEepromReply<I>),
+}
+
+impl<I> RadioMessage<I> {
+    pub fn map<F, J>(self, f: F) -> RadioMessage<J>
+    where
+        F: FnOnce(I) -> J,
+    {
+        match self {
+            Self::HelloReply(o) => RadioMessage::HelloReply(o),
+            Self::BootloaderReady(o) => RadioMessage::BootloaderReady(o),
+            Self::WriteFlashReply(o) => RadioMessage::WriteFlashReply(o),
+            Self::ReadEepromReply(o) => RadioMessage::ReadEepromReply(o.map(f)),
+        }
+    }
+
+    pub fn map_ref<'a, F, J>(&'a self, f: F) -> RadioMessage<J>
+    where
+        F: FnOnce(&'a I) -> J,
+    {
+        match self {
+            Self::HelloReply(o) => RadioMessage::HelloReply(o.clone()),
+            Self::BootloaderReady(o) => RadioMessage::BootloaderReady(o.clone()),
+            Self::WriteFlashReply(o) => RadioMessage::WriteFlashReply(o.clone()),
+            Self::ReadEepromReply(o) => RadioMessage::ReadEepromReply(o.map_ref(f)),
+        }
+    }
 }
 
 impl<I> MessageSerialize for RadioMessage<I>
@@ -113,6 +206,7 @@ where
         match self {
             Self::HelloReply(m) => m.message_type(),
             Self::BootloaderReady(m) => m.message_type(),
+            Self::WriteFlashReply(m) => m.message_type(),
             Self::ReadEepromReply(m) => m.message_type(),
         }
     }
@@ -124,6 +218,7 @@ where
         match self {
             Self::HelloReply(m) => m.message_body(ser),
             Self::BootloaderReady(m) => m.message_body(ser),
+            Self::WriteFlashReply(m) => m.message_body(ser),
             Self::ReadEepromReply(m) => m.message_body(ser),
         }
     }
@@ -140,6 +235,9 @@ where
                 .parse(input),
             BootloaderReady::TYPE => BootloaderReady::parse_body(typ)
                 .map(Self::BootloaderReady)
+                .parse(input),
+            WriteFlashReply::TYPE => WriteFlashReply::parse_body(typ)
+                .map(Self::WriteFlashReply)
                 .parse(input),
             ReadEepromReply::<()>::TYPE => ReadEepromReply::parse_body(typ)
                 .map(Self::ReadEepromReply)
@@ -341,12 +439,197 @@ where
     }
 }
 
+/// Unknown value in WriteFlash messages.
+pub const WRITE_FLASH_SESSION_ID: u32 = 0x1d9f8d8a;
+
+/// Size of the data in a WriteFlash message.
+pub const WRITE_FLASH_LEN: usize = 0x100;
+
+/// 0x0519 Write Flash, host message (bootloader mode).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WriteFlash<I> {
+    /// Session ID unique to this flash sequence. Use
+    /// WRITE_FLASH_SESSION_ID if unsure.
+    pub session_id: u32,
+    /// Which 0x100 byte page to write. Increments by 1 each message.
+    pub page: u16,
+    /// Maximum flash page, exclusive. Device boots after writing when
+    /// page + 1 == max_page.
+    pub max_page: u16,
+    /// Length of data. Note data.len() is always 0x100, this
+    /// indicates how much data inside is used.
+    ///
+    /// This seems to be ignored by the bootloader.
+    pub len: u16,
+    /// Padding.
+    pub padding: [u8; 2],
+    /// Data to write to flash. Must be 0x100 bytes!
+    pub data: I,
+}
+
+impl<I> MessageType for WriteFlash<I> {
+    const TYPE: u16 = 0x0519;
+}
+
+impl<I> WriteFlash<I> {
+    pub fn map<F, J>(self, f: F) -> WriteFlash<J>
+    where
+        F: FnOnce(I) -> J,
+    {
+        WriteFlash {
+            session_id: self.session_id,
+            page: self.page,
+            max_page: self.max_page,
+            len: self.len,
+            padding: self.padding,
+            data: f(self.data),
+        }
+    }
+
+    pub fn map_ref<'a, F, J>(&'a self, f: F) -> WriteFlash<J>
+    where
+        F: FnOnce(&'a I) -> J,
+    {
+        WriteFlash {
+            session_id: self.session_id,
+            page: self.page,
+            max_page: self.max_page,
+            len: self.len,
+            padding: self.padding,
+            data: f(&self.data),
+        }
+    }
+}
+
+impl<I> MessageSerialize for WriteFlash<I>
+where
+    I: InputParse,
+{
+    fn message_type(&self) -> u16 {
+        Self::TYPE
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_le_u32(self.session_id)?;
+        ser.write_le_u16(self.page)?;
+        ser.write_le_u16(self.max_page)?;
+        ser.write_le_u16(self.len)?;
+        ser.write_bytes(&self.padding)?;
+
+        // I don't like this assert, but this is better than
+        // sending a malformed packet to the bootloader. probably.
+        assert_eq!(self.data.input_len(), WRITE_FLASH_LEN);
+        ser.write_slice(&self.data)
+    }
+}
+
+impl<I> MessageParse<I> for WriteFlash<I>
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>>
+    where
+        I: InputParse,
+    {
+        move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
+            let (input, session_id) = nom::number::complete::le_u32(input)?;
+            let (input, page) = nom::number::complete::le_u16(input)?;
+            let (input, max_page) = nom::number::complete::le_u16(input)?;
+            let (input, len) = nom::number::complete::le_u16(input)?;
+
+            let mut padding = [0; 2];
+            let (input, _) = nom::multi::fill(nom::number::complete::u8, &mut padding[..])(input)?;
+
+            // message always has 0x100 bytes here, regardless of len
+            let (input, data) = nom::bytes::complete::take(WRITE_FLASH_LEN)(input)?;
+            Ok((
+                input,
+                WriteFlash {
+                    session_id,
+                    page,
+                    max_page,
+                    len,
+                    padding,
+                    data,
+                },
+            ))
+        }
+    }
+}
+
+/// 0x051a Write Flash Reply, radio message (bootloader mode).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WriteFlashReply {
+    /// Session ID, matches the session id sent in the WriteFlash message.
+    pub session_id: u32,
+    /// Page number, matches the page sent in the WriteFlash message.
+    pub page: u16,
+    /// Error, 0 indicates success and non-zero indiates error.
+    pub error: u16,
+}
+
+impl MessageType for WriteFlashReply {
+    const TYPE: u16 = 0x051a;
+}
+
+impl MessageSerialize for WriteFlashReply {
+    fn message_type(&self) -> u16 {
+        Self::TYPE
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_le_u32(self.session_id)?;
+        ser.write_le_u16(self.page)?;
+        ser.write_le_u16(self.error)
+    }
+}
+
+impl<I> MessageParse<I> for WriteFlashReply
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
+        move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
+            let (input, session_id) = nom::number::complete::le_u32(input)?;
+            let (input, page) = nom::number::complete::le_u16(input)?;
+            let (input, error) = nom::number::complete::le_u16(input)?;
+
+            Ok((
+                input,
+                WriteFlashReply {
+                    session_id,
+                    page,
+                    error,
+                },
+            ))
+        }
+    }
+}
+
 /// 0x051b Read EEPROM, host message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ReadEeprom {
     /// Address to read.
     pub address: u16,
-    /// Number of bytes to read from address.
+    /// Number of bytes to read from address, usually 0x80.
     pub len: u8,
     /// Unknown or unused.
     pub padding: u8,
@@ -494,6 +777,51 @@ where
     }
 }
 
+/// 0x0530 Bootloader Ready Reply, host message (bootloader mode).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BootloaderReadyReply {
+    /// Incoming firmware version.
+    pub version: crate::Version,
+}
+
+impl MessageType for BootloaderReadyReply {
+    const TYPE: u16 = 0x0530;
+}
+
+impl MessageSerialize for BootloaderReadyReply {
+    fn message_type(&self) -> u16 {
+        Self::TYPE
+    }
+
+    fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        ser.write_bytes(self.version.as_bytes())
+    }
+}
+
+impl<I> MessageParse<I> for BootloaderReadyReply
+where
+    I: InputParse,
+{
+    fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
+        move |input| {
+            let input = if typ != Self::TYPE {
+                nom::combinator::fail::<_, (), _>(input)?.0
+            } else {
+                input
+            };
+
+            let mut version = crate::Version::new_empty();
+            let (input, _) =
+                nom::multi::fill(nom::number::complete::u8, version.as_mut_bytes())(input)?;
+
+            Ok((input, BootloaderReadyReply { version }))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::super::crc::CrcXModem;
@@ -597,6 +925,47 @@ mod test {
         roundtrip(msg)
     }
 
+    impl Arbitrary for WriteFlash<Vec<u8>> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut data = Vec::<u8>::arbitrary(g);
+            data.truncate(WRITE_FLASH_LEN);
+            data.resize(WRITE_FLASH_LEN, 0);
+            Self {
+                session_id: u32::arbitrary(g),
+                page: u16::arbitrary(g),
+                max_page: u16::arbitrary(g),
+                len: data.len() as u16,
+                padding: [u8::arbitrary(g), u8::arbitrary(g)],
+                data,
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_write_flash(msg: WriteFlash<Vec<u8>>) -> bool {
+        let a = roundtrip_a(&msg.map_ref(|d| &d[..]));
+        let b = a
+            .as_ref()
+            .and_then(|ser| roundtrip_b(&ser))
+            .map(|m: WriteFlash<Deobfuscated<_>>| m.map(|d| d.to_vec()));
+        Some(msg) == b
+    }
+
+    impl Arbitrary for WriteFlashReply {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                session_id: u32::arbitrary(g),
+                page: u16::arbitrary(g),
+                error: u16::arbitrary(g),
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_write_flash_reply(msg: WriteFlashReply) -> bool {
+        roundtrip(msg)
+    }
+
     impl Arbitrary for ReadEeprom {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
@@ -634,5 +1003,21 @@ mod test {
             .and_then(|ser| roundtrip_b(&ser))
             .map(|m: ReadEepromReply<Deobfuscated<_>>| m.map(|d| d.to_vec()));
         Some(msg) == b
+    }
+
+    impl Arbitrary for BootloaderReadyReply {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut version = Vec::<u8>::arbitrary(g);
+            version.truncate(crate::VERSION_LEN);
+
+            Self {
+                version: crate::Version::from_bytes(&version).unwrap(),
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn roundtrip_bootloader_ready_reply(msg: BootloaderReadyReply) -> bool {
+        roundtrip(msg)
     }
 }

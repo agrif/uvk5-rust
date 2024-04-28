@@ -161,7 +161,9 @@ where
     }
 
     /// Read a HostMessage.
-    pub fn read_host(&mut self) -> std::io::Result<ParseResult<&[u8], HostMessage>>
+    pub fn read_host(
+        &mut self,
+    ) -> std::io::Result<ParseResult<&[u8], HostMessage<obfuscation::Deobfuscated<&[u8]>>>>
     where
         F: std::io::Read,
     {
