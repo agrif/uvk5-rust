@@ -249,12 +249,18 @@ where
     }
 }
 
+/// Session ID for host messages. Should be the same as the one used
+/// in Hello in all messages.
+pub const HELLO_SESSION_ID: u32 = 0x6457396a;
+
 /// 0x0514 Hello, host message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hello {
-    /// Timestamp on all host messages. All further messages must use
-    /// this same timestamp or they will be ignored.
-    pub timestamp: u32,
+    /// Session ID on all host messages. All further messages must use
+    /// this same ID or they will be ignored.
+    ///
+    /// If unsure, use HELLO_SESSION_ID.
+    pub session_id: u32,
 }
 
 impl MessageType for Hello {
@@ -270,7 +276,7 @@ impl MessageSerialize for Hello {
     where
         S: Serializer,
     {
-        ser.write_le_u32(self.timestamp)
+        ser.write_le_u32(self.session_id)
     }
 }
 
@@ -289,8 +295,8 @@ where
                 input
             };
 
-            let (input, timestamp) = nom::number::complete::le_u32(input)?;
-            Ok((input, Hello { timestamp }))
+            let (input, session_id) = nom::number::complete::le_u32(input)?;
+            Ok((input, Hello { session_id }))
         }
     }
 }
@@ -633,8 +639,8 @@ pub struct ReadEeprom {
     pub len: u8,
     /// Unknown or unused.
     pub padding: u8,
-    /// Timestamp, must match the one provided by initial Hello.
-    pub timestamp: u32,
+    /// Session ID, must match the one provided by initial Hello.
+    pub session_id: u32,
 }
 
 impl MessageType for ReadEeprom {
@@ -653,7 +659,7 @@ impl MessageSerialize for ReadEeprom {
         ser.write_le_u16(self.address)?;
         ser.write_u8(self.len)?;
         ser.write_u8(self.padding)?;
-        ser.write_le_u32(self.timestamp)
+        ser.write_le_u32(self.session_id)
     }
 }
 
@@ -672,14 +678,14 @@ where
             let (input, address) = nom::number::complete::le_u16(input)?;
             let (input, len) = nom::number::complete::u8(input)?;
             let (input, padding) = nom::number::complete::u8(input)?;
-            let (input, timestamp) = nom::number::complete::le_u32(input)?;
+            let (input, session_id) = nom::number::complete::le_u32(input)?;
             Ok((
                 input,
                 ReadEeprom {
                     address,
                     len,
                     padding,
-                    timestamp,
+                    session_id,
                 },
             ))
         }
@@ -868,7 +874,7 @@ mod test {
     impl Arbitrary for Hello {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
-                timestamp: u32::arbitrary(g),
+                session_id: u32::arbitrary(g),
             }
         }
     }
@@ -972,7 +978,7 @@ mod test {
                 address: u16::arbitrary(g),
                 len: u8::arbitrary(g),
                 padding: u8::arbitrary(g),
-                timestamp: u32::arbitrary(g),
+                session_id: u32::arbitrary(g),
             }
         }
     }

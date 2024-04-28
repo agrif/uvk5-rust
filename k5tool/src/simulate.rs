@@ -90,7 +90,7 @@ impl crate::ToolRun for SimulateOpts {
 
 struct Simulator<'a, F> {
     client: crate::debug::DebugClientRadio<F>,
-    timestamp: u32,
+    session_id: Option<u32>,
 
     opts: &'a SimulateOpts,
     eeprom: &'a mut [u8],
@@ -115,7 +115,7 @@ where
     ) -> Self {
         Self {
             client,
-            timestamp: 0,
+            session_id: None,
 
             opts,
             eeprom,
@@ -183,7 +183,7 @@ where
     fn handle_message(&mut self, msg: HostMessage<Vec<u8>>) -> anyhow::Result<()> {
         match msg {
             HostMessage::Hello(m) => {
-                self.timestamp = m.timestamp;
+                self.session_id = Some(m.session_id);
                 self.client.write(&protocol::HelloReply {
                     version: k5lib::Version::from_str(&self.opts.version)?,
                     has_custom_aes_key: false,
@@ -194,7 +194,7 @@ where
             }
 
             HostMessage::ReadEeprom(m) => {
-                if m.timestamp == self.timestamp {
+                if Some(m.session_id) == self.session_id {
                     // sleep a bit, eeprom reads are slow
                     std::thread::sleep(std::time::Duration::from_millis(100));
 

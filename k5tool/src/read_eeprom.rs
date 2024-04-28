@@ -1,8 +1,9 @@
 use std::io::{Read, Write};
 
-use k5lib::protocol::{Hello, HelloReply, ParseResult, ReadEeprom, ReadEepromReply};
+use k5lib::protocol::{
+    Hello, HelloReply, ParseResult, ReadEeprom, ReadEepromReply, HELLO_SESSION_ID,
+};
 
-const TIMESTAMP: u32 = 0x6457396a;
 const CHUNK_SIZE: u8 = 0x80;
 
 // default, can be overridden
@@ -33,10 +34,10 @@ impl ReadEepromOpts {
     where
         F: Read + Write,
     {
-        let timestamp = TIMESTAMP;
+        let session_id = HELLO_SESSION_ID;
         let mut client = self.debug.wrap_host(k5lib::ClientHost::<F>::new(port))?;
 
-        client.write(&Hello { timestamp })?;
+        client.write(&Hello { session_id })?;
         let m = loop {
             if let ParseResult::Ok(m) = client.read::<HelloReply>()? {
                 break m;
@@ -78,14 +79,14 @@ impl ReadEepromOpts {
         let bar = crate::common::download_bar(self.eeprom_size);
         bar.set_position(0);
 
-        let timestamp = TIMESTAMP;
+        let session_id = HELLO_SESSION_ID;
         let mut address = 0;
         loop {
             client.write(&ReadEeprom {
                 address,
                 len: CHUNK_SIZE,
                 padding: 0,
-                timestamp,
+                session_id,
             })?;
             let m = loop {
                 if let ParseResult::Ok(m) = client.read::<ReadEepromReply<_>>()? {
