@@ -1,3 +1,4 @@
+pub mod binformat;
 pub mod common;
 pub mod debug;
 pub mod hexdump;

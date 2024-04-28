@@ -3,6 +3,9 @@
 
 use panic_halt as _;
 
+#[no_mangle]
+pub static VERSION: [u8; 0x10] = *b"*0.0test\0\0\0\0\0\0\0\0";
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let p = dp32g030::Peripherals::take().unwrap();
@@ -11,9 +14,9 @@ fn main() -> ! {
     // ptt button is GPIO C5
 
     // turn on GPIOC
-    p.SYSCON.dev_clk_gate().modify(|_, w| {
-        w.gpioc_clk_gate().enabled()
-    });
+    p.SYSCON
+        .dev_clk_gate()
+        .modify(|_, w| w.gpioc_clk_gate().enabled());
 
     // set our pins to be GPIO
     p.PORTCON.portc_sel0().modify(|_, w| {
@@ -52,9 +55,7 @@ fn main() -> ! {
     });
 
     // turn on flashlight
-    p.GPIOC.data().modify(|_, w| {
-        w.data3().high()
-    });
+    p.GPIOC.data().modify(|_, w| w.data3().high());
 
     loop {
         // ptt pressed means ptt low
