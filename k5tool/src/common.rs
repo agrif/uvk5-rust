@@ -81,6 +81,19 @@ impl SerialPortArgs {
     }
 }
 
+pub fn read_le_u32(data: &[u8]) -> Option<u32> {
+    if data.len() < 4 {
+        None
+    } else {
+        Some(
+            (data[0] as u32)
+                | ((data[1] as u32) << 8)
+                | ((data[2] as u32) << 16)
+                | ((data[3] as u32) << 24),
+        )
+    }
+}
+
 pub fn download_bar(size: u64) -> indicatif::ProgressBar {
     let bar = indicatif::ProgressBar::new(size);
     bar.set_style(

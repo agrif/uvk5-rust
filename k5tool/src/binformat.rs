@@ -65,8 +65,8 @@ pub fn read_firmware_from(
 pub fn flatten_elf(
     elf: ElfBytes<AnyEndian>,
 ) -> anyhow::Result<(UnpackedFirmware, Option<Version>)> {
-    // search for a VERSION symbol to use as the version
-    let version_offset = (|| {
+    // search for a VERSION symbol, which stores a pointer to the version
+    let version_ptr_offset = (|| {
         let (symbols, symstr) = elf.symbol_table().ok()??;
         let (sections, secstr) = elf.section_headers_with_strtab().ok()?;
         let sections = sections?;
@@ -89,7 +89,7 @@ pub fn flatten_elf(
                     continue;
                 }
 
-                return Some((sym.st_value as usize, sym.st_size as usize));
+                return Some(sym.st_value as usize);
             }
         }
 
@@ -130,21 +130,19 @@ pub fn flatten_elf(
     }
 
     // ok, now extract the version if we can
-    let version = version_offset.and_then(|(start, len)| {
-        let end = start + len;
-        if end <= flat.len() {
-            Version::from_bytes(&flat[start..end]).ok().and_then(|v| {
-                // sanity check -- is the version utf-8 and at least 1 char
-                if let Ok(s) = v.as_str() {
-                    if s.len() > 0 {
-                        return Some(v);
-                    }
+    let version = version_ptr_offset.and_then(|start| {
+        let start = crate::common::read_le_u32(&flat[start..])? as usize;
+        let end = flat.len().min(start + k5lib::VERSION_LEN);
+
+        Version::from_bytes(&flat[start..end]).ok().and_then(|v| {
+            // sanity check -- is the version utf-8 and at least 1 char
+            if let Ok(s) = v.as_str() {
+                if s.len() > 0 {
+                    return Some(v);
                 }
-                None
-            })
-        } else {
+            }
             None
-        }
+        })
     });
 
     Ok((UnpackedFirmware::new(flat), version))

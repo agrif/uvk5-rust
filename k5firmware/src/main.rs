@@ -4,7 +4,7 @@
 use panic_halt as _;
 
 #[no_mangle]
-pub static VERSION: [u8; 0x10] = *b"*0.0test\0\0\0\0\0\0\0\0";
+pub static VERSION: &core::ffi::CStr = c"*0.0test";
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
