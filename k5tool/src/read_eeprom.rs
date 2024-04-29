@@ -6,9 +6,6 @@ use k5lib::protocol::{
 
 const CHUNK_SIZE: u8 = 0x80;
 
-// default, can be overridden
-const EEPROM_SIZE: u64 = 0x2000;
-
 #[derive(clap::Args, Debug)]
 pub struct ReadEepromOpts {
     #[command(flatten)]
@@ -19,8 +16,8 @@ pub struct ReadEepromOpts {
     output: Option<String>,
     #[arg(long)]
     raw: bool,
-    #[arg(long, default_value_t = EEPROM_SIZE)]
-    eeprom_size: u64,
+    #[arg(long, default_value_t = crate::common::EEPROM_MAX)]
+    eeprom_size: usize,
 }
 
 impl crate::ToolRun for ReadEepromOpts {
@@ -76,7 +73,7 @@ impl ReadEepromOpts {
         F: Read + Write,
         W: Write,
     {
-        let bar = crate::common::download_bar(self.eeprom_size);
+        let bar = crate::common::download_bar(self.eeprom_size as u64);
         bar.set_position(0);
 
         let session_id = HELLO_SESSION_ID;
@@ -104,7 +101,7 @@ impl ReadEepromOpts {
 
             address += m.len as u16;
             bar.set_position(address as u64);
-            if m.len < CHUNK_SIZE || address as u64 >= self.eeprom_size {
+            if m.len < CHUNK_SIZE || address as usize >= self.eeprom_size {
                 break;
             }
         }

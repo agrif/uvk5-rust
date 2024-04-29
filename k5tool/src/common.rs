@@ -1,3 +1,8 @@
+pub const EEPROM_MAX: usize = 0x2000;
+pub const FLASH_MAX: usize = 0xf000;
+pub const RAM_MAX: usize = 0x4000;
+pub const RAM_START: usize = 0x20000000;
+
 #[derive(clap::Args, Debug, Clone)]
 pub struct SerialPortArgs {
     #[arg(default_value_t = default_serial_port())]
@@ -92,6 +97,13 @@ pub fn read_le_u32(data: &[u8]) -> Option<u32> {
                 | ((data[3] as u32) << 24),
         )
     }
+}
+
+pub fn size_bar(amt: usize, max: usize) -> String {
+    const BAR_WIDTH: usize = 20;
+    let fill = (amt * BAR_WIDTH + (max / 2)) / max;
+    assert!(fill <= BAR_WIDTH);
+    format!("[{}{}]", "=".repeat(fill), " ".repeat(BAR_WIDTH - fill))
 }
 
 pub fn download_bar(size: u64) -> indicatif::ProgressBar {

@@ -19,14 +19,15 @@ impl crate::ToolRun for PackOpts {
             None
         };
 
-        let (unpacked, version) =
+        let (unpacked, info) =
             crate::binformat::read_firmware(&self.firmware, self.format, version)?;
 
-        let version = version.ok_or(anyhow::anyhow!(
+        let version = info.version.clone().ok_or(anyhow::anyhow!(
             "image has no version, use --version to provide one"
         ))?;
         let packed = unpacked.pack(version);
 
+        info.report();
         std::fs::write(&self.packed, &packed[..])?;
         Ok(())
     }

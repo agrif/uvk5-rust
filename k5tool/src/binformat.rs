@@ -21,11 +21,112 @@ pub enum BinaryFormat {
     Auto,
 }
 
+/// Miscellaneous info about a firmware image.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BinaryInfo {
+    pub version: Option<Version>,
+    pub flash_len: usize,
+    pub stack_top: usize,
+    pub stack_bottom: Option<usize>,
+    pub entry_point: usize,
+    pub ram_len: Option<usize>,
+}
+
+impl BinaryInfo {
+    fn from_image(data: &[u8], version: Option<Version>) -> anyhow::Result<Self> {
+        let flash_len = data.len();
+        // initial stack pointer is the first u32 in cortex-m0
+        let stack_top = crate::common::read_le_u32(&data[0..])
+            .ok_or(anyhow::anyhow!("could not read initial stack pointer"))?;
+        // next is entry point
+        let entry_point = crate::common::read_le_u32(&data[4..])
+            .ok_or(anyhow::anyhow!("could not read entry_point"))?;
+
+        Ok(Self {
+            version,
+            flash_len,
+            stack_top: stack_top as usize,
+            stack_bottom: None,
+            entry_point: entry_point as usize,
+            ram_len: None,
+        })
+    }
+
+    fn override_version(&mut self, version: Option<Version>) {
+        if version.is_some() {
+            self.version = version;
+        }
+    }
+
+    pub fn report(&self) {
+        const NAMEWIDTH: usize = 8;
+        const AMTWIDTH: usize = k5lib::VERSION_LEN;
+
+        if let Some(ref version) = self.version {
+            if let Ok(v) = version.as_str() {
+                println!(
+                    "{:>width$}: {:>amtwidth$}",
+                    "Version",
+                    v,
+                    width = NAMEWIDTH,
+                    amtwidth = AMTWIDTH
+                );
+            } else {
+                println!(
+                    "{:>width$}: {:x?}",
+                    "Version",
+                    version.as_bytes(),
+                    width = NAMEWIDTH
+                )
+            }
+        }
+
+        fn fmtbytes(amt: usize) -> String {
+            // alas, these don't obey format alignment
+            let mut amtf = format!("{}", indicatif::BinaryBytes(amt as u64));
+            if amtf.len() < AMTWIDTH {
+                amtf = " ".repeat(AMTWIDTH - amtf.len()) + &amtf;
+            }
+
+            amtf
+        }
+
+        fn bar(name: &str, amt: usize, max: usize) {
+            let amtf = fmtbytes(amt);
+            let pct = 100.0 * (amt as f32) / (max as f32);
+
+            println!(
+                "{:>width$}: {} {} {:>3.0}%",
+                name,
+                amtf,
+                crate::common::size_bar(amt, max),
+                pct,
+                width = NAMEWIDTH,
+            );
+        }
+
+        bar("Flash", self.flash_len, crate::common::FLASH_MAX);
+        if let Some(ram_len) = self.ram_len {
+            bar("RAM", ram_len, crate::common::RAM_MAX);
+        }
+
+        if let Some(stack_bottom) = self.stack_bottom {
+            let stack_size = self.stack_top - stack_bottom;
+            println!(
+                "{:>width$}: {}",
+                "Stack",
+                fmtbytes(stack_size),
+                width = NAMEWIDTH
+            );
+        }
+    }
+}
+
 pub fn read_firmware<P>(
     path: P,
     format: BinaryFormat,
     version: Option<Version>,
-) -> anyhow::Result<(UnpackedFirmware, Option<Version>)>
+) -> anyhow::Result<(UnpackedFirmware, BinaryInfo)>
 where
     P: AsRef<std::path::Path>,
 {
@@ -37,19 +138,25 @@ pub fn read_firmware_from(
     data: &[u8],
     format: BinaryFormat,
     version: Option<Version>,
-) -> anyhow::Result<(UnpackedFirmware, Option<Version>)> {
+) -> anyhow::Result<(UnpackedFirmware, BinaryInfo)> {
     match format {
-        BinaryFormat::Raw => Ok((UnpackedFirmware::new_cloned(data), version)),
+        BinaryFormat::Raw => Ok((
+            UnpackedFirmware::new_cloned(data),
+            BinaryInfo::from_image(data, None)?,
+        )),
         BinaryFormat::Packed => {
             let packed = PackedFirmware::new_cloned(data)?;
             let (unpacked, fileversion) = packed.unpack()?;
-            Ok((unpacked, version.or(Some(fileversion))))
+            let mut info = BinaryInfo::from_image(&unpacked, Some(fileversion))?;
+            info.override_version(version);
+            Ok((unpacked, info))
         }
         BinaryFormat::Elf => {
             let elf = ElfBytes::minimal_parse(data)
                 .map_err(|_| anyhow::anyhow!("could not open ELF image"))?;
-            let (unpacked, fileversion) = flatten_elf(elf)?;
-            Ok((unpacked, version.or(fileversion)))
+            let (unpacked, mut info) = flatten_elf(elf)?;
+            info.override_version(version);
+            Ok((unpacked, info))
         }
         BinaryFormat::Auto => {
             for tryfmt in &[BinaryFormat::Elf, BinaryFormat::Packed] {
@@ -62,9 +169,7 @@ pub fn read_firmware_from(
     }
 }
 
-pub fn flatten_elf(
-    elf: ElfBytes<AnyEndian>,
-) -> anyhow::Result<(UnpackedFirmware, Option<Version>)> {
+pub fn flatten_elf(elf: ElfBytes<AnyEndian>) -> anyhow::Result<(UnpackedFirmware, BinaryInfo)> {
     // search for a VERSION symbol, which stores a pointer to the version
     let version_ptr_offset = (|| {
         let (symbols, symstr) = elf.symbol_table().ok()??;
@@ -96,6 +201,7 @@ pub fn flatten_elf(
         None
     })();
 
+    // flatten the binary
     let mut flat = Vec::new();
     if let Some(segments) = elf.segments() {
         for segment in segments {
@@ -147,5 +253,33 @@ pub fn flatten_elf(
         })
     });
 
-    Ok((UnpackedFirmware::new(flat), version))
+    let mut info = BinaryInfo::from_image(&flat, version)?;
+
+    // count up ram used and figure out where the stack ends
+    let mut ram_len = 0;
+    let mut stack_bottom = crate::common::RAM_START;
+    if let Some(segments) = elf.segments() {
+        for segment in segments {
+            if segment.p_type != elf::abi::PT_LOAD {
+                continue;
+            }
+
+            if segment.p_vaddr < crate::common::RAM_START as u64 {
+                // not ram
+                continue;
+            }
+
+            ram_len += segment.p_memsz as usize;
+
+            let end = (segment.p_vaddr + segment.p_memsz) as usize;
+            if end <= info.stack_top && end > stack_bottom {
+                stack_bottom = end;
+            }
+        }
+    }
+
+    info.ram_len = Some(ram_len);
+    info.stack_bottom = Some(stack_bottom);
+
+    Ok((UnpackedFirmware::new(flat), info))
 }

@@ -6,6 +6,8 @@ use panic_halt as _;
 #[no_mangle]
 pub static VERSION: &core::ffi::CStr = c"*0.0test";
 
+pub static mut TESTRW: u8 = 1;
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let p = dp32g030::Peripherals::take().unwrap();
@@ -57,7 +59,7 @@ fn main() -> ! {
     // turn on flashlight
     p.GPIOC.data().modify(|_, w| w.data3().high());
 
-    loop {
+    while unsafe { TESTRW > 0 } {
         // ptt pressed means ptt low
         // ptt pressed means turn on light
         let ptt = p.GPIOC.data().read().data5().is_low();
@@ -69,5 +71,11 @@ fn main() -> ! {
             }
         });
         cortex_m::asm::nop();
+
+        unsafe {
+            TESTRW += 1;
+        }
     }
+
+    loop {}
 }

@@ -18,14 +18,14 @@ pub struct SimulateOpts {
     initial_eeprom: Option<String>,
     #[arg(long)]
     dump_eeprom: Option<String>,
-    #[arg(long, default_value_t = 0x2000)]
+    #[arg(long, default_value_t = crate::common::EEPROM_MAX)]
     eeprom_size: usize,
 
     #[arg(long)]
     initial_flash: Option<String>,
     #[arg(long)]
     dump_flash: Option<String>,
-    #[arg(long, default_value_t = 0xf000)]
+    #[arg(long, default_value_t = crate::common::FLASH_MAX)]
     flash_size: usize,
 }
 
