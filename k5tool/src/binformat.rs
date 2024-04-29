@@ -134,7 +134,9 @@ pub fn flatten_elf(
         let start = crate::common::read_le_u32(&flat[start..])? as usize;
         let end = flat.len().min(start + k5lib::VERSION_LEN);
 
-        Version::from_bytes(&flat[start..end]).ok().and_then(|v| {
+        let version = std::ffi::CStr::from_bytes_until_nul(&flat[start..end]).ok()?;
+
+        Version::from_c_str(version).ok().and_then(|v| {
             // sanity check -- is the version utf-8 and at least 1 char
             if let Ok(s) = v.as_str() {
                 if s.len() > 0 {

@@ -1,3 +1,4 @@
+/// Max size of version string, including terminating NUL.
 pub const VERSION_LEN: usize = 16;
 
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -13,7 +14,11 @@ impl std::error::Error for VersionError {}
 impl std::fmt::Display for VersionError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            VersionError::TooLong => write!(f, "version must be {} bytes or less", VERSION_LEN),
+            VersionError::TooLong => write!(
+                f,
+                "version must be {} bytes or less, including NUL",
+                VERSION_LEN
+            ),
         }
     }
 }
@@ -29,6 +34,10 @@ impl Version {
 
     pub fn from_str(name: &str) -> Result<Self, VersionError> {
         Self::from_bytes(name.as_bytes())
+    }
+
+    pub fn from_c_str(name: &std::ffi::CStr) -> Result<Self, VersionError> {
+        Self::from_bytes(name.to_bytes())
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
@@ -50,12 +59,12 @@ impl Version {
         std::str::from_utf8(zero_terminated)
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
+    pub fn as_c_str(&self) -> Result<&std::ffi::CStr, std::ffi::FromBytesUntilNulError> {
+        std::ffi::CStr::from_bytes_until_nul(&self.0)
     }
 
-    pub fn as_mut_bytes(&mut self) -> &mut [u8] {
-        &mut self.0
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -72,11 +81,5 @@ impl std::ops::Deref for Version {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
         self.as_bytes()
-    }
-}
-
-impl std::ops::DerefMut for Version {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_mut_bytes()
     }
 }
