@@ -101,8 +101,7 @@ pub fn read_le_u32(data: &[u8]) -> Option<u32> {
 
 pub fn size_bar(amt: usize, max: usize) -> String {
     const BAR_WIDTH: usize = 20;
-    let fill = (amt * BAR_WIDTH + (max / 2)) / max;
-    assert!(fill <= BAR_WIDTH);
+    let fill = BAR_WIDTH.min((amt * BAR_WIDTH + (max / 2)) / max);
     format!("[{}{}]", "=".repeat(fill), " ".repeat(BAR_WIDTH - fill))
 }
 
