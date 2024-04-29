@@ -60,17 +60,11 @@ impl BinaryInfo {
 
     pub fn report(&self) {
         const NAMEWIDTH: usize = 8;
-        const AMTWIDTH: usize = k5lib::VERSION_LEN;
+        const AMTWIDTH: usize = 9;
 
         if let Some(ref version) = self.version {
             if let Ok(v) = version.as_str() {
-                println!(
-                    "{:>width$}: {:>amtwidth$}",
-                    "Version",
-                    v,
-                    width = NAMEWIDTH,
-                    amtwidth = AMTWIDTH
-                );
+                println!("{:>width$}: {}", "Version", v, width = NAMEWIDTH,);
             } else {
                 println!(
                     "{:>width$}: {:x?}",
@@ -81,26 +75,24 @@ impl BinaryInfo {
             }
         }
 
-        fn fmtbytes(amt: usize) -> String {
+        fn fmtbytes(amt: usize, width: usize) -> String {
             // alas, these don't obey format alignment
             let mut amtf = format!("{}", indicatif::BinaryBytes(amt as u64));
-            if amtf.len() < AMTWIDTH {
-                amtf = " ".repeat(AMTWIDTH - amtf.len()) + &amtf;
+            if amtf.len() < width {
+                amtf = " ".repeat(width - amtf.len()) + &amtf;
             }
 
             amtf
         }
 
         fn bar(name: &str, amt: usize, max: usize) {
-            let amtf = fmtbytes(amt);
-            let pct = 100.0 * (amt as f32) / (max as f32);
-
             println!(
-                "{:>width$}: {} {} {:>3.0}%",
+                "{:>width$}: {} / {} {} {:>3.0}%",
                 name,
-                amtf,
+                fmtbytes(amt, AMTWIDTH),
+                fmtbytes(max, AMTWIDTH),
                 crate::common::size_bar(amt, max),
-                pct,
+                100.0 * (amt as f32) / (max as f32),
                 width = NAMEWIDTH,
             );
         }
@@ -115,7 +107,7 @@ impl BinaryInfo {
             println!(
                 "{:>width$}: {}",
                 "Stack",
-                fmtbytes(stack_size),
+                fmtbytes(stack_size, AMTWIDTH),
                 width = NAMEWIDTH
             );
         }
