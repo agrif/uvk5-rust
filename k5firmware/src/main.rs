@@ -1,16 +1,48 @@
 #![no_std]
 #![no_main]
 
+use core::cell::Cell;
+
+use cortex_m_rt::exception;
+use critical_section::Mutex;
 use panic_halt as _;
 
 #[no_mangle]
 pub static VERSION: &core::ffi::CStr = c"*0.0test";
 
-pub static mut TESTRW: u8 = 1;
+pub static TICKMS: Mutex<Cell<u64>> = Mutex::new(Cell::new(0));
+
+#[cortex_m_rt::exception]
+fn SysTick() {
+    critical_section::with(|cs| {
+        let tick = TICKMS.borrow(cs);
+        // each tick is 10ms
+        tick.set(tick.get() + 10);
+    });
+}
+
+fn delay_ms(ms: usize) {
+    let end = critical_section::with(|cs| TICKMS.borrow(cs).get() + ms as u64);
+    loop {
+        let now = critical_section::with(|cs| TICKMS.borrow(cs).get());
+        if now >= end {
+            break;
+        } else {
+            cortex_m::asm::wfi();
+        }
+    }
+}
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
+    let mut cp = dp32g030::CorePeripherals::take().unwrap();
     let p = dp32g030::Peripherals::take().unwrap();
+
+    // tick every 10ms. There are 100x 10ms in 1s, and our clock is 48MHz.
+    cp.SYST.set_reload(48_000_000 / 100);
+    cp.SYST.clear_current();
+    cp.SYST.enable_interrupt();
+    cp.SYST.enable_counter();
 
     // flashlight is GPIO C3
     // ptt button is GPIO C5
@@ -59,27 +91,23 @@ fn main() -> ! {
     // turn on flashlight
     p.GPIOC.data().modify(|_, w| w.data3().high());
 
+    let mut state = false;
     loop {
-        while unsafe { TESTRW > 0 } {
-            // ptt pressed means ptt low
-            // ptt pressed means turn on light
-            let ptt = p.GPIOC.data().read().data5().is_low();
-            p.GPIOC.data().modify(|_, w| {
-                if ptt {
-                    w.data3().low()
-                } else {
-                    w.data3().high()
-                }
-            });
-            cortex_m::asm::nop();
+        // ptt pressed means ptt low
+        // ptt pressed means toggle light
+        let ptt = p.GPIOC.data().read().data5().is_low();
+        if ptt {
+            state = !state;
+        }
 
-            unsafe {
-                TESTRW += 1;
+        p.GPIOC.data().modify(|_, w| {
+            if state {
+                w.data3().low()
+            } else {
+                w.data3().high()
             }
-        }
+        });
 
-        unsafe {
-            TESTRW += 1;
-        }
+        delay_ms(500);
     }
 }

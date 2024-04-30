@@ -8,8 +8,9 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 [dependencies]
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
-panic-halt = "0.2"
+critical-section = "1"
 dp32g030 = { path = "../dp32g030" }
+panic-halt = "0.2"
 
 [profile.release]
 codegen-units = 1
