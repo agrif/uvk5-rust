@@ -3,6 +3,7 @@ pub mod common;
 pub mod debug;
 pub mod hexdump;
 
+mod flash;
 mod pack;
 mod parsedump;
 mod read_eeprom;
@@ -24,6 +25,7 @@ struct ToolOptions {
 
 #[derive(clap::Subcommand, Debug)]
 enum ToolCommand {
+    Flash(flash::FlashOpts),
     ListPorts(ListPortsOpts),
     Pack(pack::PackOpts),
     ParseDump(parsedump::ParseDumpOpts),
@@ -36,6 +38,7 @@ impl ToolRun for ToolCommand {
     fn run(&self) -> anyhow::Result<()> {
         use ToolCommand::*;
         match self {
+            Flash(o) => o.run(),
             ListPorts(o) => o.run(),
             Pack(o) => o.run(),
             ParseDump(o) => o.run(),

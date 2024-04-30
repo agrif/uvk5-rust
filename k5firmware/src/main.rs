@@ -59,23 +59,27 @@ fn main() -> ! {
     // turn on flashlight
     p.GPIOC.data().modify(|_, w| w.data3().high());
 
-    while unsafe { TESTRW > 0 } {
-        // ptt pressed means ptt low
-        // ptt pressed means turn on light
-        let ptt = p.GPIOC.data().read().data5().is_low();
-        p.GPIOC.data().modify(|_, w| {
-            if ptt {
-                w.data3().low()
-            } else {
-                w.data3().high()
+    loop {
+        while unsafe { TESTRW > 0 } {
+            // ptt pressed means ptt low
+            // ptt pressed means turn on light
+            let ptt = p.GPIOC.data().read().data5().is_low();
+            p.GPIOC.data().modify(|_, w| {
+                if ptt {
+                    w.data3().low()
+                } else {
+                    w.data3().high()
+                }
+            });
+            cortex_m::asm::nop();
+
+            unsafe {
+                TESTRW += 1;
             }
-        });
-        cortex_m::asm::nop();
+        }
 
         unsafe {
             TESTRW += 1;
         }
     }
-
-    loop {}
 }

@@ -13,9 +13,12 @@ rustup target add thumbv6m-none-eabi
 ( cd k5tool && cargo build )
 make -C dp32g030
 ( cd k5firmware && cargo build --release )
-( cd k5tool && cargo run -- pack ../k5firmware/target/thumbv6m-none-eabi/release/k5firmware ../k5firmware.packed )
+
+# flash to radio
+( cd k5tool && cargo run -- flash ../k5firmware/target/thumbv6m-none-eabi/release/k5firmware )
 ~~~~
 
 Still todo:
 
  * make sure none of this hoses everything forever.
+ * it probably does.

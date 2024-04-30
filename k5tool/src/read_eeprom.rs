@@ -106,6 +106,8 @@ impl ReadEepromOpts {
             }
         }
 
+        bar.finish();
+
         Ok(())
     }
 }

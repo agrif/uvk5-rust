@@ -1,4 +1,5 @@
 pub const EEPROM_MAX: usize = 0x2000;
+// FLASH_MAX excludes 0x1000 for the bootloader
 pub const FLASH_MAX: usize = 0xf000;
 pub const RAM_MAX: usize = 0x4000;
 pub const RAM_START: usize = 0x20000000;
@@ -99,6 +100,16 @@ pub fn read_le_u32(data: &[u8]) -> Option<u32> {
     }
 }
 
+pub fn confirm(msg: &str, yesflag: bool) -> anyhow::Result<()> {
+    if !yesflag {
+        let confirm = dialoguer::Confirm::new().with_prompt(msg).interact()?;
+        if !confirm {
+            anyhow::bail!("Aborting.");
+        }
+    }
+    Ok(())
+}
+
 pub fn size_bar(amt: usize, max: usize) -> String {
     const BAR_WIDTH: usize = 20;
     let fill = BAR_WIDTH.min((amt * BAR_WIDTH + (max / 2)) / max);
@@ -115,5 +126,18 @@ pub fn download_bar(size: u64) -> indicatif::ProgressBar {
         .progress_chars("=> ")
         .tick_strings(&["<<<  ", "<<  <", "<  <<", "  <<<", " <<< ", "-----"]),
     );
-    bar
+    bar.with_finish(indicatif::ProgressFinish::Abandon)
+}
+
+pub fn upload_bar(size: u64) -> indicatif::ProgressBar {
+    let bar = indicatif::ProgressBar::new(size);
+    bar.set_style(
+        indicatif::ProgressStyle::with_template(
+            "({spinner}) [{wide_bar}] ({percent:>3}%, {bytes_per_sec:>12})",
+        )
+        .unwrap()
+        .progress_chars("=> ")
+        .tick_strings(&[">>>  ", " >>> ", "  >>>", ">  >>", ">>  >", "-----"]),
+    );
+    bar.with_finish(indicatif::ProgressFinish::Abandon)
 }

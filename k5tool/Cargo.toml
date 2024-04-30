@@ -8,6 +8,7 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive", "wrap_help"] }
+dialoguer = "0.11"
 elf = "0.7"
 indicatif = "0.17"
 k5lib = { path = "../k5lib" }

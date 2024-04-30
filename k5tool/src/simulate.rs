@@ -65,7 +65,9 @@ impl crate::ToolRun for SimulateOpts {
             match Simulator::new(client, self, &mut eeprom, &mut flash).simulate() {
                 Err(e) => match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
                     // an expected error, at disconnect
-                    Some(std::io::ErrorKind::UnexpectedEof) => {
+                    Some(std::io::ErrorKind::UnexpectedEof)
+                    | Some(std::io::ErrorKind::ConnectionReset)
+                    | Some(std::io::ErrorKind::BrokenPipe) => {
                         println!("Disconnected from {}.", addr);
 
                         if let Some(ref eeprom_path) = self.dump_eeprom {
@@ -271,6 +273,9 @@ where
                         page: m.page,
                         error: 0,
                     })?;
+
+                    // sleep a bit, flash writes are slow
+                    std::thread::sleep(std::time::Duration::from_millis(100));
 
                     // update state
                     self.flash_page = m.page;
