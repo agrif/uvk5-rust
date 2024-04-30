@@ -18,8 +18,8 @@ pub struct SerialPortArgs {
 
 #[derive(Debug)]
 pub enum SerialPort {
-    Serial(std::io::BufWriter<Box<dyn serialport::SerialPort>>),
-    Tcp(std::io::BufWriter<std::net::TcpStream>),
+    Serial(std::io::BufReader<Box<dyn serialport::SerialPort>>),
+    Tcp(std::io::BufReader<std::net::TcpStream>),
 }
 
 pub fn default_serial_port() -> String {
@@ -49,8 +49,8 @@ pub fn default_serial_port() -> String {
 impl std::io::Read for SerialPort {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match self {
-            Self::Serial(port) => port.get_mut().read(buf),
-            Self::Tcp(port) => port.get_mut().read(buf),
+            Self::Serial(port) => port.read(buf),
+            Self::Tcp(port) => port.read(buf),
         }
     }
 }
@@ -58,15 +58,15 @@ impl std::io::Read for SerialPort {
 impl std::io::Write for SerialPort {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         match self {
-            Self::Serial(port) => port.write(buf),
-            Self::Tcp(port) => port.write(buf),
+            Self::Serial(port) => port.get_mut().write(buf),
+            Self::Tcp(port) => port.get_mut().write(buf),
         }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
         match self {
-            Self::Serial(port) => port.flush(),
-            Self::Tcp(port) => port.flush(),
+            Self::Serial(port) => port.get_mut().flush(),
+            Self::Tcp(port) => port.get_mut().flush(),
         }
     }
 }
@@ -78,11 +78,16 @@ impl SerialPortArgs {
             let port = std::net::TcpStream::connect(&self.port)?;
             port.set_read_timeout(Some(timeout))?;
             port.set_write_timeout(Some(timeout))?;
-            Ok(SerialPort::Tcp(std::io::BufWriter::new(port)))
+            Ok(SerialPort::Tcp(std::io::BufReader::new(port)))
         } else {
             let mut port = serialport::new(&self.port, self.baud).open()?;
             port.set_timeout(timeout)?;
-            Ok(SerialPort::Serial(std::io::BufWriter::new(port)))
+            // serial ports on windows are *whack*
+            // https://github.com/serialport/serialport-rs/issues/73#issuecomment-1340301693
+            // FIXME I would really like this to be a BufWriter also
+            Ok(SerialPort::Serial(std::io::BufReader::with_capacity(
+                1, port,
+            )))
         }
     }
 }
