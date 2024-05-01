@@ -26,3 +26,4 @@ _include:
   - pmu.yaml
   - portcon.yaml
   - syscon.yaml
+  - uart.yaml

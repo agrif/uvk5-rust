@@ -1,0 +1,381 @@
+# section 5.16, page 254
+
+_derive:
+  UART1: UART0
+  UART2: UART0
+
+UART0:
+  _modify:
+    # fix up some names and access
+    UART0_CTRL:
+      name: "CTRL"
+    UART0_BAUD:
+      name: "BAUD"
+    UART0_TDR:
+      name: "TDR"
+      access: write-only
+    UART0_RDR:
+      name: "RDR"
+      access: read-only
+    UART0_IE:
+      name: "IE"
+    UART0_IF:
+      name: "IF"
+    UART0_FIFO:
+      name: "FIFO"
+    UART0_FC:
+      name: "FC"
+    UART0_RXTO:
+      name: "RXTO"
+
+  CTRL:
+    _add:
+      TX_DLY:
+        description: "Send delay time setting, between stop and start bits."
+        bitRange: "[16:14]"
+      ABRDBIT:
+        description: "Automatic baud rate detection bit length configuration."
+        bitRange: "[13:12]"
+      ABRDEN:
+        description: "Automatic baud rate detection enable bit."
+        bitRange: "[11:11]"
+      PARMD:
+        description: "Parity mode selection."
+        bitRange: "[8:7]"
+      PAREN:
+        description: "Parity bit enabled."
+        bitRange: "[6:6]"
+      NINEBIT:
+        description: "9-bit data mode enabled."
+        bitRange: "[5:5]"
+      TXDMAEN:
+        description: "Transmit DMA transfer enabled."
+        bitRange: "[4:4]"
+      RXDMAEN:
+        description: "Receive DMA transfer enabled."
+        bitRange: "[3:3]"
+      TXEN:
+        description: "Transmit enable bit."
+        bitRange: "[2:2]"
+      RXEN:
+        description: "Receive enable bit."
+        bitRange: "[1:1]"
+      UARTEN:
+        description: "UART enable bit."
+        bitRange: "[0:0]"
+
+    TX_DLY:
+      DELAY_NONE: [0b000, "No delay."]
+      DELAY_1BIT: [0b001, "1 bit delay."]
+      DELAY_2BIT: [0b010, "1 bit delay."]
+      DELAY_3BIT: [0b011, "1 bit delay."]
+      DELAY_4BIT: [0b100, "1 bit delay."]
+      DELAY_5BIT: [0b101, "1 bit delay."]
+      DELAY_6BIT: [0b110, "1 bit delay."]
+      DELAY_7BIT: [0b111, "1 bit delay."]
+    ABRDBIT:
+      DURATION_8BIT: [0b11, "8-bit duration. Input data is 0x80."]
+      DURATION_4BIT: [0b10, "4-bit duration. Input data is 0x08."]
+      DURATION_2BIT: [0b01, "2-bit duration. Input data is 0x02."]
+      DURATION_1BIT: [0b00, "1-bit duration. Input data is 0x01."]
+    ABRDEN:
+      DISABLED: [0, "Automatic baud rate detection is disabled."]
+      ENABLED: [1, "Automatic baud rate detection is enabled."]
+    PARMD:
+      ALWAYS_0: [0b11, "Parity bit always 0."]
+      ALWAYS_1: [0b10, "Parity bit always 1."]
+      EVEN: [0b01, "Even parity bit."]
+      ODD: [0b00, "Odd parity bit."]
+    PAREN:
+      DISABLED: [0, "Parity bit disabled."]
+      ENABLED: [1, "Parity bit enabled."]
+    NINEBIT:
+      DISABLED: [0, "8-bit data mode."]
+      ENABLED: [1, "9-bit data mode."]
+    TXDMAEN:
+      DISABLED: [0, "CPU operates the UART transmit register."]
+      ENABLED: [1, "DMA operates the UART transmit register."]
+    RXDMAEN:
+      DISABLED: [0, "CPU operates the UART receive register."]
+      ENABLED: [1, "DMA operates the UART receive register."]
+    TXEN:
+      DISABLED: [0, "Transmit turned off. No data is sent, TX is high."]
+      ENABLED: [1, "Transmit turned on. Data in the TX FIFO is output."]
+    RXEN:
+      DISABLED: [0, "Receive turned off."]
+      ENABLED: [1, "Receive turned on. Data on RX is placed in RX FIFO."]
+    UARTEN:
+      DISABLED: [0, "Turn off the UART module."]
+      ENABLED: [1, "Enable UART module."]
+
+  BAUD:
+    _add:
+      BAUD:
+        description: "Baud rate configuration data."
+        bitRange: "[15:0]"
+
+    BAUD: [0x0000, 0xffff]
+
+  TDR:
+    _add:
+      DATA9:
+        description: "Write data register."
+        bitRange: "[8:0]"
+        access: write-only
+      DATA:
+        description: "Write data register."
+        bitRange: "[7:0]"
+        access: write-only
+
+    DATA9: [0x000, 0x1ff]
+    DATA: [0x00, 0xff]
+
+  RDR:
+    _add:
+      DATA9:
+        description: "Read data register."
+        bitRange: "[8:0]"
+        access: read-only
+        readAction: modify
+      DATA:
+        description: "Read data register."
+        bitRange: "[7:0]"
+        access: read-only
+        readAction: modify
+
+  IE:
+    _add:
+      ABRD_OVF:
+        description: "Automatic baud rate detection counter overflow interrupt enable."
+        bitRange: "[9:9]"
+      RXFIFO_OVF:
+        description: "Receive FIFO overflow interrupt enable."
+        bitRange: "[8:8]"
+      TXFIFO:
+        description: "Transmit FIFO water level interrupt enable."
+        bitRange: "[7:7]"
+      RXFIFO:
+        description: "Receive FIFO water level interrupt enable."
+        bitRange: "[6:6]"
+      RXTO:
+        description: "Receive timeout interrupt enable."
+        bitRange: "[5:5]"
+      STOP:
+        description: "Stop bit error in receive data interrupt enable."
+        bitRange: "[4:4]"
+      PARITY:
+        description: "Parity error in receive data interrupt enable."
+        bitRange: "[3:3]"
+      TXDONE:
+        description: "Transmit complete, empty TX FIFO interrupt enable."
+        bitRange: "[2:2]"
+
+    ABRD_OVF:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXFIFO_OVF:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    TXFIFO:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXFIFO:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXTO:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    STOP:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    PARITY:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    TXDONE:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+
+  IF:
+    _add:
+      TF_LEVEL:
+        description: "Transmit FIFO water level."
+        bitRange: "[22:20]"
+        access: read-only
+      RF_LEVEL:
+        description: "Receive FIFO water level."
+        bitRange: "[19:17]"
+        access: read-only
+      TXBUSY:
+        description: "Transmit busy flag."
+        bitRange: "[16:16]"
+        access: read-only
+      TXFIFO_HFULL:
+        description: "Transmit FIFO half full flag."
+        bitRange: "[15:15]"
+        access: read-only
+      TXFIFO_FULL:
+        description: "Transmit FIFO full flag."
+        bitRange: "[14:14]"
+        access: read-only
+      TXFIFO_EMPTY:
+        description: "Transmit FIFO empty flag."
+        bitRange: "[13:13]"
+        access: read-only
+      RXFIFO_HFULL:
+        description: "Receive FIFO half full flag."
+        bitRange: "[12:12]"
+        access: read-only
+      RXFIFO_FULL:
+        description: "Receive FIFO full flag."
+        bitRange: "[11:11]"
+        access: read-only
+      RXFIFO_EMPTY:
+        description: "Receive FIFO empty flag."
+        bitRange: "[10:10]"
+        access: read-only
+      ABRD_OVF:
+        description: "Automatic baud rate detection counter overflow flag."
+        bitRange: "[9:9]"
+        modifiedWriteValues: oneToClear
+      RXFIFO_OVF:
+        description: "Receive FIFO overflow flag."
+        bitRange: "[8:8]"
+        modifiedWriteValues: oneToClear
+      TXFIFO:
+        description: "Transmit FIFO reached set water level flag."
+        bitRange: "[7:7]"
+        access: read-only
+      RXFIFO:
+        description: "Receive FIFO reached set water level flag."
+        bitRange: "[6:6]"
+        access: read-only
+      RXTO:
+        description: "Receive timeout flag."
+        bitRange: "[5:5]"
+        modifiedWriteValues: oneToClear
+      STOP:
+        description: "Stop bit error flag."
+        bitRange: "[4:4]"
+        modifiedWriteValues: oneToClear
+      PARITY:
+        description: "Parity bit error flag."
+        bitRange: "[3:3]"
+        modifiedWriteValues: oneToClear
+      TXDONE:
+        description: "Transmission complete, TX FIFO empty flag."
+        bitRange: "[2:2]"
+        modifiedWriteValues: oneToClear
+
+    TXBUSY:
+      BUSY: [1, "The transmit FIFO is not empty and data is being sent."]
+      NOT_BUSY: [0, "The transmit FIFO is empty."]
+    TXFIFO_HFULL:
+      HALF_FULL: [1, "The transmit FIFO is half full."]
+      NOT_HALF_FULL: [0, "The transmit FIFO is not half full."]
+    TXFIFO_FULL:
+      FULL: [1, "The transmit FIFO is full."]
+      NOT_FULL: [0, "The transmit FIFO is not full."]
+    TXFIFO_EMPTY:
+      EMPTY: [1, "The transmit FIFO is empty."]
+      NOT_EMPTY: [0, "The transmit FIFO is not empty."]
+    RXFIFO_HFULL:
+      HALF_FULL: [1, "The receive FIFO is half full."]
+      NOT_HALF_FULL: [0, "The receive FIFO is not half full."]
+    RXFIFO_FULL:
+      FULL: [1, "The receive FIFO is full."]
+      NOT_FULL: [0, "The receive FIFO is not full."]
+    RXFIFO_EMPTY:
+      EMPTY: [1, "The receive FIFO is empty."]
+      NOT_EMPTY: [0, "The receive FIFO is not empty."]
+    ABRD_OVF:
+      SET: [1, "Automatic baud rate detection counter has overflowed."]
+    RXFIFO_OVF:
+      SET: [1, "Receive FIFO has overflowed."]
+    TXFIFO:
+      WATER_LEVEL_REACHED: [1, "Transmit FIFO water level reached."]
+      WATER_LEVEL_NOT_REACHED: [0, "Transmit FIFO water level not reached."]
+    RXFIFO:
+      WATER_LEVEL_REACHED: [1, "Receive FIFO water level reached."]
+      WATER_LEVEL_NOT_REACHED: [0, "Receive FIFO water level not reached."]
+    RXTO:
+      SET: [1, "Receive timeout occurred."]
+    STOP:
+      SET: [1, "Stop bit error occurred."]
+    PARITY:
+      SET: [1, "Parity error ocurred."]
+    TXDONE:
+      SET: [1, "Transmission complete, TX FIFO empty."]
+
+  FIFO:
+    _add:
+      TF_CLR:
+        description: "Transmit FIFO clear bit."
+        bitRange: "[7:7]"
+        modifiedWriteValues: clear
+      RF_CLR:
+        description: "Receive FIFO clear bit."
+        bitRange: "[6:6]"
+        modifiedWriteValues: clear
+      TF_LEVEL:
+        description: "Water level for transmit FIFO interrupts. (<=)"
+        bitRange: "[5:3]"
+      RF_LEVEL:
+        description: "Water level for receive FIFO interrupts. (>)"
+        bitRange: "[2:0]"
+
+    TF_CLR:
+      CLEAR: [1, "Clear the transmit FIFO."]
+    RF_CLR:
+      CLEAR: [1, "Clear the receive FIFO."]
+    TF_LEVEL: [0b000, 0b111]
+    RF_LEVEL: [0b000, 0b111]
+
+  FC:
+    _add:
+      RTS_SIGNAL:
+        description: "Indicates RTS status."
+        bitRange: "[5:5]"
+        access: read-only
+      CTS_SIGNAL:
+        description: "Indicates CTS status."
+        bitRange: "[4:4]"
+        access: read-only
+      RTSPOL:
+        description: "RTS signal polarity configuration."
+        bitRange: "[3:3]"
+      CTSPOL:
+        description: "CTS signal polarity configuration."
+        bitRange: "[2:2]"
+      RTSEN:
+        description: "RTS flow control enable."
+        bitRange: "[1:1]"
+      CTSEN:
+        description: "CTS flow control enable."
+        bitRange: "[0:0]"
+
+    RTS_SIGNAL:
+      HIGH: [1, "RTS is high."]
+      LOW: [0, "RTS is low."]
+    CTS_SIGNAL:
+      HIGH: [1, "CTS is high."]
+      LOW: [0, "CTS is low."]
+    RTSPOL:
+      ACTIVE_HIGH: [1, "When RTS is high, UART can receive data."]
+      ACTIVE_LOW: [0, "When RTS is low, UART can receive data."]
+    CTSPOL:
+      ACTIVE_HIGH: [1, "When CTS is high, UART can send data."]
+      ACTIVE_LOW: [0, "When CTS is low, UART can send data."]
+    RTSEN:
+      DISABLED: [0, "RTS signal is not used."]
+      ENABLED: [1, "RTS signal is used for flow control."]
+    CTSEN:
+      DISABLED: [0, "CTS signal is not used."]
+      ENABLED: [1, "CTS signal is used for flow control."]
+
+  RXTO:
+    _add:
+      RXTO:
+        description: "Receive timeout."
+        bitRange: "[7:0]"
+
+    RXTO: [0x00, 0xff]
