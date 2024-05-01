@@ -187,14 +187,6 @@ fn main() -> ! {
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
-        writeln!(
-            &mut uart1,
-            "chip id: 0x{:08x} 0x{:08x} 0x{:08x} 0x{:08x}",
-            p.SYSCON.chip_id0().read().bits(),
-            p.SYSCON.chip_id1().read().bits(),
-            p.SYSCON.chip_id2().read().bits(),
-            p.SYSCON.chip_id3().read().bits(),
-        )
-        .unwrap();
+        writeln!(&mut uart1, "syscon: {:#x?}", *p.SYSCON).unwrap();
     }
 }
