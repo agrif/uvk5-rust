@@ -47,10 +47,67 @@ fn main() -> ! {
     // flashlight is GPIO C3
     // ptt button is GPIO C5
 
-    // turn on GPIOC
-    p.SYSCON
-        .dev_clk_gate()
-        .modify(|_, w| w.gpioc_clk_gate().enabled());
+    // turn on GPIOA, GPIOC and UART1
+    p.SYSCON.dev_clk_gate().modify(|_, w| {
+        w.gpioa_clk_gate().enabled();
+        w.gpioc_clk_gate().enabled();
+        w.uart1_clk_gate().enabled()
+    });
+
+    // set up uart pins
+    p.PORTCON.porta_sel0().modify(|_, w| w.porta7().uart1_tx());
+    p.PORTCON.porta_sel1().modify(|_, w| w.porta8().uart1_rx());
+
+    // set rx as input
+    p.PORTCON.porta_ie().modify(|_, w| {
+        w.porta7_ie().disabled();
+        w.porta8_ie().enabled()
+    });
+
+    // set up uart pin directions (is this needed?)
+    p.GPIOA.dir().modify(|_, w| {
+        // A7, UART1 TX
+        w.dir7().output();
+        // A8, UART1 RX
+        w.dir8().input()
+    });
+
+    // disable uart to configure it
+    p.UART1.ctrl().modify(|_, w| w.uarten().disabled());
+
+    // figure out the frequency of our internal HF oscillator
+    let positive = p.SYSCON.rc_freq_delta().read().rchf_sig().is_positive();
+    let mut frequency = p.SYSCON.rc_freq_delta().read().rchf_delta().bits();
+    if positive {
+        frequency += 48_000_000;
+    } else {
+        frequency = 48_000_000 - frequency;
+    }
+
+    // set our baud to.. 39053 ?
+    p.UART1
+        .baud()
+        .write(|w| w.baud().set((frequency / 39053) as u16));
+
+    // enable rx and tx
+    p.UART1.ctrl().write(|w| {
+        w.rxen().enabled();
+        w.txen().enabled()
+    });
+
+    // reset a lot
+    p.UART1.rxto().reset();
+    p.UART1.fc().reset();
+    p.UART1.ie().reset();
+
+    // clear our fifos
+    p.UART1.fifo().write(|w| {
+        w.rf_clr().clear();
+        w.tf_clr().clear()
+    });
+
+    // turn on the uart
+    p.UART1.ctrl().modify(|_, w| w.uarten().enabled());
 
     // set our pins to be GPIO
     p.PORTCON.portc_sel0().modify(|_, w| {
@@ -109,5 +166,7 @@ fn main() -> ! {
         });
 
         delay_ms(500);
+
+        p.UART1.tdr().write(|w| w.data().set('8' as u8));
     }
 }
