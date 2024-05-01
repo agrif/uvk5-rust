@@ -33,6 +33,21 @@ fn delay_ms(ms: usize) {
     }
 }
 
+struct UartFmt<UART>(UART);
+
+impl<UART> core::fmt::Write for UartFmt<UART>
+where
+    UART: core::ops::Deref<Target = dp32g030::uart0::RegisterBlock>,
+{
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        for b in s.as_bytes() {
+            while self.0.if_().read().txfifo_full().is_full() {}
+            self.0.tdr().write(|w| w.data().set(*b));
+        }
+        Ok(())
+    }
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let mut cp = dp32g030::CorePeripherals::take().unwrap();
@@ -109,6 +124,9 @@ fn main() -> ! {
     // turn on the uart
     p.UART1.ctrl().modify(|_, w| w.uarten().enabled());
 
+    // make a formatter
+    let mut uart1 = UartFmt(p.UART1);
+
     // set our pins to be GPIO
     p.PORTCON.portc_sel0().modify(|_, w| {
         w.portc3().gpioc3();
@@ -167,6 +185,16 @@ fn main() -> ! {
 
         delay_ms(500);
 
-        p.UART1.tdr().write(|w| w.data().set('8' as u8));
+        use core::fmt::Write;
+        writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
+        writeln!(
+            &mut uart1,
+            "chip id: 0x{:08x} 0x{:08x} 0x{:08x} 0x{:08x}",
+            p.SYSCON.chip_id0().read().bits(),
+            p.SYSCON.chip_id1().read().bits(),
+            p.SYSCON.chip_id2().read().bits(),
+            p.SYSCON.chip_id3().read().bits(),
+        )
+        .unwrap();
     }
 }
