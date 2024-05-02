@@ -21,7 +21,7 @@ dependencies = ["clean-generated"]
 [tasks.clean-generated]
 script_runner = "@duckscript"
 script = '''
-rm ${SVDFILE}.patched ${SVDFILE}.formatted svd/memorymap.txt
+rm ${SVDFILE}.patched svd/memorymap.txt
 rm lib.rs build.rs device.x
 rm -r src/
 '''
