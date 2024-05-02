@@ -6,12 +6,12 @@ Not much here, but to get started:
 ~~~~
 # install tools and toolchain
 pip install --upgrade --user svdtools
-cargo install svd2rust form
+cargo install svd2rust form cargo-make
 rustup target add thumbv6m-none-eabi
 
 # build tools, generate device crate, build firmware
 ( cd k5tool && cargo build )
-make -C dp32g030
+cargo make --cwd dp32g030
 ( cd k5firmware && cargo build --release )
 
 # flash to radio
