@@ -37,7 +37,7 @@ struct UartFmt<UART>(UART);
 
 impl<UART> core::fmt::Write for UartFmt<UART>
 where
-    UART: core::ops::Deref<Target = dp32g030::uart0::RegisterBlock>,
+    UART: core::ops::Deref<Target = dp32g030_hal::pac::uart0::RegisterBlock>,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for b in s.as_bytes() {
@@ -50,8 +50,8 @@ where
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    let mut cp = dp32g030::CorePeripherals::take().unwrap();
-    let p = dp32g030::Peripherals::take().unwrap();
+    let mut cp = dp32g030_hal::pac::CorePeripherals::take().unwrap();
+    let p = dp32g030_hal::pac::Peripherals::take().unwrap();
 
     // tick every 10ms. There are 100x 10ms in 1s, and our clock is 48MHz.
     cp.SYST.set_reload(48_000_000 / 100);

@@ -5,11 +5,15 @@ edition = "2021"
 
 authors = ["Aaron Griffith <aargri@gmail.com>"]
 
+[package.metadata.docs.rs]
+default-target = "thumbv6m-none-eabi"
+targets = []
+
 [dependencies]
-cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m = "0.7"
 cortex-m-rt = "0.7"
 critical-section = "1"
-dp32g030 = { path = "../dp32g030" }
+dp32g030-hal = { path = "../dp32g030-hal" }
 panic-halt = "0.2"
 
 [profile.release]

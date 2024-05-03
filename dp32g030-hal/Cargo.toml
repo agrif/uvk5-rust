@@ -1,0 +1,14 @@
+[package]
+name = "dp32g030-hal"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Aaron Griffith <aargri@gmail.com>"]
+
+[package.metadata.docs.rs]
+default-target = "thumbv6m-none-eabi"
+targets = []
+
+[dependencies]
+dp32g030 = { path = "../dp32g030", features = ["atomics"] }
+cortex-m = "0.7.6"
