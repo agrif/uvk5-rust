@@ -1,0 +1,87 @@
+name: Generate Documentation
+
+on:
+  workflow_run:
+    workflows: [Build and Test]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: Generate
+    # only run if build and test succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+
+      # not really sure what pulls this in, maybe serialport
+      - run: sudo apt-get install -y libudev-dev
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: generated-pac
+          path: dp32g030
+
+      - run: cargo doc
+        working-directory: k5firmware
+      - run: cargo doc
+        working-directory: k5tool
+
+      - run: |
+          mkdir docs
+          mv k5tool/target/doc docs/k5tool
+          mv k5firmware/target/thumbv6m-none-eabi/doc docs/k5firmware
+
+      - run: |
+          echo '
+          <!DOCTYPE HTML>
+          <html lang="en-US">
+            <head>
+              <meta charset="UTF-8">
+              <meta http-equiv="refresh" content="0; url=k5firmware/">
+              <script type="text/javascript">
+                window.location.href = "k5firmware/"
+              </script>
+              <title>Page Redirection</title>
+            </head>
+            <body>
+              If you are not redirected automatically, follow this <a href="k5firmware/">this link</a>.
+            </body>
+          </html>' > docs/index.html
+          cp docs/index.html docs/k5firmware/index.html
+          sed s/k5firmware/k5tool/g docs/index.html > docs/k5tool/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+  deploy:
+    name: Deploy
+    # only run if build and test succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    needs: generate
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment
