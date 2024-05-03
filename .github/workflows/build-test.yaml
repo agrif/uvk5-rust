@@ -62,8 +62,32 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: firmware.elf
+          name: firmware-elf.zip
           path: k5firmware/target/thumbv6m-none-eabi/release/k5firmware
+
+  firmware-pack:
+    name: Firmware Pack
+    runs-on: ubuntu-latest
+    needs: [firmware, tool-linux]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-elf.zip
+      - uses: actions/download-artifact@v4
+        with:
+          name: k5tool-linux.zip
+
+      - run: chmod +x ./k5tool
+      - run: |
+          echo "### Firmware Summary" >> $GITHUB_STEP_SUMMARY
+          echo "~~~~" >> $GITHUB_STEP_SUMMARY
+          ./k5tool pack k5firmware k5firmware.packed.bin 2>&1 | tee -a $GITHUB_STEP_SUMMARY
+          echo "~~~~" >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-packed.zip
+          path: k5firmware.packed.bin
 
   lib:
     name: Tool Library
@@ -91,3 +115,35 @@ jobs:
         working-directory: k5tool
       - run: cargo test
         working-directory: k5tool
+
+  tool-linux:
+    name: Tool Release (linux, MUSL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - run: cargo build --release --target=x86_64-unknown-linux-musl
+        working-directory: k5tool
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k5tool-linux.zip
+          path: k5tool/target/x86_64-unknown-linux-musl/release/k5tool
+
+  tool-windows:
+    name: Tool Release (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: cargo build --release
+        working-directory: k5tool
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k5tool-windows.zip
+          path: k5tool/target/release/k5tool.exe
