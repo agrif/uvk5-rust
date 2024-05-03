@@ -49,7 +49,7 @@ exec ${SVD2RUST} -c svd2rust.toml -i ${SVDFILE}.patched
 rm -r src
 exec ${FORM} -i lib.rs -o src/
 rm lib.rs
-exec ${CARGO} fmt -- --config-path="rustfmt.toml"
+exec ${CARGO} fmt -- --config-path=rustfmt.toml
 '''
 
 [tasks.check]
