@@ -13,7 +13,7 @@ SVDFILE = "svd/dp32g030.vendor.svd"
 alias = "all"
 
 [tasks.all]
-dependencies = ["svd2rust", "memorymap", "check"]
+dependencies = ["svd2rust", "memorymap", "build"]
 
 [tasks.clean]
 dependencies = ["clean-generated"]
@@ -52,11 +52,11 @@ rm lib.rs
 exec ${CARGO} fmt -- --config-path=rustfmt.toml
 '''
 
-[tasks.check]
+[tasks.build]
 clear = true
 dependencies = ["svd2rust"]
 command = "${CARGO}"
-args = ["check", "--all-features"]
+args = ["build", "--all-features"]
 
 [tasks.doc]
 dependencies = ["svd2rust"]
