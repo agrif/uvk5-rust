@@ -54,8 +54,14 @@ fn main() -> ! {
     let p = dp32g030_hal::pac::Peripherals::take().unwrap();
     let mut power = dp32g030_hal::power::split(p.SYSCON, p.PMU);
 
-    // tick every 10ms. There are 100x 10ms in 1s, and our clock is 48MHz.
-    cp.SYST.set_reload(48_000_000 / 100);
+    let clocks = power
+        .clocks
+        .sys(dp32g030_hal::power::SysSel::Rchf48)
+        .freeze();
+
+    // tick every 10ms. There are 100x 10ms in 1s.
+    // to make the time wrap every N ticks, set reload to N - 1.
+    cp.SYST.set_reload((clocks.sys_clk() / 100) - 1);
     cp.SYST.clear_current();
     cp.SYST.enable_interrupt();
     cp.SYST.enable_counter();
@@ -87,24 +93,10 @@ fn main() -> ! {
     // disable uart to configure it
     p.UART1.ctrl().modify(|_, w| w.uarten().disabled());
 
-    // figure out the frequency of our internal HF oscillator
-    let frequency = unsafe {
-        // safety: just reading, don't mind me
-        let syscon = dp32g030_hal::pac::SYSCON::steal();
-        let positive = syscon.rc_freq_delta().read().rchf_sig().is_positive();
-        let mut frequency = syscon.rc_freq_delta().read().rchf_delta().bits();
-        if positive {
-            frequency += 48_000_000;
-        } else {
-            frequency = 48_000_000 - frequency;
-        }
-        frequency
-    };
-
     // set our baud to.. 39053 ?
     p.UART1
         .baud()
-        .write(|w| w.baud().set((frequency / 39053) as u16));
+        .write(|w| w.baud().set((clocks.sys_clk() / 39053) as u16));
 
     // enable rx and tx
     p.UART1.ctrl().write(|w| {
@@ -189,6 +181,8 @@ fn main() -> ! {
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
-        writeln!(&mut uart1, "power: {:#x?}", power).unwrap();
+        writeln!(&mut uart1, "id: {:x?}", power.chip_id).unwrap();
+        writeln!(&mut uart1, "power: {:?}", power.dev_gate).unwrap();
+        writeln!(&mut uart1, "clocks: {:?}", clocks).unwrap();
     }
 }
