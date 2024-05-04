@@ -75,6 +75,88 @@ impl defmt::Format for DevGate {
     }
 }
 
+// way too much repitition to not use a macro
+macro_rules! dev_gate_impl {
+    {$(($var:tt, $name:tt, $field:tt)),+,} => {
+        paste::paste!{
+            /// Enable a device.
+            #[inline]
+            pub fn enable(&mut self, dev: Dev) -> &mut Self {
+                // safety: setting bits in this register is ok
+                unsafe {
+                    self.syscon.dev_clk_gate().set_bits(|w| match dev {
+                        $(Dev::$var => w.$field().enabled(),)+
+                    })
+                }
+                self
+            }
+            /// Disable a device.
+            #[inline]
+            pub fn disable(&mut self, dev: Dev) -> &mut Self {
+                // safety: setting bits in this register is ok
+                unsafe {
+                    self.syscon.dev_clk_gate().set_bits(|w| match dev {
+                        $(Dev::$var => w.$field().disabled(),)+
+                    })
+                }
+                self
+            }
+            /// Get whether a device is enabled.
+            #[inline]
+            pub fn is_enabled(&self, dev: Dev) -> bool {
+                let r = self.syscon.dev_clk_gate().read();
+                match dev {
+                    $(Dev::$var => r.$field().is_enabled(),)+
+                }
+            }
+            $(
+                #[inline(always)]
+                #[doc = concat!("Enable ", stringify!($var), ".")]
+                pub fn [<enable_ $name>](&mut self) -> &mut Self {
+                    // safety: setting bits in dev_clk_gate is ok
+                    unsafe {
+                        self.syscon.dev_clk_gate().set_bits(|w| {
+                            w.$field().enabled()
+                        })
+                    }
+                    self
+                }
+            )+
+            $(
+                #[inline(always)]
+                #[doc = concat!("Disable ", stringify!($var), ".")]
+                pub fn [<disable_ $name>](&mut self) -> &mut Self {
+                    // safety: clearing bits in dev_clk_gate is ok
+                    unsafe {
+                        self.syscon.dev_clk_gate().clear_bits(|w| {
+                            w.$field().disabled()
+                        })
+                    }
+                    self
+                }
+            )+
+            $(
+                #[inline(always)]
+                #[doc = concat!("Set whether ", stringify!($var), " is enabled.")]
+                pub fn [<set_ $name _enabled>](&mut self, enabled: bool) -> &mut Self {
+                    if enabled {
+                        self.[<enable_ $name>]()
+                    } else {
+                        self.[<disable_ $name>]()
+                    }
+                }
+            )+
+            $(
+                #[inline(always)]
+                #[doc = concat!("Get whether ", stringify!($var), " is enabled.")]
+                pub fn [<is_ $name _enabled>](&self) -> bool {
+                    self.syscon.dev_clk_gate().read().$field().is_enabled()
+                }
+            )+
+        }
+    }
+}
+
 impl DevGate {
     /// safety: this peripheral reads and writes SYSCON.dev_clk_gate()
     #[inline(always)]
@@ -91,80 +173,32 @@ impl DevGate {
         self
     }
 
-    #[inline]
-    /// Enable a device.
-    pub fn enable(&mut self, dev: Dev) -> &mut Self {
-        use Dev::*;
-
-        // safety: setting bits in this register is ok
-        unsafe {
-            self.syscon.dev_clk_gate().set_bits(|w| match dev {
-                GpioA => w.gpioa_clk_gate().enabled(),
-                GpioB => w.gpiob_clk_gate().enabled(),
-                GpioC => w.gpioc_clk_gate().enabled(),
-                I2c0 => w.iic0_clk_gate().enabled(),
-                I2c1 => w.iic1_clk_gate().enabled(),
-                Uart0 => w.uart0_clk_gate().enabled(),
-                Uart1 => w.uart1_clk_gate().enabled(),
-                Uart2 => w.uart2_clk_gate().enabled(),
-                Spi0 => w.spi0_clk_gate().enabled(),
-                Spi1 => w.spi1_clk_gate().enabled(),
-                TimerBase0 => w.timer_base0_clk_gate().enabled(),
-                TimerBase1 => w.timer_base1_clk_gate().enabled(),
-                TimerBase2 => w.timer_base2_clk_gate().enabled(),
-                TimerPlus0 => w.timer_plus0_clk_gate().enabled(),
-                TimerPlus1 => w.timer_plus1_clk_gate().enabled(),
-                PwmBase0 => w.pwm_base0_clk_gate().enabled(),
-                PwmBase1 => w.pwm_base1_clk_gate().enabled(),
-                PwmPlus0 => w.pwm_plus0_clk_gate().enabled(),
-                PwmPlus1 => w.pwm_plus1_clk_gate().enabled(),
-                Rtc => w.rtc_clk_gate().enabled(),
-                Iwdt => w.iwdt_clk_gate().enabled(),
-                Wwdt => w.wwdt_clk_gate().enabled(),
-                Saradc => w.saradc_clk_gate().enabled(),
-                Crc => w.crc_clk_gate().enabled(),
-                Aes => w.aes_clk_gate().enabled(),
-            })
-        }
-        self
-    }
-
-    #[inline]
-    /// Disable a device.
-    pub fn disable(&mut self, dev: Dev) -> &mut Self {
-        use Dev::*;
-
-        // safety: clearing bits in this register is ok
-        unsafe {
-            self.syscon.dev_clk_gate().clear_bits(|w| match dev {
-                GpioA => w.gpioa_clk_gate().disabled(),
-                GpioB => w.gpiob_clk_gate().disabled(),
-                GpioC => w.gpioc_clk_gate().disabled(),
-                I2c0 => w.iic0_clk_gate().disabled(),
-                I2c1 => w.iic1_clk_gate().disabled(),
-                Uart0 => w.uart0_clk_gate().disabled(),
-                Uart1 => w.uart1_clk_gate().disabled(),
-                Uart2 => w.uart2_clk_gate().disabled(),
-                Spi0 => w.spi0_clk_gate().disabled(),
-                Spi1 => w.spi1_clk_gate().disabled(),
-                TimerBase0 => w.timer_base0_clk_gate().disabled(),
-                TimerBase1 => w.timer_base1_clk_gate().disabled(),
-                TimerBase2 => w.timer_base2_clk_gate().disabled(),
-                TimerPlus0 => w.timer_plus0_clk_gate().disabled(),
-                TimerPlus1 => w.timer_plus1_clk_gate().disabled(),
-                PwmBase0 => w.pwm_base0_clk_gate().disabled(),
-                PwmBase1 => w.pwm_base1_clk_gate().disabled(),
-                PwmPlus0 => w.pwm_plus0_clk_gate().disabled(),
-                PwmPlus1 => w.pwm_plus1_clk_gate().disabled(),
-                Rtc => w.rtc_clk_gate().disabled(),
-                Iwdt => w.iwdt_clk_gate().disabled(),
-                Wwdt => w.wwdt_clk_gate().disabled(),
-                Saradc => w.saradc_clk_gate().disabled(),
-                Crc => w.crc_clk_gate().disabled(),
-                Aes => w.aes_clk_gate().disabled(),
-            })
-        }
-        self
+    dev_gate_impl! {
+        (GpioA, gpioa, gpioa_clk_gate),
+        (GpioB, gpiob, gpiob_clk_gate),
+        (GpioC, gpioc, gpioc_clk_gate),
+        (I2c0, iic0, iic0_clk_gate),
+        (I2c1, iic1, iic1_clk_gate),
+        (Uart0, uart0, uart0_clk_gate),
+        (Uart1, uart1, uart1_clk_gate),
+        (Uart2, uart2, uart2_clk_gate),
+        (Spi0, spi0, spi0_clk_gate),
+        (Spi1, spi1, spi1_clk_gate),
+        (TimerBase0, timer_base0, timer_base0_clk_gate),
+        (TimerBase1, timer_base1, timer_base1_clk_gate),
+        (TimerBase2, timer_base2, timer_base2_clk_gate),
+        (TimerPlus0, timer_plus0, timer_plus0_clk_gate),
+        (TimerPlus1, timer_plus1, timer_plus1_clk_gate),
+        (PwmBase0, pwm_base0, pwm_base0_clk_gate),
+        (PwmBase1, pwm_base1, pwm_base1_clk_gate),
+        (PwmPlus0, pwm_plus0, pwm_plus0_clk_gate),
+        (PwmPlus1, pwm_plus1, pwm_plus1_clk_gate),
+        (Rtc, rtc, rtc_clk_gate),
+        (Iwdt, iwdt, iwdt_clk_gate),
+        (Wwdt, wwdt, wwdt_clk_gate),
+        (Saradc, saradc, saradc_clk_gate),
+        (Crc, crc, crc_clk_gate),
+        (Aes, aes, aes_clk_gate),
     }
 
     #[inline]
@@ -174,41 +208,6 @@ impl DevGate {
             self.enable(dev)
         } else {
             self.disable(dev)
-        }
-    }
-
-    #[inline]
-    /// Get whether a device is on or off.
-    pub fn is_enabled(&self, dev: Dev) -> bool {
-        use Dev::*;
-
-        let r = self.syscon.dev_clk_gate().read();
-        match dev {
-            GpioA => r.gpioa_clk_gate().is_enabled(),
-            GpioB => r.gpiob_clk_gate().is_enabled(),
-            GpioC => r.gpioc_clk_gate().is_enabled(),
-            I2c0 => r.iic0_clk_gate().is_enabled(),
-            I2c1 => r.iic1_clk_gate().is_enabled(),
-            Uart0 => r.uart0_clk_gate().is_enabled(),
-            Uart1 => r.uart1_clk_gate().is_enabled(),
-            Uart2 => r.uart2_clk_gate().is_enabled(),
-            Spi0 => r.spi0_clk_gate().is_enabled(),
-            Spi1 => r.spi1_clk_gate().is_enabled(),
-            TimerBase0 => r.timer_base0_clk_gate().is_enabled(),
-            TimerBase1 => r.timer_base1_clk_gate().is_enabled(),
-            TimerBase2 => r.timer_base2_clk_gate().is_enabled(),
-            TimerPlus0 => r.timer_plus0_clk_gate().is_enabled(),
-            TimerPlus1 => r.timer_plus1_clk_gate().is_enabled(),
-            PwmBase0 => r.pwm_base0_clk_gate().is_enabled(),
-            PwmBase1 => r.pwm_base1_clk_gate().is_enabled(),
-            PwmPlus0 => r.pwm_plus0_clk_gate().is_enabled(),
-            PwmPlus1 => r.pwm_plus1_clk_gate().is_enabled(),
-            Rtc => r.rtc_clk_gate().is_enabled(),
-            Iwdt => r.iwdt_clk_gate().is_enabled(),
-            Wwdt => r.wwdt_clk_gate().is_enabled(),
-            Saradc => r.saradc_clk_gate().is_enabled(),
-            Crc => r.crc_clk_gate().is_enabled(),
-            Aes => r.aes_clk_gate().is_enabled(),
         }
     }
 }

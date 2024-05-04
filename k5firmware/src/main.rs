@@ -64,10 +64,7 @@ fn main() -> ! {
     // ptt button is GPIO C5
 
     // turn on GPIOA, GPIOC and UART1
-    use dp32g030_hal::power::Dev;
-    power.dev_gate.enable(Dev::GpioA);
-    power.dev_gate.enable(Dev::GpioC);
-    power.dev_gate.enable(Dev::Uart1);
+    power.dev_gate.enable_gpioa().enable_gpioc().enable_uart1();
 
     // set up uart pins
     p.PORTCON.porta_sel0().modify(|_, w| w.porta7().uart1_tx());
