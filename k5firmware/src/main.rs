@@ -5,6 +5,7 @@ use core::cell::Cell;
 
 use cortex_m_rt::exception;
 use critical_section::Mutex;
+use dp32g030_hal as hal;
 use panic_halt as _;
 
 #[no_mangle]
@@ -37,7 +38,7 @@ struct UartFmt<UART>(UART);
 
 impl<UART> core::fmt::Write for UartFmt<UART>
 where
-    UART: core::ops::Deref<Target = dp32g030_hal::pac::uart0::RegisterBlock>,
+    UART: core::ops::Deref<Target = hal::pac::uart0::RegisterBlock>,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for b in s.as_bytes() {
@@ -50,14 +51,11 @@ where
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    let mut cp = dp32g030_hal::pac::CorePeripherals::take().unwrap();
-    let p = dp32g030_hal::pac::Peripherals::take().unwrap();
-    let mut power = dp32g030_hal::power::split(p.SYSCON, p.PMU);
+    let mut cp = hal::pac::CorePeripherals::take().unwrap();
+    let p = hal::pac::Peripherals::take().unwrap();
+    let mut power = hal::power::split(p.SYSCON, p.PMU);
 
-    let clocks = power
-        .clocks
-        .sys(dp32g030_hal::power::SysSel::Rchf48)
-        .freeze();
+    let clocks = power.clocks.sys_internal_48mhz().freeze();
 
     // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
