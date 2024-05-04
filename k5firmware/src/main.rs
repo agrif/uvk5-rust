@@ -52,6 +52,7 @@ where
 fn main() -> ! {
     let mut cp = dp32g030_hal::pac::CorePeripherals::take().unwrap();
     let p = dp32g030_hal::pac::Peripherals::take().unwrap();
+    let mut power = dp32g030_hal::power::split(p.SYSCON, p.PMU);
 
     // tick every 10ms. There are 100x 10ms in 1s, and our clock is 48MHz.
     cp.SYST.set_reload(48_000_000 / 100);
@@ -63,11 +64,10 @@ fn main() -> ! {
     // ptt button is GPIO C5
 
     // turn on GPIOA, GPIOC and UART1
-    p.SYSCON.dev_clk_gate().modify(|_, w| {
-        w.gpioa_clk_gate().enabled();
-        w.gpioc_clk_gate().enabled();
-        w.uart1_clk_gate().enabled()
-    });
+    use dp32g030_hal::power::Dev;
+    power.dev_gate.enable(Dev::GpioA);
+    power.dev_gate.enable(Dev::GpioC);
+    power.dev_gate.enable(Dev::Uart1);
 
     // set up uart pins
     p.PORTCON.porta_sel0().modify(|_, w| w.porta7().uart1_tx());
@@ -91,13 +91,18 @@ fn main() -> ! {
     p.UART1.ctrl().modify(|_, w| w.uarten().disabled());
 
     // figure out the frequency of our internal HF oscillator
-    let positive = p.SYSCON.rc_freq_delta().read().rchf_sig().is_positive();
-    let mut frequency = p.SYSCON.rc_freq_delta().read().rchf_delta().bits();
-    if positive {
-        frequency += 48_000_000;
-    } else {
-        frequency = 48_000_000 - frequency;
-    }
+    let frequency = unsafe {
+        // safety: just reading, don't mind me
+        let syscon = dp32g030_hal::pac::SYSCON::steal();
+        let positive = syscon.rc_freq_delta().read().rchf_sig().is_positive();
+        let mut frequency = syscon.rc_freq_delta().read().rchf_delta().bits();
+        if positive {
+            frequency += 48_000_000;
+        } else {
+            frequency = 48_000_000 - frequency;
+        }
+        frequency
+    };
 
     // set our baud to.. 39053 ?
     p.UART1
@@ -187,6 +192,6 @@ fn main() -> ! {
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
-        writeln!(&mut uart1, "syscon: {:#x?}", *p.SYSCON).unwrap();
+        writeln!(&mut uart1, "power: {:#x?}", power).unwrap();
     }
 }

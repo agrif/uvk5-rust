@@ -10,5 +10,7 @@ default-target = "thumbv6m-none-eabi"
 targets = []
 
 [dependencies]
-dp32g030 = { path = "../dp32g030", features = ["atomics"] }
 cortex-m = "0.7.6"
+defmt = { version = "0.3.5", optional = true }
+dp32g030 = { path = "../dp32g030", features = ["atomics"] }
+strum = { version = "0.26", default-features = false, features = ["derive"] }
