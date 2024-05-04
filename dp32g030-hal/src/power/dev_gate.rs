@@ -34,7 +34,7 @@ pub enum Dev {
 impl Dev {
     #[inline(always)]
     /// Iterate over all possible devices.
-    pub fn iter() -> impl Iterator<Item = Self> {
+    pub fn iter() -> DevIter {
         <Self as strum::IntoEnumIterator>::iter()
     }
 }
