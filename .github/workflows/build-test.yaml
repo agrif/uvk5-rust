@@ -19,12 +19,17 @@ jobs:
       - uses: baptiste0928/cargo-install@v3
         with:
           crate: svd2rust
+          version: "^0.33.1"
       - uses: baptiste0928/cargo-install@v3
         with:
           crate: form
+          version: "^0.10.0"
       - uses: baptiste0928/cargo-install@v3
         with:
           crate: cargo-make
+          # fix for invalid Cargo.toml
+          # https://github.com/sagiegurari/cargo-make/commit/3a699b83326f8c26d57453f797d799dad9ab78bb
+          version: "^0.37.12"
 
       - run: cargo make
         working-directory: dp32g030

@@ -6,7 +6,7 @@ Not much here, but to get started:
 ~~~~
 # install tools and toolchain
 pip install --upgrade --user svdtools
-cargo install svd2rust form cargo-make
+cargo install svd2rust@^0.33.1 form@^0.10.0 cargo-make@^0.37.12
 rustup target add thumbv6m-none-eabi
 
 # build tools, generate device crate, build firmware
