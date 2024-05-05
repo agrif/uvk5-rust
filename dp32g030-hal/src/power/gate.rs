@@ -93,12 +93,12 @@ where
 
 // way too much repitition to not use a macro
 macro_rules! dev_gate_impl {
-    {$(($dev:ty, $name:ident, $field:ident)),+,} => {
+    {$(($dev:ident, $name:ident, $field:ident)),+,} => {
         /// A collection of controls for powering individual devices.
         #[derive(Debug)]
         #[cfg_attr(feature = "defmt", derive(defmt::Format))]
         pub struct Gates {
-            $(pub $name: Gate<$dev>),*
+            $(pub $name: Gate<pac::$dev>),*
         }
 
         impl Gates {
@@ -115,10 +115,10 @@ macro_rules! dev_gate_impl {
     };
 
     // helper to implement the Device trait
-    (trait $dev:ty, $field: ident) => {
-        impl Sealed for $dev {}
+    (trait $dev:ident, $field: ident) => {
+        impl Sealed for pac::$dev {}
 
-        impl Device for $dev {
+        impl Device for pac::$dev {
             const NAME: &'static str = stringify!($dev);
 
             #[inline(always)]
@@ -150,29 +150,29 @@ macro_rules! dev_gate_impl {
 }
 
 dev_gate_impl! {
-    (pac::GPIOA, gpio_a, gpioa_clk_gate),
-    (pac::GPIOB, gpio_b, gpiob_clk_gate),
-    (pac::GPIOC, gpio_c, gpioc_clk_gate),
-    (pac::IIC0, iic0, iic0_clk_gate),
-    (pac::IIC1, iic1, iic1_clk_gate),
-    (pac::UART0, uart0, uart0_clk_gate),
-    (pac::UART1, uart1, uart1_clk_gate),
-    (pac::UART2, uart2, uart2_clk_gate),
-    (pac::SPI0, spi0, spi0_clk_gate),
-    (pac::SPI1, spi1, spi1_clk_gate),
-    (pac::TIMER_BASE0, timer_base0, timer_base0_clk_gate),
-    (pac::TIMER_BASE1, timer_base1, timer_base1_clk_gate),
-    (pac::TIMER_BASE2, timer_base2, timer_base2_clk_gate),
-    (pac::TIMER_PLUS0, timer_plus0, timer_plus0_clk_gate),
-    (pac::TIMER_PLUS1, timer_plus1, timer_plus1_clk_gate),
-    (pac::PWM_BASE0, pwm_base0, pwm_base0_clk_gate),
-    (pac::PWM_BASE1, pwm_base1, pwm_base1_clk_gate),
-    (pac::PWM_PLUS0, pwm_plus0, pwm_plus0_clk_gate),
-    (pac::PWM_PLUS1, pwm_plus1, pwm_plus1_clk_gate),
-    (pac::RTC, rtc, rtc_clk_gate),
-    (pac::IWDT, iwdt, iwdt_clk_gate),
-    (pac::WWDT, wwdt, wwdt_clk_gate),
-    (pac::SARADC, saradc, saradc_clk_gate),
-    (pac::CRC, crc, crc_clk_gate),
-    (pac::AES128, aes, aes_clk_gate),
+    (GPIOA, gpio_a, gpioa_clk_gate),
+    (GPIOB, gpio_b, gpiob_clk_gate),
+    (GPIOC, gpio_c, gpioc_clk_gate),
+    (IIC0, iic0, iic0_clk_gate),
+    (IIC1, iic1, iic1_clk_gate),
+    (UART0, uart0, uart0_clk_gate),
+    (UART1, uart1, uart1_clk_gate),
+    (UART2, uart2, uart2_clk_gate),
+    (SPI0, spi0, spi0_clk_gate),
+    (SPI1, spi1, spi1_clk_gate),
+    (TIMER_BASE0, timer_base0, timer_base0_clk_gate),
+    (TIMER_BASE1, timer_base1, timer_base1_clk_gate),
+    (TIMER_BASE2, timer_base2, timer_base2_clk_gate),
+    (TIMER_PLUS0, timer_plus0, timer_plus0_clk_gate),
+    (TIMER_PLUS1, timer_plus1, timer_plus1_clk_gate),
+    (PWM_BASE0, pwm_base0, pwm_base0_clk_gate),
+    (PWM_BASE1, pwm_base1, pwm_base1_clk_gate),
+    (PWM_PLUS0, pwm_plus0, pwm_plus0_clk_gate),
+    (PWM_PLUS1, pwm_plus1, pwm_plus1_clk_gate),
+    (RTC, rtc, rtc_clk_gate),
+    (IWDT, iwdt, iwdt_clk_gate),
+    (WWDT, wwdt, wwdt_clk_gate),
+    (SARADC, saradc, saradc_clk_gate),
+    (CRC, crc, crc_clk_gate),
+    (AES128, aes, aes_clk_gate),
 }
