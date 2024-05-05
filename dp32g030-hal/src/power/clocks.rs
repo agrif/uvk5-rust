@@ -237,40 +237,14 @@ impl PllSel {
 }
 
 /// Clock configuration.
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ClockConfig {
-    syscon: pac::SYSCON,
-    pmu: pac::PMU,
-
     xtal: u32,
 
     saradc_sample: SaradcSel,
     rtc: RtcSel,
     sys: SysSel,
-}
-
-impl core::fmt::Debug for ClockConfig {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("ClockConfig")
-            .field("xtal", &self.xtal)
-            .field("saradc_sample", &self.saradc_sample)
-            .field("rtc", &self.rtc)
-            .field("sys", &self.sys)
-            .finish()
-    }
-}
-
-#[cfg(feature = "defmt")]
-impl defmt::Format for ClockConfig {
-    fn format(&self, f: defmt::Formatter) {
-        defmt::write!(
-            f,
-            "ClockConfig {{xtal: {}, saradc_sample: {}, rtc: {}, sys: {}}}",
-            self.xtal,
-            self.saradc_sample,
-            self.rtc,
-            self.sys
-        );
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -316,9 +290,6 @@ impl ClockConfig {
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {
-            syscon: pac::SYSCON::steal(),
-            pmu: pac::PMU::steal(),
-
             xtal: 32_768,
 
             saradc_sample: SaradcSel::Div1,
@@ -422,28 +393,30 @@ impl ClockConfig {
 
         // here be dragons, that is
 
+        // safety: we will only access the clock registers of syscon/pmu
+        // which we own
+        let syscon = unsafe { pac::SYSCON::steal() };
+        let pmu = unsafe { pac::PMU::steal() };
+
         // ok, lets get us running on the internal oscillator safely
         // safety: both all of these bits are valid to set/unset
         unsafe {
             // turn on RCHF at 24MHz
-            self.pmu
-                .src_cfg()
+            pmu.src_cfg()
                 .set_bits(|w| w.rchf_fsel().f_24mhz().rchf_en().enabled());
 
             // switch the system clock to use RCHF
-            self.syscon.clk_sel().clear_bits(|w| w.sys_clk_sel().rchf());
+            syscon.clk_sel().clear_bits(|w| w.sys_clk_sel().rchf());
 
             // make sure we're on the new clock before continuing
             cortex_m::asm::dsb();
 
             // turn off the PLL for sure, in case we configure it later
-            self.syscon.pll_ctrl().clear_bits(|w| w.pll_en().disabled());
+            syscon.pll_ctrl().clear_bits(|w| w.pll_en().disabled());
         }
 
         // no matter what, we want div_clk_gate off for now
-        self.syscon
-            .div_clk_gate()
-            .write(|w| w.div_clk_gate().disabled());
+        syscon.div_clk_gate().write(|w| w.div_clk_gate().disabled());
 
         // paranoia, make sure everything we've done takes effect
         cortex_m::asm::dsb();
@@ -453,7 +426,7 @@ impl ClockConfig {
         let xtah = self.sys.xtah();
         let xtal = self.sys.xtal() || self.rtc.xtal();
 
-        self.pmu.src_cfg().write(|w| {
+        pmu.src_cfg().write(|w| {
             // this must remain on for now! we're running on it
             w.rchf_en().enabled();
             // but we can switch to 48MHz if that's requested
@@ -472,7 +445,7 @@ impl ClockConfig {
             }
         });
 
-        self.syscon.pll_ctrl().write(|w| {
+        syscon.pll_ctrl().write(|w| {
             if let SysSel::Div(_, SrcSel::Pll(_, ref n, ref m)) = self.sys {
                 // we're using the pll. keep it disabled, though, until later
                 w.pll_en().disabled();
@@ -482,7 +455,7 @@ impl ClockConfig {
             w
         });
 
-        self.syscon.clk_sel().write(|w| {
+        syscon.clk_sel().write(|w| {
             // this must remain rchf for now, we're running on it!
             w.sys_clk_sel().rchf();
 
@@ -522,14 +495,14 @@ impl ClockConfig {
             // enable the pll
             // safety: setting this bit is ok
             unsafe {
-                self.syscon.pll_ctrl().set_bits(|w| w.pll_en().enabled());
+                syscon.pll_ctrl().set_bits(|w| w.pll_en().enabled());
             }
 
             // make sure the pll got the enable
             cortex_m::asm::dsb();
 
             // wait until PLL locks
-            while self.syscon.pll_st().read().pll_lock().is_unlocked() {
+            while syscon.pll_st().read().pll_lock().is_unlocked() {
                 // expected to take 30us
                 cortex_m::asm::nop();
             }
@@ -540,16 +513,14 @@ impl ClockConfig {
             // make sure our config above takes effect
             cortex_m::asm::dsb();
 
-            self.syscon
-                .div_clk_gate()
-                .write(|w| w.div_clk_gate().enabled());
+            syscon.div_clk_gate().write(|w| w.div_clk_gate().enabled());
         }
 
         // make sure our config above takes effect
         cortex_m::asm::dsb();
 
         // ok, pll is locked, we can switch over to our real clock
-        self.syscon.clk_sel().modify(|_, w| match self.sys {
+        syscon.clk_sel().modify(|_, w| match self.sys {
             SysSel::Rchf24 => w.sys_clk_sel().rchf(),
             SysSel::Rchf48 => w.sys_clk_sel().rchf(),
             SysSel::Div(_, _) => w.sys_clk_sel().div_clk(),
@@ -562,14 +533,14 @@ impl ClockConfig {
 
             // safety: clearing this bit is fine, we're not using RCHF
             unsafe {
-                self.pmu.src_cfg().clear_bits(|w| w.rchf_en().disabled());
+                pmu.src_cfg().clear_bits(|w| w.rchf_en().disabled());
             }
         }
 
         // we should be all set. now just return the frequencies.
         // first, figure out the reference clocks
         let freqs = {
-            let delta = self.syscon.rc_freq_delta().read();
+            let delta = syscon.rc_freq_delta().read();
 
             let rchf_pos = delta.rchf_sig().is_positive();
             let mut rchf = delta.rchf_delta().bits();

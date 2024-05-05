@@ -41,7 +41,7 @@ impl Dev {
 
 /// Control power to individual devices.
 pub struct DevGate {
-    syscon: pac::SYSCON,
+    _private: (),
 }
 
 impl core::fmt::Debug for DevGate {
@@ -84,7 +84,7 @@ macro_rules! dev_gate_impl {
             pub fn enable(&mut self, dev: Dev) -> &mut Self {
                 // safety: setting bits in this register is ok
                 unsafe {
-                    self.syscon.dev_clk_gate().set_bits(|w| match dev {
+                    pac::SYSCON::steal().dev_clk_gate().set_bits(|w| match dev {
                         $(Dev::$var => w.$field().enabled(),)+
                     })
                 }
@@ -95,7 +95,7 @@ macro_rules! dev_gate_impl {
             pub fn disable(&mut self, dev: Dev) -> &mut Self {
                 // safety: setting bits in this register is ok
                 unsafe {
-                    self.syscon.dev_clk_gate().set_bits(|w| match dev {
+                    pac::SYSCON::steal().dev_clk_gate().set_bits(|w| match dev {
                         $(Dev::$var => w.$field().disabled(),)+
                     })
                 }
@@ -104,7 +104,8 @@ macro_rules! dev_gate_impl {
             /// Get whether a device is enabled.
             #[inline]
             pub fn is_enabled(&self, dev: Dev) -> bool {
-                let r = self.syscon.dev_clk_gate().read();
+                // safety: we own this register, reading is ok
+                let r = unsafe { pac::SYSCON::steal().dev_clk_gate().read() };
                 match dev {
                     $(Dev::$var => r.$field().is_enabled(),)+
                 }
@@ -115,7 +116,7 @@ macro_rules! dev_gate_impl {
                 pub fn [<enable_ $name>](&mut self) -> &mut Self {
                     // safety: setting bits in dev_clk_gate is ok
                     unsafe {
-                        self.syscon.dev_clk_gate().set_bits(|w| {
+                        pac::SYSCON::steal().dev_clk_gate().set_bits(|w| {
                             w.$field().enabled()
                         })
                     }
@@ -128,7 +129,7 @@ macro_rules! dev_gate_impl {
                 pub fn [<disable_ $name>](&mut self) -> &mut Self {
                     // safety: clearing bits in dev_clk_gate is ok
                     unsafe {
-                        self.syscon.dev_clk_gate().clear_bits(|w| {
+                        pac::SYSCON::steal().dev_clk_gate().clear_bits(|w| {
                             w.$field().disabled()
                         })
                     }
@@ -150,7 +151,10 @@ macro_rules! dev_gate_impl {
                 #[inline(always)]
                 #[doc = concat!("Get whether ", stringify!($var), " is enabled.")]
                 pub fn [<is_ $name _enabled>](&self) -> bool {
-                    self.syscon.dev_clk_gate().read().$field().is_enabled()
+                    // safety: we own this register, reading it is ok
+                    unsafe {
+                        pac::SYSCON::steal().dev_clk_gate().read().$field().is_enabled()
+                    }
                 }
             )+
         }
@@ -161,15 +165,16 @@ impl DevGate {
     /// safety: this peripheral reads and writes SYSCON.dev_clk_gate()
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
-        Self {
-            syscon: pac::SYSCON::steal(),
-        }
+        Self { _private: () }
     }
 
     #[inline(always)]
     /// Reset all devices to disabled.
     pub fn reset(&mut self) -> &mut Self {
-        self.syscon.dev_clk_gate().reset();
+        // safety: we own this register, resetting it is ok
+        unsafe {
+            pac::SYSCON::steal().dev_clk_gate().reset();
+        }
         self
     }
 

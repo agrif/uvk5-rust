@@ -2,7 +2,7 @@ use crate::pac;
 
 /// Access to the Chip ID.
 pub struct ChipId {
-    syscon: pac::SYSCON,
+    _private: (),
 }
 
 impl core::fmt::Debug for ChipId {
@@ -22,19 +22,19 @@ impl ChipId {
     /// safety: this peripheral reads SYSCON.chip_idN()
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
-        Self {
-            syscon: pac::SYSCON::steal(),
-        }
+        Self { _private: () }
     }
 
     #[inline(always)]
     /// Get the Chip ID.
     pub fn get(&self) -> [u32; 4] {
+        // safety: we only access chip_id registers, which we own
+        let syscon = unsafe { pac::SYSCON::steal() };
         [
-            self.syscon.chip_id0().read().bits(),
-            self.syscon.chip_id1().read().bits(),
-            self.syscon.chip_id2().read().bits(),
-            self.syscon.chip_id3().read().bits(),
+            syscon.chip_id0().read().bits(),
+            syscon.chip_id1().read().bits(),
+            syscon.chip_id2().read().bits(),
+            syscon.chip_id3().read().bits(),
         ]
     }
 }
