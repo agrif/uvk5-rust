@@ -27,17 +27,23 @@ pub struct Power {
 }
 
 impl Power {
+    /// Safety: this access SYSCON and PMU registers. Notably, having this
+    /// allows you to change the clock speed out from under all other
+    /// peripherals
+    #[inline(always)]
+    unsafe fn steal() -> Self {
+        Self {
+            chip_id: ChipId::steal(),
+            clocks: ClockConfig::steal(),
+            gates: Gates::steal(),
+        }
+    }
+
     #[inline(always)]
     /// Split the SYSCON and PMU registers into usable parts.
     pub fn new(_syscon: pac::SYSCON, _pmu: pac::PMU) -> Self {
         // safety: all of these operate on disjoint registers of these blocks
         // which we are now owners of
-        unsafe {
-            Self {
-                chip_id: ChipId::steal(),
-                clocks: ClockConfig::steal(),
-                gates: Gates::steal(),
-            }
-        }
+        unsafe { Self::steal() }
     }
 }

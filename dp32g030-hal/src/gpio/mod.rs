@@ -24,17 +24,21 @@ pub struct Ports {
 }
 
 impl Ports {
+    /// Safety: This accesses PORTCON and all GPIO registers.
+    #[inline(always)]
+    unsafe fn steal() -> Self {
+        Self {
+            port_a: port_a::Port::steal(),
+            port_b: port_b::Port::steal(),
+            port_c: port_c::Port::steal(),
+        }
+    }
+
     /// Wrap the GPIO registers into ports.
     #[inline(always)]
     pub fn new(_portcon: pac::PORTCON, _a: pac::GPIOA, _b: pac::GPIOB, _c: pac::GPIOC) -> Self {
         // safety: we own the unique tokens that let us control these registers
-        unsafe {
-            Self {
-                port_a: port_a::Port::steal(),
-                port_b: port_b::Port::steal(),
-                port_c: port_c::Port::steal(),
-            }
-        }
+        unsafe { Self::steal() }
     }
 
     /// Recover the raw GPIO registers from the wrapped ports.
