@@ -61,11 +61,15 @@ pub struct PullUp;
 pub struct PullDown;
 
 /// Input mode, with optional pull up or down. (type state)
-pub struct Input<Pull = Floating>(core::marker::PhantomData<Pull>);
+pub struct Input<Pull = Floating> {
+    _marker: core::marker::PhantomData<Pull>,
+}
 
 impl<Pull> Default for Input<Pull> {
     fn default() -> Self {
-        Self(Default::default())
+        Self {
+            _marker: Default::default(),
+        }
     }
 }
 
@@ -147,11 +151,15 @@ pub struct PushPull;
 pub struct OpenDrain;
 
 /// Output mode, either push-pull or open-drain. (type state)
-pub struct Output<Mode = PushPull>(core::marker::PhantomData<Mode>);
+pub struct Output<Mode = PushPull> {
+    _marker: core::marker::PhantomData<Mode>,
+}
 
 impl<Mode> Default for Output<Mode> {
     fn default() -> Self {
-        Self(Default::default())
+        Self {
+            _marker: Default::default(),
+        }
     }
 }
 
@@ -207,11 +215,15 @@ impl PinMode for Output<OpenDrain> {
 }
 
 /// Alternate pin mode, 1 <= A < 16. (type state)
-pub struct Alternate<const A: u8, Mode>(core::marker::PhantomData<Mode>);
+pub struct Alternate<const A: u8, Mode> {
+    _marker: core::marker::PhantomData<Mode>,
+}
 
 impl<const A: u8, Mode> Default for Alternate<A, Mode> {
     fn default() -> Self {
-        Self(Default::default())
+        Self {
+            _marker: Default::default(),
+        }
     }
 }
 

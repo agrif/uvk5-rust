@@ -47,7 +47,9 @@ impl PinState {
 }
 
 /// A generic pin type, with type state indicating mode.
-pub struct Pin<const P: char, const N: u8, Mode = Input>(core::marker::PhantomData<Mode>);
+pub struct Pin<const P: char, const N: u8, Mode = Input> {
+    _marker: core::marker::PhantomData<Mode>,
+}
 
 impl<const P: char, const N: u8, Mode> core::fmt::Debug for Pin<P, N, Mode>
 where
@@ -183,7 +185,9 @@ where
     /// PORTCON and GPIO. You should also be sure Mode matches the pin's mode.
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
-        Pin(Default::default())
+        Pin {
+            _marker: Default::default(),
+        }
     }
 
     /// Convert pin into a new mode.
