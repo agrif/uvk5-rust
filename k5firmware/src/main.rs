@@ -54,7 +54,7 @@ where
 fn main() -> ! {
     let mut cp = hal::pac::CorePeripherals::take().unwrap();
     let p = hal::pac::Peripherals::take().unwrap();
-    let mut power = hal::power::split(p.SYSCON, p.PMU);
+    let mut power = hal::power::new(p.SYSCON, p.PMU);
 
     let clocks = power.clocks.sys_internal_48mhz().freeze();
 
@@ -69,7 +69,7 @@ fn main() -> ! {
     cp.SYST.enable_interrupt();
     cp.SYST.enable_counter();
 
-    let pins = hal::gpio::split(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
+    let pins = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
 
     // flashlight is GPIO C3
     let mut light = pins.port_c.c3.into_push_pull_output();

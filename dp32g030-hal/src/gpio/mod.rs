@@ -8,6 +8,12 @@ pub use mode::*;
 mod pin;
 pub use pin::*;
 
+/// Split the GPIO peripherals into pins.
+#[inline(always)]
+pub fn new(portcon: pac::PORTCON, a: pac::GPIOA, b: pac::GPIOB, c: pac::GPIOC) -> Pins {
+    Pins::new(portcon, a, b, c)
+}
+
 /// Contains the GPIO peripherals split into pins.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -17,31 +23,33 @@ pub struct Pins {
     pub port_c: gpioc::Pins,
 }
 
-/// Split the GPIO peripherals into pins.
-#[inline(always)]
-pub fn split(_portcon: pac::PORTCON, _a: pac::GPIOA, _b: pac::GPIOB, _c: pac::GPIOC) -> Pins {
-    // safety: we own the unique tokens that let us control these registers
-    unsafe {
-        Pins {
-            port_a: gpioa::Pins::steal(),
-            port_b: gpiob::Pins::steal(),
-            port_c: gpioc::Pins::steal(),
+impl Pins {
+    /// Split the GPIO peripherals into pins.
+    #[inline(always)]
+    pub fn new(_portcon: pac::PORTCON, _a: pac::GPIOA, _b: pac::GPIOB, _c: pac::GPIOC) -> Self {
+        // safety: we own the unique tokens that let us control these registers
+        unsafe {
+            Pins {
+                port_a: gpioa::Pins::steal(),
+                port_b: gpiob::Pins::steal(),
+                port_c: gpioc::Pins::steal(),
+            }
         }
     }
-}
 
-/// Recover the raw GPIO registers from the split pins.
-#[inline(always)]
-pub fn recover(_pins: Pins) -> (pac::PORTCON, pac::GPIOA, pac::GPIOB, pac::GPIOC) {
-    // safety: we have all of the pins, and destroy them here, so these
-    // registers are safe to use again
-    unsafe {
-        (
-            pac::PORTCON::steal(),
-            pac::GPIOA::steal(),
-            pac::GPIOB::steal(),
-            pac::GPIOC::steal(),
-        )
+    /// Recover the raw GPIO registers from the split pins.
+    #[inline(always)]
+    pub fn free(self) -> (pac::PORTCON, pac::GPIOA, pac::GPIOB, pac::GPIOC) {
+        // safety: we have all of the pins, and destroy them here, so these
+        // registers are safe to use again
+        unsafe {
+            (
+                pac::PORTCON::steal(),
+                pac::GPIOA::steal(),
+                pac::GPIOB::steal(),
+                pac::GPIOC::steal(),
+            )
+        }
     }
 }
 
