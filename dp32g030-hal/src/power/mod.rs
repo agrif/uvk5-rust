@@ -8,8 +8,8 @@ pub use chip_id::*;
 mod clocks;
 pub use clocks::*;
 
-mod dev_gate;
-pub use dev_gate::*;
+mod gate;
+pub use gate::*;
 
 #[inline(always)]
 /// Split the SYSCON and PMU registers into usable parts.
@@ -23,7 +23,7 @@ pub fn new(syscon: pac::SYSCON, pmu: pac::PMU) -> Power {
 pub struct Power {
     pub chip_id: ChipId,
     pub clocks: ClockConfig,
-    pub dev_gate: DevGate,
+    pub gates: Gates,
 }
 
 impl Power {
@@ -36,7 +36,7 @@ impl Power {
             Self {
                 chip_id: ChipId::steal(),
                 clocks: ClockConfig::steal(),
-                dev_gate: DevGate::steal(),
+                gates: Gates::steal(),
             }
         }
     }

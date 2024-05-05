@@ -58,7 +58,9 @@ fn main() -> ! {
 
     // turn on GPIOA, GPIOC and UART1
     // important! must be turned on before configured.
-    power.dev_gate.enable_gpioa().enable_gpioc().enable_uart1();
+    power.gates.gpio_a.enable();
+    power.gates.gpio_c.enable();
+    power.gates.uart1.enable();
 
     // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
