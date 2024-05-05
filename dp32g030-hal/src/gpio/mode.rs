@@ -1,6 +1,9 @@
+// seal for PinMode trait
+trait Sealed {}
+
 /// A trait for pin mode type states.
 #[allow(private_bounds)]
-pub trait PinMode: crate::Sealed + core::fmt::Debug + Default {
+pub trait PinMode: Sealed + core::fmt::Debug + Default {
     /// For Alternate modes, this is the inner mode. For all others, this
     /// is Self.
     type Inner: PinMode;
@@ -29,7 +32,7 @@ pub trait PinMode: crate::Sealed + core::fmt::Debug + Default {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Unspecified;
 
-impl crate::Sealed for Unspecified {}
+impl Sealed for Unspecified {}
 impl PinMode for Unspecified {
     type Inner = Self;
 
@@ -92,7 +95,7 @@ where
     }
 }
 
-impl crate::Sealed for Input<Floating> {}
+impl Sealed for Input<Floating> {}
 impl PinMode for Input<Floating> {
     type Inner = Self;
 
@@ -108,7 +111,7 @@ impl PinMode for Input<Floating> {
     const DIR: bool = false;
 }
 
-impl crate::Sealed for Input<PullUp> {}
+impl Sealed for Input<PullUp> {}
 impl PinMode for Input<PullUp> {
     type Inner = Self;
 
@@ -124,7 +127,7 @@ impl PinMode for Input<PullUp> {
     const DIR: bool = false;
 }
 
-impl crate::Sealed for Input<PullDown> {}
+impl Sealed for Input<PullDown> {}
 impl PinMode for Input<PullDown> {
     type Inner = Self;
 
@@ -182,7 +185,7 @@ where
     }
 }
 
-impl crate::Sealed for Output<PushPull> {}
+impl Sealed for Output<PushPull> {}
 impl PinMode for Output<PushPull> {
     type Inner = Self;
 
@@ -198,7 +201,7 @@ impl PinMode for Output<PushPull> {
     const DIR: bool = true;
 }
 
-impl crate::Sealed for Output<OpenDrain> {}
+impl Sealed for Output<OpenDrain> {}
 impl PinMode for Output<OpenDrain> {
     type Inner = Self;
 
@@ -252,7 +255,7 @@ where
 // avoid repitition for alternate modes
 macro_rules! impl_alternate {
     ($Mode:ty) => {
-        impl<const A: u8> crate::Sealed for Alternate<A, $Mode> {}
+        impl<const A: u8> Sealed for Alternate<A, $Mode> {}
 
         impl<const A: u8> PinMode for Alternate<A, $Mode> {
             type Inner = $Mode;
