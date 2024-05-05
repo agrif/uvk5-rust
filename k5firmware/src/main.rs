@@ -8,8 +8,6 @@ use critical_section::Mutex;
 use dp32g030_hal as hal;
 use panic_halt as _;
 
-use hal::pac;
-
 hal::version!(env!("CARGO_PKG_VERSION"));
 
 pub static TICKMS: Mutex<Cell<u64>> = Mutex::new(Cell::new(0));
@@ -78,8 +76,8 @@ fn main() -> ! {
     let ptt = pins.port_c.c5.into_pull_up_input();
 
     // uart1 tx is A7, uart1 rx is A8
-    const ALT_TX: u8 = pac::portcon::porta_sel0::PORTA7_A::Uart1Tx as u8;
-    const ALT_RX: u8 = pac::portcon::porta_sel1::PORTA8_A::Uart1Rx as u8;
+    const ALT_TX: u8 = hal::pac::portcon::porta_sel0::PORTA7_A::Uart1Tx as u8;
+    const ALT_RX: u8 = hal::pac::portcon::porta_sel1::PORTA8_A::Uart1Rx as u8;
     let tx = pins
         .port_a
         .a7
