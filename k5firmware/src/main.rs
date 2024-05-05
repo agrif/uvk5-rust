@@ -8,6 +8,8 @@ use critical_section::Mutex;
 use dp32g030_hal as hal;
 use panic_halt as _;
 
+use hal::pac;
+
 #[no_mangle]
 pub static VERSION: &core::ffi::CStr = c"*0.0test";
 
@@ -57,6 +59,10 @@ fn main() -> ! {
 
     let clocks = power.clocks.sys_internal_48mhz().freeze();
 
+    // turn on GPIOA, GPIOC and UART1
+    // important! must be turned on before configured.
+    power.dev_gate.enable_gpioa().enable_gpioc().enable_uart1();
+
     // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
     cp.SYST.set_reload((clocks.sys_clk() / 100) - 1);
@@ -64,29 +70,27 @@ fn main() -> ! {
     cp.SYST.enable_interrupt();
     cp.SYST.enable_counter();
 
+    let pins = hal::gpio::split(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
+
     // flashlight is GPIO C3
+    let mut light = pins.port_c.c3.into_push_pull_output();
+
     // ptt button is GPIO C5
+    let ptt = pins.port_c.c5.into_pull_up_input();
 
-    // turn on GPIOA, GPIOC and UART1
-    power.dev_gate.enable_gpioa().enable_gpioc().enable_uart1();
-
-    // set up uart pins
-    p.PORTCON.porta_sel0().modify(|_, w| w.porta7().uart1_tx());
-    p.PORTCON.porta_sel1().modify(|_, w| w.porta8().uart1_rx());
-
-    // set rx as input
-    p.PORTCON.porta_ie().modify(|_, w| {
-        w.porta7_ie().disabled();
-        w.porta8_ie().enabled()
-    });
-
-    // set up uart pin directions (is this needed?)
-    p.GPIOA.dir().modify(|_, w| {
-        // A7, UART1 TX
-        w.dir7().output();
-        // A8, UART1 RX
-        w.dir8().input()
-    });
+    // uart1 tx is A7, uart1 rx is A8
+    const ALT_TX: u8 = pac::portcon::porta_sel0::PORTA7_A::Uart1Tx as u8;
+    const ALT_RX: u8 = pac::portcon::porta_sel1::PORTA8_A::Uart1Rx as u8;
+    let tx = pins
+        .port_a
+        .a7
+        .into_push_pull_output()
+        .into_alternate::<ALT_TX>();
+    let rx = pins
+        .port_a
+        .a8
+        .into_floating_input()
+        .into_alternate::<ALT_RX>();
 
     // disable uart to configure it
     p.UART1.ctrl().modify(|_, w| w.uarten().disabled());
@@ -101,6 +105,10 @@ fn main() -> ! {
         w.rxen().enabled();
         w.txen().enabled()
     });
+
+    // we don't use these pins yet.
+    drop(tx);
+    drop(rx);
 
     // reset a lot
     p.UART1.rxto().reset();
@@ -119,68 +127,21 @@ fn main() -> ! {
     // make a formatter
     let mut uart1 = UartFmt(p.UART1);
 
-    // set our pins to be GPIO
-    p.PORTCON.portc_sel0().modify(|_, w| {
-        w.portc3().gpioc3();
-        w.portc5().gpioc5()
-    });
-
-    // turn on input for ptt
-    p.PORTCON.portc_ie().modify(|_, w| {
-        w.portc3_ie().disabled();
-        w.portc5_ie().enabled()
-    });
-
-    // turn on pull-up for ptt
-    p.PORTCON.portc_pu().modify(|_, w| {
-        w.portc3_pu().disabled();
-        w.portc5_pu().enabled()
-    });
-
-    // disable all pull-downs
-    p.PORTCON.portc_pd().modify(|_, w| {
-        w.portc3_pd().disabled();
-        w.portc5_pd().disabled()
-    });
-
-    // turn on open drain for ptt (?)
-    p.PORTCON.portc_od().modify(|_, w| {
-        w.portc3_od().disabled();
-        w.portc5_od().enabled()
-    });
-
-    // flashlight is output, ptt is input
-    p.GPIOC.dir().modify(|_, w| {
-        w.dir3().output();
-        w.dir5().input()
-    });
-
     // turn on flashlight
-    p.GPIOC.data().modify(|_, w| w.data3().high());
+    light.set_high();
 
-    let mut state = false;
     loop {
         // ptt pressed means ptt low
         // ptt pressed means toggle light
-        let ptt = p.GPIOC.data().read().data5().is_low();
-        if ptt {
-            state = !state;
+        if ptt.is_low() {
+            light.toggle();
         }
-
-        p.GPIOC.data().modify(|_, w| {
-            if state {
-                w.data3().low()
-            } else {
-                w.data3().high()
-            }
-        });
 
         delay_ms(500);
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
-        writeln!(&mut uart1, "id: {:x?}", power.chip_id).unwrap();
-        writeln!(&mut uart1, "power: {:?}", power.dev_gate).unwrap();
-        writeln!(&mut uart1, "clocks: {:?}", clocks).unwrap();
+        writeln!(&mut uart1, "PTT is {:?}", ptt.read()).unwrap();
+        writeln!(&mut uart1, "Light is {:?}", light.get_state()).unwrap();
     }
 }
