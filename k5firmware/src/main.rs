@@ -10,8 +10,7 @@ use panic_halt as _;
 
 use hal::pac;
 
-#[no_mangle]
-pub static VERSION: &core::ffi::CStr = c"*0.0test";
+hal::version!(env!("CARGO_PKG_VERSION"));
 
 pub static TICKMS: Mutex<Cell<u64>> = Mutex::new(Cell::new(0));
 
