@@ -20,5 +20,5 @@ panic-halt = "0.2"
 codegen-units = 1
 debug = true
 lto = true
-#opt-level = "z"
+opt-level = "s"
 panic = "abort"
