@@ -250,9 +250,11 @@ pub struct ClockConfig {
 
 impl core::fmt::Debug for ClockConfig {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_tuple("ClockConfig")
-            .field(&self.syscon)
-            .field(&self.pmu)
+        f.debug_struct("ClockConfig")
+            .field("xtal", &self.xtal)
+            .field("saradc_sample", &self.saradc_sample)
+            .field("rtc", &self.rtc)
+            .field("sys", &self.sys)
             .finish()
     }
 }
@@ -260,8 +262,14 @@ impl core::fmt::Debug for ClockConfig {
 #[cfg(feature = "defmt")]
 impl defmt::Format for ClockConfig {
     fn format(&self, f: defmt::Formatter) {
-        // FIXME
-        defmt::write!(f, "ClockConfig");
+        defmt::write!(
+            f,
+            "ClockConfig {{xtal: {}, saradc_sample: {}, rtc: {}, sys: {}}}",
+            self.xtal,
+            self.saradc_sample,
+            self.rtc,
+            self.sys
+        );
     }
 }
 
