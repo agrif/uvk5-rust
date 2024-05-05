@@ -8,36 +8,36 @@ pub use mode::*;
 mod pin;
 pub use pin::*;
 
-/// Split the GPIO peripherals into pins.
+/// Wrap the GPIO registers into ports.
 #[inline(always)]
-pub fn new(portcon: pac::PORTCON, a: pac::GPIOA, b: pac::GPIOB, c: pac::GPIOC) -> Pins {
-    Pins::new(portcon, a, b, c)
+pub fn new(portcon: pac::PORTCON, a: pac::GPIOA, b: pac::GPIOB, c: pac::GPIOC) -> Ports {
+    Ports::new(portcon, a, b, c)
 }
 
-/// Contains the GPIO peripherals split into pins.
+/// Contains the GPIO peripherals as wrapped ports.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Pins {
-    pub port_a: gpioa::Pins,
-    pub port_b: gpiob::Pins,
-    pub port_c: gpioc::Pins,
+pub struct Ports {
+    pub port_a: port_a::Port,
+    pub port_b: port_b::Port,
+    pub port_c: port_c::Port,
 }
 
-impl Pins {
-    /// Split the GPIO peripherals into pins.
+impl Ports {
+    /// Wrap the GPIO registers into ports.
     #[inline(always)]
     pub fn new(_portcon: pac::PORTCON, _a: pac::GPIOA, _b: pac::GPIOB, _c: pac::GPIOC) -> Self {
         // safety: we own the unique tokens that let us control these registers
         unsafe {
-            Pins {
-                port_a: gpioa::Pins::steal(),
-                port_b: gpiob::Pins::steal(),
-                port_c: gpioc::Pins::steal(),
+            Self {
+                port_a: port_a::Port::steal(),
+                port_b: port_b::Port::steal(),
+                port_c: port_c::Port::steal(),
             }
         }
     }
 
-    /// Recover the raw GPIO registers from the split pins.
+    /// Recover the raw GPIO registers from the wrapped ports.
     #[inline(always)]
     pub fn free(self) -> (pac::PORTCON, pac::GPIOA, pac::GPIOB, pac::GPIOC) {
         // safety: we have all of the pins, and destroy them here, so these
@@ -53,156 +53,88 @@ impl Pins {
     }
 }
 
-/// Helper types for GPIO A.
-pub mod gpioa {
-    use super::{Pin, Unspecified};
+// macro for each port module
+macro_rules! port_mod {
+    ($reg:ident, $name:literal, $P:literal, $p:ident, {$($N:literal),+}) => {
+        paste::paste! {
+            #[doc = concat!("Helper types for ", $name, ".")]
+            pub mod [<port_ $p>] {
+                use super::{Pin, Unspecified};
+                use crate::power::Gate;
+                use crate::pac::$reg;
 
-    /// Pins for the GPIO A port.
-    #[derive(Debug)]
-    #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    pub struct Pins {
-        pub a0: Pin<'A', 0, Unspecified>,
-        pub a1: Pin<'A', 1, Unspecified>,
-        pub a2: Pin<'A', 2, Unspecified>,
-        pub a3: Pin<'A', 3, Unspecified>,
+                #[doc = concat!("Pins for ", $name, ".")]
+                #[derive(Debug)]
+                #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+                pub struct Pins {
+                    $(pub [<$p $N>]: Pin<$P, $N, Unspecified>),+
+                }
 
-        pub a4: Pin<'A', 4, Unspecified>,
-        pub a5: Pin<'A', 5, Unspecified>,
-        pub a6: Pin<'A', 6, Unspecified>,
-        pub a7: Pin<'A', 7, Unspecified>,
+                impl Pins {
+                    // safety: must be the only thing to write to this
+                    // port in SYSCON and GPIO
+                    #[inline(always)]
+                    unsafe fn steal() -> Self {
+                        Self {
+                            $([<$p $N>]: Pin::steal()),+
+                        }
+                    }
 
-        pub a8: Pin<'A', 8, Unspecified>,
-        pub a9: Pin<'A', 9, Unspecified>,
-        pub a10: Pin<'A', 10, Unspecified>,
-        pub a11: Pin<'A', 11, Unspecified>,
+                    /// Disable this port and regain its original components.
+                    #[inline(always)]
+                    pub fn disable(self) -> (Port, Gate<$reg>) {
+                        // safety: we have all the pins here together,
+                        // we join them back up and turn off the gate
+                        unsafe {
+                            let mut gate = Gate::steal();
+                            gate.disable();
+                            (Port::steal(), gate)
+                        }
+                    }
+                }
 
-        pub a12: Pin<'A', 12, Unspecified>,
-        pub a13: Pin<'A', 13, Unspecified>,
-        pub a14: Pin<'A', 14, Unspecified>,
-        pub a15: Pin<'A', 15, Unspecified>,
-    }
+                #[doc = concat!("Port for ", $name, ".")]
+                pub struct Port {
+                    _private: (),
+                }
 
-    impl Pins {
-        // safety: must be the only thing to write to this port in SYSCON and GPIO
-        #[inline(always)]
-        pub(crate) unsafe fn steal() -> Self {
-            Self {
-                a0: Pin::steal(),
-                a1: Pin::steal(),
-                a2: Pin::steal(),
-                a3: Pin::steal(),
+                impl core::fmt::Debug for Port {
+                    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                        f.debug_tuple("Port").field(&stringify!($reg)).finish()
+                    }
+                }
 
-                a4: Pin::steal(),
-                a5: Pin::steal(),
-                a6: Pin::steal(),
-                a7: Pin::steal(),
+                #[cfg(feature = "defmt")]
+                impl defmt::Format for Port {
+                    fn format(&self, f: defmt::Formatter) {
+                        defmt::write!(f, "Port({})", stringify!($reg));
+                    }
+                }
 
-                a8: Pin::steal(),
-                a9: Pin::steal(),
-                a10: Pin::steal(),
-                a11: Pin::steal(),
+                impl Port {
+                    // safety: this provides access to the pins for this
+                    // GPIO in PORTCON and its own register
+                    #[inline(always)]
+                    pub(super) unsafe fn steal() -> Self {
+                        Self { _private: () }
+                    }
 
-                a12: Pin::steal(),
-                a13: Pin::steal(),
-                a14: Pin::steal(),
-                a15: Pin::steal(),
+                    /// Enable this port and get access to its pins.
+                    #[inline(always)]
+                    pub fn enable(self, mut gate: Gate<$reg>) -> Pins {
+                        gate.enable();
+
+                        // safety: we've enabled this port and control the gate
+                        unsafe {
+                            Pins::steal()
+                        }
+                    }
+                }
             }
         }
-    }
+    };
 }
 
-/// Helper types for GPIO B.
-pub mod gpiob {
-    use super::{Pin, Unspecified};
-
-    /// Pins for the GPIO B port.
-    #[derive(Debug)]
-    #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    pub struct Pins {
-        pub b0: Pin<'B', 0, Unspecified>,
-        pub b1: Pin<'B', 1, Unspecified>,
-        pub b2: Pin<'B', 2, Unspecified>,
-        pub b3: Pin<'B', 3, Unspecified>,
-
-        pub b4: Pin<'B', 4, Unspecified>,
-        pub b5: Pin<'B', 5, Unspecified>,
-        pub b6: Pin<'B', 6, Unspecified>,
-        pub b7: Pin<'B', 7, Unspecified>,
-
-        pub b8: Pin<'B', 8, Unspecified>,
-        pub b9: Pin<'B', 9, Unspecified>,
-        pub b10: Pin<'B', 10, Unspecified>,
-        pub b11: Pin<'B', 11, Unspecified>,
-
-        pub b12: Pin<'B', 12, Unspecified>,
-        pub b13: Pin<'B', 13, Unspecified>,
-        pub b14: Pin<'B', 14, Unspecified>,
-        pub b15: Pin<'B', 15, Unspecified>,
-    }
-
-    impl Pins {
-        // safety: must be the only thing to write to this port in SYSCON and GPIO
-        #[inline(always)]
-        pub(crate) unsafe fn steal() -> Self {
-            Self {
-                b0: Pin::steal(),
-                b1: Pin::steal(),
-                b2: Pin::steal(),
-                b3: Pin::steal(),
-
-                b4: Pin::steal(),
-                b5: Pin::steal(),
-                b6: Pin::steal(),
-                b7: Pin::steal(),
-
-                b8: Pin::steal(),
-                b9: Pin::steal(),
-                b10: Pin::steal(),
-                b11: Pin::steal(),
-
-                b12: Pin::steal(),
-                b13: Pin::steal(),
-                b14: Pin::steal(),
-                b15: Pin::steal(),
-            }
-        }
-    }
-}
-
-/// Helper types for GPIO C.
-pub mod gpioc {
-    use super::{Pin, Unspecified};
-
-    /// Pins for the GPIO C port.
-    #[derive(Debug)]
-    #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    pub struct Pins {
-        pub c0: Pin<'C', 0, Unspecified>,
-        pub c1: Pin<'C', 1, Unspecified>,
-        pub c2: Pin<'C', 2, Unspecified>,
-        pub c3: Pin<'C', 3, Unspecified>,
-
-        pub c4: Pin<'C', 4, Unspecified>,
-        pub c5: Pin<'C', 5, Unspecified>,
-        pub c6: Pin<'C', 6, Unspecified>,
-        pub c7: Pin<'C', 7, Unspecified>,
-    }
-
-    impl Pins {
-        // safety: must be the only thing to write to this port in SYSCON and GPIO
-        #[inline(always)]
-        pub(crate) unsafe fn steal() -> Self {
-            Self {
-                c0: Pin::steal(),
-                c1: Pin::steal(),
-                c2: Pin::steal(),
-                c3: Pin::steal(),
-
-                c4: Pin::steal(),
-                c5: Pin::steal(),
-                c6: Pin::steal(),
-                c7: Pin::steal(),
-            }
-        }
-    }
-}
+port_mod!(GPIOA, "GPIO port A", 'A', a, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+port_mod!(GPIOB, "GPIO port B", 'B', b, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+port_mod!(GPIOC, "GPIO port C", 'C', c, {0, 1, 2, 3, 4, 5, 6, 7});

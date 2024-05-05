@@ -59,7 +59,7 @@ where
 {
     /// safety: this reads and writes the bit for Dev in dev_clk_gate
     #[inline(always)]
-    unsafe fn steal() -> Self {
+    pub(crate) unsafe fn steal() -> Self {
         Self {
             _marker: Default::default(),
         }

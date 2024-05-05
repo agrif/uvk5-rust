@@ -60,7 +60,6 @@ fn main() -> ! {
     // important! must be turned on before configured.
     power.gates.gpio_a.enable();
     power.gates.gpio_c.enable();
-    power.gates.uart1.enable();
 
     // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
@@ -69,27 +68,24 @@ fn main() -> ! {
     cp.SYST.enable_interrupt();
     cp.SYST.enable_counter();
 
-    let pins = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
+    let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
+    let pins_a = ports.port_a.enable(power.gates.gpio_a);
+    let pins_c = ports.port_c.enable(power.gates.gpio_c);
 
     // flashlight is GPIO C3
-    let mut light = pins.port_c.c3.into_push_pull_output();
+    let mut light = pins_c.c3.into_push_pull_output();
 
     // ptt button is GPIO C5
-    let ptt = pins.port_c.c5.into_pull_up_input();
+    let ptt = pins_c.c5.into_pull_up_input();
 
     // uart1 tx is A7, uart1 rx is A8
     const ALT_TX: u8 = hal::pac::portcon::porta_sel0::PORTA7_A::Uart1Tx as u8;
     const ALT_RX: u8 = hal::pac::portcon::porta_sel1::PORTA8_A::Uart1Rx as u8;
-    let tx = pins
-        .port_a
-        .a7
-        .into_push_pull_output()
-        .into_alternate::<ALT_TX>();
-    let rx = pins
-        .port_a
-        .a8
-        .into_floating_input()
-        .into_alternate::<ALT_RX>();
+    let tx = pins_a.a7.into_push_pull_output().into_alternate::<ALT_TX>();
+    let rx = pins_a.a8.into_floating_input().into_alternate::<ALT_RX>();
+
+    // power on the uart
+    power.gates.uart1.enable();
 
     // disable uart to configure it
     p.UART1.ctrl().modify(|_, w| w.uarten().disabled());
