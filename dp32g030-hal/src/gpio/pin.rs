@@ -1,3 +1,7 @@
+use core::convert::Infallible;
+use embedded_hal_02::digital::v2 as hal02;
+use embedded_hal_1::digital as hal1;
+
 use crate::pac;
 
 use super::{Alternate, Floating, Input, OpenDrain, Output, PinMode, PullDown, PullUp, PushPull};
@@ -17,6 +21,42 @@ impl From<bool> for PinState {
             Self::High
         } else {
             Self::Low
+        }
+    }
+}
+
+impl From<hal02::PinState> for PinState {
+    fn from(value: hal02::PinState) -> Self {
+        match value {
+            hal02::PinState::Low => Self::Low,
+            hal02::PinState::High => Self::High,
+        }
+    }
+}
+
+impl From<PinState> for hal02::PinState {
+    fn from(value: PinState) -> Self {
+        match value {
+            PinState::Low => Self::Low,
+            PinState::High => Self::High,
+        }
+    }
+}
+
+impl From<hal1::PinState> for PinState {
+    fn from(value: hal1::PinState) -> Self {
+        match value {
+            hal1::PinState::Low => Self::Low,
+            hal1::PinState::High => Self::High,
+        }
+    }
+}
+
+impl From<PinState> for hal1::PinState {
+    fn from(value: PinState) -> Self {
+        match value {
+            PinState::Low => Self::Low,
+            PinState::High => Self::High,
         }
     }
 }
@@ -284,15 +324,35 @@ where
         self.into_mode()
     }
 
-    /// Convert pin into a push-pull output.
+    /// Convert pin into a push-pull output, initially low.
     #[inline(always)]
     pub fn into_push_pull_output(self) -> Pin<P, N, Output<PushPull>> {
+        self.into_push_pull_output_in_state(PinState::Low)
+    }
+
+    /// Convert a pin into a push-pull output in the given state.
+    #[inline(always)]
+    pub fn into_push_pull_output_in_state(
+        mut self,
+        state: PinState,
+    ) -> Pin<P, N, Output<PushPull>> {
+        self.write_data(state);
         self.into_mode()
     }
 
-    /// Convert pin into an open-drain output.
+    /// Convert pin into an open-drain output, initially low.
     #[inline(always)]
     pub fn into_open_drain_output(self) -> Pin<P, N, Output<OpenDrain>> {
+        self.into_open_drain_output_in_state(PinState::Low)
+    }
+
+    /// Convert pin into an open-drain output, initially low.
+    #[inline(always)]
+    pub fn into_open_drain_output_in_state(
+        mut self,
+        state: PinState,
+    ) -> Pin<P, N, Output<OpenDrain>> {
+        self.write_data(state);
         self.into_mode()
     }
 
@@ -381,5 +441,139 @@ where
     pub fn toggle(&mut self) {
         // FIXME this could be done with atomic xor
         self.set_state(!self.get_state());
+    }
+}
+
+impl<const P: char, const N: u8, Pull, OMode, Mode>
+    hal02::IoPin<Pin<P, N, Input<Pull>>, Pin<P, N, Output<OMode>>> for Pin<P, N, Mode>
+where
+    Input<Pull>: PinMode,
+    Output<OMode>: PinMode,
+    Mode: PinMode,
+{
+    type Error = Infallible;
+
+    fn into_input_pin(self) -> Result<Pin<P, N, Input<Pull>>, Self::Error> {
+        Ok(self.into_mode())
+    }
+
+    fn into_output_pin(
+        mut self,
+        state: hal02::PinState,
+    ) -> Result<Pin<P, N, Output<OMode>>, Self::Error> {
+        self.write_data(state.into());
+        Ok(self.into_mode())
+    }
+}
+
+impl<const P: char, const N: u8, Pull> hal02::InputPin for Pin<P, N, Input<Pull>>
+where
+    Input<Pull>: PinMode,
+{
+    type Error = Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_high(self))
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_low(self))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal02::OutputPin for Pin<P, N, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    type Error = Infallible;
+
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::set_low(self))
+    }
+
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::set_high(self))
+    }
+
+    fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
+        Ok(Pin::set_state(self, state.into()))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal02::StatefulOutputPin for Pin<P, N, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_set_high(self))
+    }
+
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_set_low(self))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal02::ToggleableOutputPin for Pin<P, N, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    type Error = Infallible;
+
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::toggle(self))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal1::ErrorType for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    type Error = Infallible;
+}
+
+impl<const P: char, const N: u8, Pull> hal1::InputPin for Pin<P, N, Input<Pull>>
+where
+    Input<Pull>: PinMode,
+{
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_high(self))
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_low(self))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal1::OutputPin for Pin<P, N, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::set_low(self))
+    }
+
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::set_high(self))
+    }
+
+    fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
+        Ok(Pin::set_state(self, state.into()))
+    }
+}
+
+impl<const P: char, const N: u8, Mode> hal1::StatefulOutputPin for Pin<P, N, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_set_high(self))
+    }
+
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::is_set_low(self))
+    }
+
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        Ok(Pin::toggle(self))
     }
 }
