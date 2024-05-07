@@ -2,6 +2,9 @@
 
 use crate::pac;
 
+mod hal02;
+mod hal1;
+
 mod mode;
 pub use mode::*;
 
