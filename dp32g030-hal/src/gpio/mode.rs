@@ -69,6 +69,7 @@ pub struct Input<Pull = Floating> {
 }
 
 impl<Pull> Default for Input<Pull> {
+    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -80,6 +81,7 @@ impl<Pull> core::fmt::Debug for Input<Pull>
 where
     Pull: Default + core::fmt::Debug,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Input").field(&Pull::default()).finish()
     }
@@ -90,6 +92,7 @@ impl<Pull> defmt::Format for Input<Pull>
 where
     Pull: Default + defmt::Format,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Input({})", Pull::default())
     }
@@ -159,6 +162,7 @@ pub struct Output<Mode = PushPull> {
 }
 
 impl<Mode> Default for Output<Mode> {
+    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -170,6 +174,7 @@ impl<Mode> core::fmt::Debug for Output<Mode>
 where
     Mode: Default + core::fmt::Debug,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Output").field(&Mode::default()).finish()
     }
@@ -180,6 +185,7 @@ impl<Mode> defmt::Format for Output<Mode>
 where
     Mode: Default + defmt::Format,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Output({})", Mode::default())
     }
@@ -223,6 +229,7 @@ pub struct Alternate<const A: u8, Mode> {
 }
 
 impl<const A: u8, Mode> Default for Alternate<A, Mode> {
+    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -234,6 +241,7 @@ impl<const A: u8, Mode> core::fmt::Debug for Alternate<A, Mode>
 where
     Mode: Default + core::fmt::Debug,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Alternate")
             .field(&A)
@@ -247,6 +255,7 @@ impl<const A: u8, Mode> defmt::Format for Alternate<A, Mode>
 where
     Mode: Default + defmt::Format,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Alternate({}, {})", A, Mode::default())
     }

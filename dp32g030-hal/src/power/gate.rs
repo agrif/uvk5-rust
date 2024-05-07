@@ -34,6 +34,7 @@ impl<Dev> core::fmt::Debug for Gate<Dev>
 where
     Dev: Device,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Gate")
             .field(&Dev::NAME)
@@ -47,6 +48,7 @@ impl<Dev> defmt::Format for Gate<Dev>
 where
     Dev: Device,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Gate(");
         Dev::defmt(f);

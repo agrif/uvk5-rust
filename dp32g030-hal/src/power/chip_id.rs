@@ -6,6 +6,7 @@ pub struct ChipId {
 }
 
 impl core::fmt::Debug for ChipId {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("ChipId").field(&self.get()).finish()
     }
@@ -13,6 +14,7 @@ impl core::fmt::Debug for ChipId {
 
 #[cfg(feature = "defmt")]
 impl defmt::Format for ChipId {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "ChipId({})", &self.get());
     }

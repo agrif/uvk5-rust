@@ -16,6 +16,7 @@ pub enum PinState {
 }
 
 impl From<bool> for PinState {
+    #[inline(always)]
     fn from(value: bool) -> Self {
         if value {
             Self::High
@@ -26,6 +27,7 @@ impl From<bool> for PinState {
 }
 
 impl From<hal02::PinState> for PinState {
+    #[inline(always)]
     fn from(value: hal02::PinState) -> Self {
         match value {
             hal02::PinState::Low => Self::Low,
@@ -35,6 +37,7 @@ impl From<hal02::PinState> for PinState {
 }
 
 impl From<PinState> for hal02::PinState {
+    #[inline(always)]
     fn from(value: PinState) -> Self {
         match value {
             PinState::Low => Self::Low,
@@ -44,6 +47,7 @@ impl From<PinState> for hal02::PinState {
 }
 
 impl From<hal1::PinState> for PinState {
+    #[inline(always)]
     fn from(value: hal1::PinState) -> Self {
         match value {
             hal1::PinState::Low => Self::Low,
@@ -53,6 +57,7 @@ impl From<hal1::PinState> for PinState {
 }
 
 impl From<PinState> for hal1::PinState {
+    #[inline(always)]
     fn from(value: PinState) -> Self {
         match value {
             PinState::Low => Self::Low,
@@ -64,6 +69,7 @@ impl From<PinState> for hal1::PinState {
 impl core::ops::Not for PinState {
     type Output = Self;
 
+    #[inline(always)]
     fn not(self) -> Self {
         match self {
             Self::High => Self::Low,
@@ -95,6 +101,7 @@ impl<const P: char, const N: u8, Mode> core::fmt::Debug for Pin<P, N, Mode>
 where
     Mode: PinMode,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Pin")
             .field(&P)
@@ -109,6 +116,7 @@ impl<const P: char, const N: u8, Mode> defmt::Format for Pin<P, N, Mode>
 where
     Mode: PinMode + defmt::Format,
 {
+    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Pin({}, {}, {})", P, N, Mode::default())
     }
@@ -453,10 +461,12 @@ where
 {
     type Error = Infallible;
 
+    #[inline(always)]
     fn into_input_pin(self) -> Result<Pin<P, N, Input<Pull>>, Self::Error> {
         Ok(self.into_mode())
     }
 
+    #[inline(always)]
     fn into_output_pin(
         mut self,
         state: hal02::PinState,
@@ -472,10 +482,12 @@ where
 {
     type Error = Infallible;
 
+    #[inline(always)]
     fn is_high(&self) -> Result<bool, Self::Error> {
         Ok(Pin::is_high(self))
     }
 
+    #[inline(always)]
     fn is_low(&self) -> Result<bool, Self::Error> {
         Ok(Pin::is_low(self))
     }
@@ -487,16 +499,19 @@ where
 {
     type Error = Infallible;
 
+    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         Pin::set_low(self);
         Ok(())
     }
 
+    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         Pin::set_high(self);
         Ok(())
     }
 
+    #[inline(always)]
     fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
         Pin::set_state(self, state.into());
         Ok(())
@@ -507,10 +522,12 @@ impl<const P: char, const N: u8, Mode> hal02::StatefulOutputPin for Pin<P, N, Ou
 where
     Output<Mode>: PinMode,
 {
+    #[inline(always)]
     fn is_set_high(&self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_high(self))
     }
 
+    #[inline(always)]
     fn is_set_low(&self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_low(self))
     }
@@ -522,6 +539,7 @@ where
 {
     type Error = Infallible;
 
+    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         Pin::toggle(self);
         Ok(())
@@ -539,10 +557,12 @@ impl<const P: char, const N: u8, Pull> hal1::InputPin for Pin<P, N, Input<Pull>>
 where
     Input<Pull>: PinMode,
 {
+    #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_high(self))
     }
 
+    #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_low(self))
     }
@@ -552,16 +572,19 @@ impl<const P: char, const N: u8, Mode> hal1::OutputPin for Pin<P, N, Output<Mode
 where
     Output<Mode>: PinMode,
 {
+    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         Pin::set_low(self);
         Ok(())
     }
 
+    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         Pin::set_high(self);
         Ok(())
     }
 
+    #[inline(always)]
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
         Pin::set_state(self, state.into());
         Ok(())
@@ -572,14 +595,17 @@ impl<const P: char, const N: u8, Mode> hal1::StatefulOutputPin for Pin<P, N, Out
 where
     Output<Mode>: PinMode,
 {
+    #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_high(self))
     }
 
+    #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_low(self))
     }
 
+    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         Pin::toggle(self);
         Ok(())
