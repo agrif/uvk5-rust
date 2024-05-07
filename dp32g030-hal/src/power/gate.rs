@@ -16,7 +16,8 @@ pub trait Device: Sealed {
 
     /// Write to this device gate.
     ///
-    /// Safety: Writing to this outside of using a Gate instance
+    /// # Safety
+    /// Writing to this outside of using a Gate instance
     /// can cause the HAL to become out of sync with the device.
     /// In particular, writes to a disabled device will fail silently.
     unsafe fn set_enabled(enabled: bool);

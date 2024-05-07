@@ -488,15 +488,18 @@ where
     type Error = Infallible;
 
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::set_low(self))
+        Pin::set_low(self);
+        Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::set_high(self))
+        Pin::set_high(self);
+        Ok(())
     }
 
     fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
-        Ok(Pin::set_state(self, state.into()))
+        Pin::set_state(self, state.into());
+        Ok(())
     }
 }
 
@@ -520,7 +523,8 @@ where
     type Error = Infallible;
 
     fn toggle(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::toggle(self))
+        Pin::toggle(self);
+        Ok(())
     }
 }
 
@@ -549,15 +553,18 @@ where
     Output<Mode>: PinMode,
 {
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::set_low(self))
+        Pin::set_low(self);
+        Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::set_high(self))
+        Pin::set_high(self);
+        Ok(())
     }
 
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
-        Ok(Pin::set_state(self, state.into()))
+        Pin::set_state(self, state.into());
+        Ok(())
     }
 }
 
@@ -574,6 +581,7 @@ where
     }
 
     fn toggle(&mut self) -> Result<(), Self::Error> {
-        Ok(Pin::toggle(self))
+        Pin::toggle(self);
+        Ok(())
     }
 }
