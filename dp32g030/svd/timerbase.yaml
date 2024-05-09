@@ -1,0 +1,118 @@
+# section 5.9, page 123
+
+_derive:
+  TIMER_BASE1: TIMER_BASE0
+  TIMER_BASE2: TIMER_BASE0
+
+TIMER_BASE0:
+  _modify:
+    # fix up some names, description and access
+    TIMERBASE0_EN:
+      name: "EN"
+    TIMERBASE0_DIV:
+      name: "DIV"
+    TIMERBASE0_IE:
+      name: "IE"
+      description: "TIMER Interrupt Enable Register"
+    TIMERBASE0_IF:
+      name: "IF"
+    TIMERBASE0_HIGH_LOAD:
+      name: "HIGH_LOAD"
+    TIMERBASE0_HIGH_CNT:
+      name: "HIGH_CNT"
+      access: read-only
+    TIMERBASE0_LOW_LOAD:
+      name: "LOW_LOAD"
+    TIMERBASE0_LOW_CNT:
+      name: "LOW_CNT"
+      access: read-only
+
+  EN:
+    _add:
+      HIGH_EN:
+        description: "HIGH timer enable register."
+        bitRange: "[1:1]"
+      LOW_EN:
+        description: "LOW timer enable register."
+        bitRange: "[0:0]"
+
+    HIGH_EN:
+      DISABLED: [0, "HIGH timer is disabled."]
+      ENABLED: [1, "HIGH timer is enabled."]
+
+    LOW_EN:
+      DISABLED: [0, "LOW timer is disabled."]
+      ENABLED: [1, "LOW timer is enabled."]
+
+  DIV:
+    _add:
+      DIV:
+        description: "Count clock prescaler. Divide by this plus one."
+        bitRange: "[15:0]"
+
+    DIV: [0x0000, 0xffff]
+
+  IE:
+    _add:
+      HIGH_IE:
+        description: "HIGH timer interrupt enable register."
+        bitRange: "[1:1]"
+      LOW_IE:
+        description: "LOW timer interrupt enable register."
+        bitRange: "[0:0]"
+
+    HIGH_IE:
+      DISABLED: [0, "HIGH timer interrupt is disabled."]
+      ENABLED: [1, "HIGH timer interrupt is enabled."]
+
+    LOW_IE:
+      DISABLED: [0, "LOW timer interrupt is disabled."]
+      ENABLED: [1, "LOW timer interrupt is enabled."]
+
+  IF:
+    _add:
+      HIGH_IF:
+        description: "HIGH timer interrupt status."
+        bitRange: "[1:1]"
+        modifiedWriteValues: oneToClear
+      LOW_IF:
+        description: "LOW timer interrupt status."
+        bitRange: "[0:0]"
+        modifiedWriteValues: oneToClear
+
+    HIGH_IF:
+      SET: [1, "HIGH timer interrupt occurred."]
+    LOW_IF:
+      SET: [1, "LOW timer interrupt occurred."]
+
+  HIGH_LOAD:
+    _add:
+      HIGH_LOAD:
+        description: "HIGH timer target configuration register."
+        bitRange: "[15:0]"
+
+    HIGH_LOAD: [0x0000, 0xffff]
+
+  HIGH_CNT:
+    _add:
+      HIGH_CNT:
+        description: "HIGH current counter value."
+        bitRange: "[15:0]"
+
+    HIGH_CNT: [0x0000, 0xffff]
+
+  LOW_LOAD:
+    _add:
+      LOW_LOAD:
+        description: "LOW timer target configuration register."
+        bitRange: "[15:0]"
+
+    LOW_LOAD: [0x0000, 0xffff]
+
+  LOW_CNT:
+    _add:
+      LOW_CNT:
+        description: "LOW current counter value."
+        bitRange: "[15:0]"
+
+    LOW_CNT: [0x0000, 0xffff]
