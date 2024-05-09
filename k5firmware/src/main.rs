@@ -56,11 +56,6 @@ fn main() -> ! {
 
     let clocks = power.clocks.sys_internal_48mhz().freeze();
 
-    // turn on GPIOA, GPIOC and UART1
-    // important! must be turned on before configured.
-    power.gates.gpio_a.enable();
-    power.gates.gpio_c.enable();
-
     // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
     cp.SYST.set_reload((clocks.sys_clk() / 100) - 1);
