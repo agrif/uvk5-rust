@@ -62,7 +62,7 @@ impl Ports {
 
 // macro for each port module
 macro_rules! port_mod {
-    ($reg:ident, $name:literal, $P:literal, $p:ident, {$($N:literal),+}) => {
+    ($reg:ident, $name:literal, $P:literal, $p:ident, $bigp:ident, {$($N:literal),+}) => {
         paste::paste! {
             #[doc = concat!("Helper types for ", $name, ".")]
             pub mod [<port_ $p>] {
@@ -139,11 +139,37 @@ macro_rules! port_mod {
                         }
                     }
                 }
+
+                $(
+                    // PA0 etc. aliases
+                    #[doc = concat!($name, " pin ", stringify!($N), ".")]
+                    pub type [<P $bigp $N>]<Mode> = Pin<$P, $N, Mode>;
+                )*
             }
+
+            $(
+                // re-export the PA0 etc. aliases
+                #[doc(inline)]
+                pub use [<port_ $p>]::[<P $bigp $N>];
+            )*
         }
     };
 }
 
-port_mod!(GPIOA, "GPIO port A", 'A', a, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-port_mod!(GPIOB, "GPIO port B", 'B', b, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-port_mod!(GPIOC, "GPIO port C", 'C', c, {0, 1, 2, 3, 4, 5, 6, 7});
+port_mod!(GPIOA, "GPIO port A", 'A', a, A, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+port_mod!(GPIOB, "GPIO port B", 'B', b, B, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+port_mod!(GPIOC, "GPIO port C", 'C', c, C, {0, 1, 2, 3, 4, 5, 6, 7});
+
+// alternate function aliases
+macro_rules! alternate_aliases {
+    {$($n:literal),*} => {
+        paste::paste! {
+            $(
+                #[doc = concat!("Alternate function ", stringify!($n), ". (type state)")]
+                pub type [<AF $n>]<Mode> = Alternate<$n, Mode>;
+            )*
+        }
+    }
+}
+
+alternate_aliases! {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
