@@ -1,6 +1,7 @@
 use crate::pac;
 
 use crate::gpio::alt::{xtah, xtal};
+use crate::time::{Hertz, RateExtU32};
 
 /// Holding this token means the XTAL port is configured and
 /// has a known frequency.
@@ -49,10 +50,10 @@ impl defmt::Format for XtahPort {
 // used internally to cart around source frequencies
 #[derive(Debug)]
 struct SourceFreqs {
-    rchf_high: u32,
-    rclf: u32,
-    xtal: Option<u32>, // is_some() if XtalPort is held
-    xtah: Option<u32>, // is_some() if XtahPort is held
+    rchf_high: Hertz,
+    rclf: Hertz,
+    xtal: Option<Hertz>, // is_some() if XtalPort is held
+    xtah: Option<Hertz>, // is_some() if XtahPort is held
 }
 
 /// Choices for ADC sample clock, dividing the system clock.
@@ -77,7 +78,7 @@ pub enum RtcSel {
 
 impl RtcSel {
     #[inline(always)]
-    fn freq(&self, freqs: &SourceFreqs) -> u32 {
+    fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             // unwrap: we have an XtalPort token
             Self::Xtal(_) => freqs.xtal.unwrap(),
@@ -135,7 +136,7 @@ impl SysSel {
     }
 
     #[inline(always)]
-    fn freq(&self, freqs: &SourceFreqs) -> u32 {
+    fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
             Self::Rchf48 => freqs.rchf_high,
@@ -210,7 +211,7 @@ impl SrcSel {
     }
 
     #[inline(always)]
-    fn freq(&self, freqs: &SourceFreqs) -> u32 {
+    fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
             Self::Rchf48 => freqs.rchf_high,
@@ -277,7 +278,7 @@ impl PllSel {
     }
 
     #[inline(always)]
-    fn freq(&self, freqs: &SourceFreqs) -> u32 {
+    fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
             Self::Rchf48 => freqs.rchf_high,
@@ -291,46 +292,46 @@ impl PllSel {
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ClockConfig {
-    xtal: Option<u32>,
-    xtah: Option<u32>,
+    xtal: Option<Hertz>,
+    xtah: Option<Hertz>,
 
     saradc_sample: SaradcSel,
     rtc: RtcSel,
     sys: SysSel,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Represents frozen, complete information about system clock frequencies.
 pub struct Clocks {
-    sys_clk: u32,
-    saradc_sample_clk: u32,
-    rtc_clk: u32,
-    iwdt_clk: u32,
+    sys_clk: Hertz,
+    saradc_sample_clk: Hertz,
+    rtc_clk: Hertz,
+    iwdt_clk: Hertz,
 }
 
 impl Clocks {
     /// Get the system clock, in Hz.
     #[inline(always)]
-    pub fn sys_clk(&self) -> u32 {
+    pub fn sys_clk(&self) -> Hertz {
         self.sys_clk
     }
 
     /// Get the ADC sample clock, in Hz.
     #[inline(always)]
-    pub fn saradc_sample_clk(&self) -> u32 {
+    pub fn saradc_sample_clk(&self) -> Hertz {
         self.saradc_sample_clk
     }
 
     /// Get the RTC clock, in Hz.
     #[inline(always)]
-    pub fn rtc_clk(&self) -> u32 {
+    pub fn rtc_clk(&self) -> Hertz {
         self.rtc_clk
     }
 
     /// Get the IWDT clock, in Hz.
     #[inline(always)]
-    pub fn iwdt_clk(&self) -> u32 {
+    pub fn iwdt_clk(&self) -> Hertz {
         self.iwdt_clk
     }
 }
@@ -435,19 +436,19 @@ impl ClockConfig {
     /// Use the XTAL port at 32.768kHz.
     #[inline(always)]
     pub fn xtal(&mut self, xi: xtal::Xi, xo: xtal::Xo) -> XtalPort {
-        self.xtal_with(xi, xo, 32_786)
+        self.xtal_with(xi, xo, 32_786.Hz())
     }
 
     /// Use the XTAL port with a custom frequency.
     #[inline(always)]
-    pub fn xtal_with(&mut self, _xi: xtal::Xi, _xo: xtal::Xo, xtal: u32) -> XtalPort {
+    pub fn xtal_with(&mut self, _xi: xtal::Xi, _xo: xtal::Xo, xtal: Hertz) -> XtalPort {
         self.xtal = Some(xtal);
         XtalPort { _private: () }
     }
 
     /// Use the XTAH port with the given frequency.
     #[inline(always)]
-    pub fn xtah(&mut self, _xi: xtah::Xi, _xo: xtah::Xo, xtah: u32) -> XtahPort {
+    pub fn xtah(&mut self, _xi: xtah::Xi, _xo: xtah::Xo, xtah: Hertz) -> XtahPort {
         self.xtah = Some(xtah);
         XtahPort { _private: () }
     }
@@ -610,19 +611,21 @@ impl ClockConfig {
             let delta = syscon.rc_freq_delta().read();
 
             let rchf_pos = delta.rchf_sig().is_positive();
-            let mut rchf = delta.rchf_delta().bits();
+            let mut rchf = delta.rchf_delta().bits().Hz();
+            let rchf_base = 48.MHz();
             if rchf_pos {
-                rchf += 48_000_000;
+                rchf += rchf_base;
             } else {
-                rchf = 48_000_000 - rchf;
+                rchf = rchf_base - rchf;
             }
 
             let rclf_pos = delta.rclf_sig().is_positive();
-            let mut rclf = delta.rclf_delta().bits() as u32;
+            let mut rclf = (delta.rclf_delta().bits() as u32).Hz();
+            let rclf_base = 32_768.Hz();
             if rclf_pos {
-                rclf += 32_768;
+                rclf += rclf_base;
             } else {
-                rclf = 32_768 - rclf;
+                rclf = rclf_base - rclf;
             }
 
             SourceFreqs {

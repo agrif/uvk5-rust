@@ -8,23 +8,26 @@ use critical_section::Mutex;
 use dp32g030_hal as hal;
 use panic_halt as _;
 
+use hal::prelude::*;
+use hal::time::{Hertz, MillisDuration};
+
 hal::version!(env!("CARGO_PKG_VERSION"));
 
-pub static TICKMS: Mutex<Cell<u64>> = Mutex::new(Cell::new(0));
+pub static TICK: Mutex<Cell<MillisDuration>> = Mutex::new(Cell::new(MillisDuration::millis(0)));
 
 #[cortex_m_rt::exception]
 fn SysTick() {
     critical_section::with(|cs| {
-        let tick = TICKMS.borrow(cs);
+        let tick = TICK.borrow(cs);
         // each tick is 10ms
-        tick.set(tick.get() + 10);
+        tick.set(tick.get() + 10.millis());
     });
 }
 
-fn delay_ms(ms: usize) {
-    let end = critical_section::with(|cs| TICKMS.borrow(cs).get() + ms as u64);
+fn delay(amount: MillisDuration) {
+    let end = critical_section::with(|cs| TICK.borrow(cs).get() + amount);
     loop {
-        let now = critical_section::with(|cs| TICKMS.borrow(cs).get());
+        let now = critical_section::with(|cs| TICK.borrow(cs).get());
         if now >= end {
             break;
         } else {
@@ -56,9 +59,9 @@ fn main() -> ! {
 
     let clocks = power.clocks.sys_internal_48mhz().freeze();
 
-    // tick every 10ms. There are 100x 10ms in 1s.
     // to make the time wrap every N ticks, set reload to N - 1.
-    cp.SYST.set_reload((clocks.sys_clk() / 100) - 1);
+    cp.SYST
+        .set_reload((clocks.sys_clk() / Hertz::millis(10)) - 1);
     cp.SYST.clear_current();
     cp.SYST.enable_interrupt();
     cp.SYST.enable_counter();
@@ -88,7 +91,7 @@ fn main() -> ! {
     // set our baud to.. 39053 ?
     p.UART1
         .baud()
-        .write(|w| w.baud().set((clocks.sys_clk() / 39053) as u16));
+        .write(|w| w.baud().set((clocks.sys_clk() / Hertz::Hz(39053)) as u16));
 
     // enable rx and tx
     p.UART1.ctrl().write(|w| {
@@ -127,7 +130,7 @@ fn main() -> ! {
             light.toggle();
         }
 
-        delay_ms(500);
+        delay(500.millis());
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
