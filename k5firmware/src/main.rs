@@ -1,40 +1,13 @@
 #![no_std]
 #![no_main]
 
-use core::cell::Cell;
-
-use cortex_m_rt::exception;
-use critical_section::Mutex;
 use dp32g030_hal as hal;
 use panic_halt as _;
 
 use hal::prelude::*;
-use hal::time::{Hertz, MillisDuration};
+use hal::time::Hertz;
 
 hal::version!(env!("CARGO_PKG_VERSION"));
-
-pub static TICK: Mutex<Cell<MillisDuration>> = Mutex::new(Cell::new(MillisDuration::millis(0)));
-
-#[cortex_m_rt::exception]
-fn SysTick() {
-    critical_section::with(|cs| {
-        let tick = TICK.borrow(cs);
-        // each tick is 10ms
-        tick.set(tick.get() + 10.millis());
-    });
-}
-
-fn delay(amount: MillisDuration) {
-    let end = critical_section::with(|cs| TICK.borrow(cs).get() + amount);
-    loop {
-        let now = critical_section::with(|cs| TICK.borrow(cs).get());
-        if now >= end {
-            break;
-        } else {
-            cortex_m::asm::wfi();
-        }
-    }
-}
 
 struct UartFmt<UART>(UART);
 
@@ -53,18 +26,11 @@ where
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    let mut cp = hal::pac::CorePeripherals::take().unwrap();
+    let _cp = hal::pac::CorePeripherals::take().unwrap();
     let p = hal::pac::Peripherals::take().unwrap();
     let mut power = hal::power::new(p.SYSCON, p.PMU);
 
     let clocks = power.clocks.sys_internal_48mhz().freeze();
-
-    // to make the time wrap every N ticks, set reload to N - 1.
-    cp.SYST
-        .set_reload((clocks.sys_clk() / Hertz::millis(10)) - 1);
-    cp.SYST.clear_current();
-    cp.SYST.enable_interrupt();
-    cp.SYST.enable_counter();
 
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
     let pins_a = ports.port_a.enable(power.gates.gpio_a);
@@ -120,17 +86,25 @@ fn main() -> ! {
     // make a formatter
     let mut uart1 = UartFmt(p.UART1);
 
+    // timer test
+    let mut timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
+        .frequency(&clocks, 1.kHz())
+        .split(&clocks)
+        .high
+        .counter_ms();
+    timer.start(500.millis()).unwrap();
+
     // turn on flashlight
     light.set_high();
 
     loop {
+        hal::block::block!(timer.wait()).unwrap();
+
         // ptt pressed means ptt low
         // ptt pressed means toggle light
         if ptt.is_low() {
             light.toggle();
         }
-
-        delay(500.millis());
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();

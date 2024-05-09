@@ -11,9 +11,11 @@ pub mod prelude;
 /// peripherals.
 pub use dp32g030 as pac;
 
+pub mod block;
 pub mod gpio;
 pub mod power;
 pub mod time;
+pub mod timer;
 
 // FIXME this should probably be in a board support crate, not here
 /// A macro for producing a VERSION symbol containing the given string
