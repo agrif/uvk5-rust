@@ -170,17 +170,3 @@ macro_rules! port_mod {
 port_mod!(GPIOA, "GPIO port A", 'A', a, A, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 port_mod!(GPIOB, "GPIO port B", 'B', b, B, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 port_mod!(GPIOC, "GPIO port C", 'C', c, C, {0, 1, 2, 3, 4, 5, 6, 7});
-
-// alternate function aliases
-macro_rules! alternate_aliases {
-    {$($n:literal),*} => {
-        paste::paste! {
-            $(
-                #[doc = concat!("Alternate function ", stringify!($n), ". (type state)")]
-                pub type [<AF $n>]<Mode> = Alternate<$n, Mode>;
-            )*
-        }
-    }
-}
-
-alternate_aliases! {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
