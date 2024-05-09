@@ -360,6 +360,16 @@ where
     type As<M> = ErasedPin<M>;
 
     #[inline(always)]
+    fn pin(&self) -> u8 {
+        ErasedPin::pin(self)
+    }
+
+    #[inline(always)]
+    fn port(&self) -> char {
+        ErasedPin::port(self)
+    }
+
+    #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
     where
         M: PinMode,

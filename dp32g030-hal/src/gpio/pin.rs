@@ -445,6 +445,16 @@ where
     type As<M> = Pin<P, N, M>;
 
     #[inline(always)]
+    fn pin(&self) -> u8 {
+        Pin::pin(self)
+    }
+
+    #[inline(always)]
+    fn port(&self) -> char {
+        Pin::port(self)
+    }
+
+    #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
     where
         M: PinMode,

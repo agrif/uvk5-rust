@@ -329,6 +329,16 @@ where
     type As<M> = PartiallyErasedPin<P, M>;
 
     #[inline(always)]
+    fn pin(&self) -> u8 {
+        PartiallyErasedPin::pin(self)
+    }
+
+    #[inline(always)]
+    fn port(&self) -> char {
+        PartiallyErasedPin::port(self)
+    }
+
+    #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
     where
         M: PinMode,

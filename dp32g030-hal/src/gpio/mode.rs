@@ -408,6 +408,12 @@ pub trait IntoMode: Sized {
     /// The current pin type, with the mode changed to Mode.
     type As<Mode>;
 
+    /// Get the pin number of this pin.
+    fn pin(&self) -> u8;
+
+    /// Get the port of this pin.
+    fn port(&self) -> char;
+
     /// Convert pin into a new mode.
     fn into_mode<Mode>(self) -> Self::As<Mode>
     where
