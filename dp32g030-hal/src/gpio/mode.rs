@@ -293,14 +293,6 @@ impl_alternate!(Output<OpenDrain>);
 
 // A macro to implement aliases on top of into_mode and into_mode_in_state.
 macro_rules! into_mode_aliases {
-    (plain $(vis $vis:tt)?, ($($as:tt)*), ($($args:tt)*), $doc:literal, $name:ident, $mode:ty, {$($body:tt)*}) => {
-        #[doc = $doc]
-        #[inline(always)]
-        $($vis)? fn $name(self) -> $($as)*<$($args)*$mode> {
-            $($body)*
-        }
-    };
-
     ($(vis $vis:tt,)? ($($as:tt)*), ($($args:tt)*)) => {
         /// Convert pin into a floating input.
         #[inline(always)]
@@ -408,6 +400,7 @@ macro_rules! into_mode_aliases {
     };
 }
 
+// allow this to be used elsewhere in gpio
 pub(super) use into_mode_aliases;
 
 /// A pin that can change mode.

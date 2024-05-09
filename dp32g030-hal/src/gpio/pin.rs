@@ -1,7 +1,8 @@
 use crate::pac;
 
 use super::{
-    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PinMode, PullDown, PullUp, PushPull,
+    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, PinMode, PullDown,
+    PullUp, PushPull,
 };
 
 /// Digital pin state.
@@ -183,6 +184,9 @@ macro_rules! change_mode {
     };
 }
 
+// allow this to be used elsewhere in gpio
+pub(super) use change_mode;
+
 impl<const P: char, const N: u8, Mode> Pin<P, N, Mode>
 where
     Mode: PinMode,
@@ -194,6 +198,12 @@ where
         Pin {
             _marker: Default::default(),
         }
+    }
+
+    /// Erase the pin number from the type.
+    #[inline(always)]
+    pub fn erase_number(self) -> PartiallyErasedPin<P, Mode> {
+        PartiallyErasedPin::erase(self)
     }
 
     /// Convert pin into a new mode.
@@ -451,5 +461,18 @@ where
         Output<M>: PinMode,
     {
         Pin::with_mode_in_state(self, state, f)
+    }
+}
+
+impl<const P: char, const N: u8, Mode> TryFrom<PartiallyErasedPin<P, Mode>> for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    // FIXME actual pin erasure error?
+    type Error = ();
+
+    #[inline(always)]
+    fn try_from(value: PartiallyErasedPin<P, Mode>) -> Result<Self, Self::Error> {
+        value.restore().ok_or(())
     }
 }

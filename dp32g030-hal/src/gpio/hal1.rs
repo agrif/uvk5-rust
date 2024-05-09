@@ -1,7 +1,7 @@
 use core::convert::Infallible;
 use embedded_hal_1::digital as hal1;
 
-use super::{Input, Output, Pin, PinMode, PinState};
+use super::{Input, Output, PartiallyErasedPin, Pin, PinMode, PinState};
 
 impl From<hal1::PinState> for PinState {
     #[inline(always)]
@@ -85,6 +85,72 @@ where
     #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         Pin::toggle(self);
+        Ok(())
+    }
+}
+
+impl<const P: char, Mode> hal1::ErrorType for PartiallyErasedPin<P, Mode>
+where
+    Mode: PinMode,
+{
+    type Error = Infallible;
+}
+
+impl<const P: char, Pull> hal1::InputPin for PartiallyErasedPin<P, Input<Pull>>
+where
+    Input<Pull>: PinMode,
+{
+    #[inline(always)]
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::is_high(self))
+    }
+
+    #[inline(always)]
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::is_low(self))
+    }
+}
+
+impl<const P: char, Mode> hal1::OutputPin for PartiallyErasedPin<P, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    #[inline(always)]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        PartiallyErasedPin::set_low(self);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        PartiallyErasedPin::set_high(self);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
+        PartiallyErasedPin::set_state(self, state.into());
+        Ok(())
+    }
+}
+
+impl<const P: char, Mode> hal1::StatefulOutputPin for PartiallyErasedPin<P, Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    #[inline(always)]
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::is_set_high(self))
+    }
+
+    #[inline(always)]
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::is_set_low(self))
+    }
+
+    #[inline(always)]
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        PartiallyErasedPin::toggle(self);
         Ok(())
     }
 }

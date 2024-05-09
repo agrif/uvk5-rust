@@ -10,6 +10,9 @@ mod hal1;
 mod mode;
 pub use mode::*;
 
+mod partial;
+pub use partial::*;
+
 mod pin;
 pub use pin::*;
 
@@ -68,7 +71,7 @@ macro_rules! port_mod {
         paste::paste! {
             #[doc = concat!("Helper types for ", $name, ".")]
             pub mod [<port_ $p>] {
-                use super::{Pin, Unspecified};
+                use super::{Pin, Unspecified, PartiallyErasedPin};
                 use crate::power::Gate;
                 use crate::pac::$reg;
 
@@ -147,6 +150,9 @@ macro_rules! port_mod {
                     #[doc = concat!($name, " pin ", stringify!($N), ".")]
                     pub type [<P $bigp $N>]<Mode> = Pin<$P, $N, Mode>;
                 )*
+
+                #[doc = concat!("Number-erased pin for ", $name, ".")]
+                pub type [<P $bigp n>]<Mode> = PartiallyErasedPin<$P, Mode>;
             }
 
             $(
