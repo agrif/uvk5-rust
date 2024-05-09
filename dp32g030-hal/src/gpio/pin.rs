@@ -231,6 +231,45 @@ where
         self.into_mode()
     }
 
+    /// Temporarily configure this pin in a new mode.
+    ///
+    /// If this is an output mode, the initial state is retained if
+    /// the original mode was also an output mode. It is otherwise
+    /// undefined.
+    #[inline(always)]
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Pin<P, N, M>) -> R) -> R
+    where
+        M: PinMode,
+    {
+        // safety: we have exclusive access to self, so we can create a copy
+        // and then only use the copy until we discard it in the same mode
+        let subpin = unsafe { Self::steal() };
+
+        // we must change mode back before returning
+        let mut subpin = subpin.into_mode();
+        let r = f(&mut subpin);
+        // change mode back and drop it
+        let subpin: Self = subpin.into_mode();
+        drop(subpin);
+
+        r
+    }
+
+    /// Temporarily configure this pin in a new mode, in the given
+    /// initial state.
+    #[inline(always)]
+    fn with_mode_in_state<M, R>(
+        &mut self,
+        state: PinState,
+        f: impl FnOnce(&mut Pin<P, N, Output<M>>) -> R,
+    ) -> R
+    where
+        Output<M>: PinMode,
+    {
+        self.write_data(state);
+        self.with_mode(f)
+    }
+
     // internal helper to read data register
     #[inline(always)]
     fn read_data(&self) -> PinState {
@@ -392,5 +431,25 @@ where
         Output<M>: PinMode,
     {
         Pin::into_mode_in_state(self, state)
+    }
+
+    #[inline(always)]
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::As<M>) -> R) -> R
+    where
+        M: PinMode,
+    {
+        Pin::with_mode(self, f)
+    }
+
+    #[inline(always)]
+    fn with_mode_in_state<M, R>(
+        &mut self,
+        state: PinState,
+        f: impl FnOnce(&mut Self::As<Output<M>>) -> R,
+    ) -> R
+    where
+        Output<M>: PinMode,
+    {
+        Pin::with_mode_in_state(self, state, f)
     }
 }
