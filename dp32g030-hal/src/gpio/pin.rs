@@ -1,8 +1,8 @@
 use crate::pac;
 
 use super::{
-    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, PinMode, PullDown,
-    PullUp, PushPull,
+    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin,
+    PinMode, PullDown, PullUp, PushPull,
 };
 
 /// Digital pin state.
@@ -200,6 +200,24 @@ where
         }
     }
 
+    /// Get the pin number of this pin.
+    #[inline(always)]
+    pub fn pin(&self) -> u8 {
+        N
+    }
+
+    /// Get the port of this pin.
+    #[inline(always)]
+    pub fn port(&self) -> char {
+        P
+    }
+
+    /// Erase the pin number and port from the type.
+    #[inline(always)]
+    pub fn erase(self) -> ErasedPin<Mode> {
+        ErasedPin::erase(self)
+    }
+
     /// Erase the pin number from the type.
     #[inline(always)]
     pub fn erase_number(self) -> PartiallyErasedPin<P, Mode> {
@@ -259,8 +277,7 @@ where
         let mut subpin = subpin.into_mode();
         let r = f(&mut subpin);
         // change mode back and drop it
-        let subpin: Self = subpin.into_mode();
-        drop(subpin);
+        let _: Self = subpin.into_mode();
 
         r
     }
@@ -473,6 +490,19 @@ where
 
     #[inline(always)]
     fn try_from(value: PartiallyErasedPin<P, Mode>) -> Result<Self, Self::Error> {
+        value.restore().ok_or(())
+    }
+}
+
+impl<const P: char, const N: u8, Mode> TryFrom<ErasedPin<Mode>> for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    // FIXME actual pin erasure error?
+    type Error = ();
+
+    #[inline(always)]
+    fn try_from(value: ErasedPin<Mode>) -> Result<Self, Self::Error> {
         value.restore().ok_or(())
     }
 }

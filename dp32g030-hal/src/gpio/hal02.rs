@@ -1,7 +1,7 @@
 use core::convert::Infallible;
 use embedded_hal_02::digital::v2 as hal02;
 
-use super::{Input, Output, PartiallyErasedPin, Pin, PinMode, PinState};
+use super::{ErasedPin, Input, Output, PartiallyErasedPin, Pin, PinMode, PinState};
 
 impl From<hal02::PinState> for PinState {
     #[inline(always)]
@@ -208,6 +208,100 @@ where
     #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         PartiallyErasedPin::toggle(self);
+        Ok(())
+    }
+}
+
+impl<Pull, OMode, Mode> hal02::IoPin<ErasedPin<Input<Pull>>, ErasedPin<Output<OMode>>>
+    for ErasedPin<Mode>
+where
+    Input<Pull>: PinMode,
+    Output<OMode>: PinMode,
+    Mode: PinMode,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn into_input_pin(self) -> Result<ErasedPin<Input<Pull>>, Self::Error> {
+        Ok(self.into_mode())
+    }
+
+    #[inline(always)]
+    fn into_output_pin(
+        mut self,
+        state: hal02::PinState,
+    ) -> Result<ErasedPin<Output<OMode>>, Self::Error> {
+        self.write_data(state.into());
+        Ok(self.into_mode())
+    }
+}
+
+impl<Pull> hal02::InputPin for ErasedPin<Input<Pull>>
+where
+    Input<Pull>: PinMode,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::is_high(self))
+    }
+
+    #[inline(always)]
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::is_low(self))
+    }
+}
+
+impl<Mode> hal02::OutputPin for ErasedPin<Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        ErasedPin::set_low(self);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        ErasedPin::set_high(self);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
+        ErasedPin::set_state(self, state.into());
+        Ok(())
+    }
+}
+
+impl<Mode> hal02::StatefulOutputPin for ErasedPin<Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    #[inline(always)]
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::is_set_high(self))
+    }
+
+    #[inline(always)]
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::is_set_low(self))
+    }
+}
+
+impl<Mode> hal02::ToggleableOutputPin for ErasedPin<Output<Mode>>
+where
+    Output<Mode>: PinMode,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        ErasedPin::toggle(self);
         Ok(())
     }
 }

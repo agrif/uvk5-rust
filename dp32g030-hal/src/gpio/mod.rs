@@ -4,6 +4,9 @@ use crate::pac;
 
 pub mod alt;
 
+mod erased;
+pub use erased::*;
+
 mod hal02;
 mod hal1;
 

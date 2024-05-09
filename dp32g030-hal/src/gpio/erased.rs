@@ -1,90 +1,116 @@
 use crate::pac;
 
 use super::{
-    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, Pin, PinMode, PinState,
-    PullDown, PullUp, PushPull,
+    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin, PinMode,
+    PinState, PullDown, PullUp, PushPull,
 };
 
-/// A partially-erased pin with static port and dynamic number.
-pub struct PartiallyErasedPin<const P: char, Mode = Input> {
-    n: u8,
+/// An erased pin with dynamic port and pin number.
+pub struct ErasedPin<Mode = Input> {
+    // bits 0-3 are pin, 4-7 are port, starting at A
+    pin_port: u8,
     _marker: core::marker::PhantomData<Mode>,
 }
 
-impl<const P: char, Mode> core::fmt::Debug for PartiallyErasedPin<P, Mode>
+impl<Mode> core::fmt::Debug for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
     #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_tuple("PartiallyErasedPin")
-            .field(&P)
-            .field(&self.n)
+        let (pin, port) = self.pin_port();
+        f.debug_tuple("ErasedPin")
+            .field(&pin)
+            .field(&port)
             .field(&Mode::default())
             .finish()
     }
 }
 
 #[cfg(feature = "defmt")]
-impl<const P: char, Mode> defmt::Format for PartiallyErasedPin<P, Mode>
+impl<Mode> defmt::Format for ErasedPin<Mode>
 where
     Mode: PinMode + defmt::Format,
 {
     #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
-        defmt::write!(
-            f,
-            "PartiallyErasedPin({}, {}, {})",
-            P,
-            self.n,
-            Mode::default()
-        )
+        let (pin, port) = self.pin_port();
+        defmt::write!(f, "ErasedPin({}, {}, {})", pin, port, Mode::default())
     }
 }
 
-impl<const P: char, Mode> PartiallyErasedPin<P, Mode>
+impl<Mode> ErasedPin<Mode>
 where
     Mode: PinMode,
 {
     /// Safety: this must be the only place this pin is accessed in both
     /// PORTCON and GPIO, and the mode must match the pin's mode.
     #[inline(always)]
-    pub(crate) unsafe fn steal(n: u8) -> Self {
+    unsafe fn steal(n: u8, p: char) -> Self {
+        assert!(n < 16);
+        let port = match p {
+            'A' => 0,
+            'B' => 1,
+            'C' => 2,
+            _ => {
+                // we never make these ourselves
+                panic!()
+            }
+        };
         Self {
-            n,
+            pin_port: n | (port << 4),
             _marker: Default::default(),
         }
+    }
+
+    /// Get the port and pin number of this pin.
+    #[inline(always)]
+    fn pin_port(&self) -> (u8, char) {
+        let pin = self.pin_port & 0x0f;
+        let port = match (self.pin_port & 0xf0) >> 4 {
+            0 => 'A',
+            1 => 'B',
+            2 => 'C',
+            _ => {
+                // we never make these
+                panic!()
+            }
+        };
+
+        (pin, port)
     }
 
     /// Get the pin number of this pin.
     #[inline(always)]
     pub fn pin(&self) -> u8 {
-        self.n
+        self.pin_port().0
     }
 
     /// Get the port of this pin.
     #[inline(always)]
     pub fn port(&self) -> char {
-        P
+        self.pin_port().1
     }
 
-    /// Erase the pin number of a pin.
+    /// Erase the pin number and port of a pin.
     #[inline(always)]
-    pub fn erase<const N: u8>(_pin: Pin<P, N, Mode>) -> Self {
+    pub fn erase<const P: char, const N: u8>(_pin: Pin<P, N, Mode>) -> Self {
         // safety: we have ownership of this pin
-        unsafe { Self::steal(N) }
+        unsafe { Self::steal(N, P) }
     }
 
-    /// Erase the port of this pin.
+    /// Erase the port of a partially-erased pin.
     #[inline(always)]
-    pub fn erase_port(self) -> ErasedPin<Mode> {
-        ErasedPin::erase_partial(self)
+    pub fn erase_partial<const P: char>(pin: PartiallyErasedPin<P, Mode>) -> Self {
+        // safety: we have ownership of this pin
+        unsafe { Self::steal(pin.pin(), P) }
     }
 
     /// Restore the erased pin.
     #[inline(always)]
-    pub fn restore<const N: u8>(self) -> Option<Pin<P, N, Mode>> {
-        if N == self.n {
+    pub fn restore<const P: char, const N: u8>(self) -> Option<Pin<P, N, Mode>> {
+        let (pin, port) = self.pin_port();
+        if N == pin && P == port {
             // safety: we own this pin via self, and drop self here.
             Some(unsafe { Pin::steal() })
         } else {
@@ -92,22 +118,36 @@ where
         }
     }
 
+    /// Restore the erased pin into a partially-erased pin.
+    #[inline(always)]
+    pub fn restore_partial<const P: char>(self) -> Option<PartiallyErasedPin<P, Mode>> {
+        let (pin, port) = self.pin_port();
+        if P == port {
+            // safety: we own this pin via self, and drop self here
+            Some(unsafe { PartiallyErasedPin::steal(pin) })
+        } else {
+            None
+        }
+    }
+
     /// Convert pin into a new mode.
     #[inline(always)]
-    pub fn into_mode<M>(self) -> PartiallyErasedPin<P, M>
+    pub fn into_mode<M>(self) -> ErasedPin<M>
     where
         M: PinMode,
     {
+        let (pin, port) = self.pin_port();
+
         // safety: we will consume this pin and return a new one
         // with valid type state, so we can access these register
         unsafe {
             use super::pin::change_mode;
-            if P == 'A' {
-                change_mode!(pac::GPIOA, porta, self.n, Mode, M);
-            } else if P == 'B' {
-                change_mode!(pac::GPIOB, portb, self.n, Mode, M);
-            } else if P == 'C' {
-                change_mode!(pac::GPIOC, portc, self.n, Mode, M);
+            if port == 'A' {
+                change_mode!(pac::GPIOA, porta, pin, Mode, M);
+            } else if port == 'B' {
+                change_mode!(pac::GPIOB, portb, pin, Mode, M);
+            } else if port == 'C' {
+                change_mode!(pac::GPIOC, portc, pin, Mode, M);
             } else {
                 // we never build these, someone did a naughty transmute
                 panic!();
@@ -115,12 +155,12 @@ where
         }
 
         // safety: we changed the mode above, and are consuming self
-        unsafe { PartiallyErasedPin::steal(self.n) }
+        unsafe { ErasedPin::steal(pin, port) }
     }
 
     /// Convert pin into a new mode, in the given initial state.
     #[inline(always)]
-    fn into_mode_in_state<M>(mut self, state: PinState) -> PartiallyErasedPin<P, Output<M>>
+    fn into_mode_in_state<M>(mut self, state: PinState) -> ErasedPin<Output<M>>
     where
         Output<M>: PinMode,
     {
@@ -134,13 +174,15 @@ where
     /// the original mode was also an output mode. It is otherwise
     /// undefined.
     #[inline(always)]
-    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut PartiallyErasedPin<P, M>) -> R) -> R
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut ErasedPin<M>) -> R) -> R
     where
         M: PinMode,
     {
+        let (pin, port) = self.pin_port();
+
         // safety: we have exclusive access to self, so we can create a copy
         // and then only use the copy until we discard it in the same mode
-        let subpin = unsafe { Self::steal(self.n) };
+        let subpin = unsafe { Self::steal(pin, port) };
 
         // we must change mode back before returning
         let mut subpin = subpin.into_mode();
@@ -157,7 +199,7 @@ where
     fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
-        f: impl FnOnce(&mut PartiallyErasedPin<P, Output<M>>) -> R,
+        f: impl FnOnce(&mut ErasedPin<Output<M>>) -> R,
     ) -> R
     where
         Output<M>: PinMode,
@@ -169,29 +211,16 @@ where
     // internal helper to read data register
     #[inline(always)]
     fn read_data(&self) -> PinState {
+        let (pin, port) = self.pin_port();
+
         // safety: we control these registers, and can read them
         unsafe {
-            if P == 'A' {
-                pac::GPIOA::steal()
-                    .data()
-                    .read()
-                    .data(self.n)
-                    .is_high()
-                    .into()
-            } else if P == 'B' {
-                pac::GPIOB::steal()
-                    .data()
-                    .read()
-                    .data(self.n)
-                    .is_high()
-                    .into()
-            } else if P == 'C' {
-                pac::GPIOC::steal()
-                    .data()
-                    .read()
-                    .data(self.n)
-                    .is_high()
-                    .into()
+            if port == 'A' {
+                pac::GPIOA::steal().data().read().data(pin).is_high().into()
+            } else if port == 'B' {
+                pac::GPIOB::steal().data().read().data(pin).is_high().into()
+            } else if port == 'C' {
+                pac::GPIOC::steal().data().read().data(pin).is_high().into()
             } else {
                 // we never build these, someone did a naughty transmute
                 panic!();
@@ -202,28 +231,30 @@ where
     // internal helper to write data register
     #[inline(always)]
     pub(super) fn write_data(&mut self, state: PinState) {
+        let (pin, port) = self.pin_port();
+
         // safety: we control these registers and can write them
         unsafe {
-            if P == 'A' {
+            if port == 'A' {
                 let gpio = pac::GPIOA::steal();
                 if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
+                    gpio.data().set_bits(|w| w.data(pin).high());
                 } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
+                    gpio.data().clear_bits(|w| w.data(pin).low());
                 }
-            } else if P == 'B' {
+            } else if port == 'B' {
                 let gpio = pac::GPIOB::steal();
                 if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
+                    gpio.data().set_bits(|w| w.data(pin).high());
                 } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
+                    gpio.data().clear_bits(|w| w.data(pin).low());
                 }
-            } else if P == 'C' {
+            } else if port == 'C' {
                 let gpio = pac::GPIOC::steal();
                 if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
+                    gpio.data().set_bits(|w| w.data(pin).high());
                 } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
+                    gpio.data().clear_bits(|w| w.data(pin).low());
                 }
             } else {
                 // we never build these, someone did a naughty transmute
@@ -232,11 +263,11 @@ where
         }
     }
 
-    super::mode::into_mode_aliases!(vis pub, (PartiallyErasedPin), (P,));
+    super::mode::into_mode_aliases!(vis pub, (ErasedPin), ());
 
     /// Convert pin into an alternate mode but otherwise preserve state.
     #[inline(always)]
-    pub fn into_alternate<const A: u8>(self) -> PartiallyErasedPin<P, Alternate<A, Mode::Inner>>
+    pub fn into_alternate<const A: u8>(self) -> ErasedPin<Alternate<A, Mode::Inner>>
     where
         Alternate<A, Mode::Inner>: PinMode,
     {
@@ -246,12 +277,12 @@ where
     /// Convert pin in alternate mode into a regular GPIO pin, but
     /// otherwise preserve state.
     #[inline(always)]
-    pub fn into_gpio(self) -> PartiallyErasedPin<P, Mode::Inner> {
+    pub fn into_gpio(self) -> ErasedPin<Mode::Inner> {
         self.into_mode()
     }
 }
 
-impl<const P: char, Pull> PartiallyErasedPin<P, Input<Pull>>
+impl<Pull> ErasedPin<Input<Pull>>
 where
     Input<Pull>: PinMode,
 {
@@ -274,7 +305,7 @@ where
     }
 }
 
-impl<const P: char, Mode> PartiallyErasedPin<P, Output<Mode>>
+impl<Mode> ErasedPin<Output<Mode>>
 where
     Output<Mode>: PinMode,
 {
@@ -322,18 +353,18 @@ where
     }
 }
 
-impl<const P: char, Mode> IntoMode for PartiallyErasedPin<P, Mode>
+impl<Mode> IntoMode for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
-    type As<M> = PartiallyErasedPin<P, M>;
+    type As<M> = ErasedPin<M>;
 
     #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
     where
         M: PinMode,
     {
-        PartiallyErasedPin::into_mode(self)
+        ErasedPin::into_mode(self)
     }
 
     #[inline(always)]
@@ -341,7 +372,7 @@ where
     where
         Output<M>: PinMode,
     {
-        PartiallyErasedPin::into_mode_in_state(self, state)
+        ErasedPin::into_mode_in_state(self, state)
     }
 
     #[inline(always)]
@@ -349,7 +380,7 @@ where
     where
         M: PinMode,
     {
-        PartiallyErasedPin::with_mode(self, f)
+        ErasedPin::with_mode(self, f)
     }
 
     #[inline(always)]
@@ -361,11 +392,11 @@ where
     where
         Output<M>: PinMode,
     {
-        PartiallyErasedPin::with_mode_in_state(self, state, f)
+        ErasedPin::with_mode_in_state(self, state, f)
     }
 }
 
-impl<const P: char, const N: u8, Mode> From<Pin<P, N, Mode>> for PartiallyErasedPin<P, Mode>
+impl<const P: char, const N: u8, Mode> From<Pin<P, N, Mode>> for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
@@ -375,15 +406,12 @@ where
     }
 }
 
-impl<const P: char, Mode> TryFrom<ErasedPin<Mode>> for PartiallyErasedPin<P, Mode>
+impl<const P: char, Mode> From<PartiallyErasedPin<P, Mode>> for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
-    // FIXME actual pin erasure error?
-    type Error = ();
-
     #[inline(always)]
-    fn try_from(value: ErasedPin<Mode>) -> Result<Self, Self::Error> {
-        value.restore_partial().ok_or(())
+    fn from(value: PartiallyErasedPin<P, Mode>) -> Self {
+        Self::erase_partial(value)
     }
 }
