@@ -68,10 +68,10 @@ fn main() -> ! {
     let pins_c = ports.port_c.enable(power.gates.gpio_c);
 
     // flashlight is GPIO C3
-    let mut light = pins_c.c3.into_push_pull_output();
+    let mut light = pins_c.c3.erase().into_push_pull_output();
 
     // ptt button is GPIO C5
-    let ptt = pins_c.c5.into_pull_up_input();
+    let ptt = pins_c.c5.erase().into_pull_up_input();
 
     // uart1 tx is A7, uart1 rx is A8
     const ALT_TX: u8 = hal::pac::portcon::porta_sel0::PORTA7_A::Uart1Tx as u8;
@@ -131,7 +131,7 @@ fn main() -> ! {
 
         use core::fmt::Write;
         writeln!(&mut uart1, "Hello, {}!", "UV-K5").unwrap();
-        writeln!(&mut uart1, "PTT is {:?}", ptt.read()).unwrap();
-        writeln!(&mut uart1, "Light is {:?}", light.get_state()).unwrap();
+        writeln!(&mut uart1, "PTT is {:?} {:?}", ptt, ptt.read()).unwrap();
+        writeln!(&mut uart1, "Light is {:?} {:?}", light, light.get_state()).unwrap();
     }
 }
