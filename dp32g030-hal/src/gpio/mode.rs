@@ -1,3 +1,5 @@
+use super::PinState;
+
 // seal for PinMode trait
 trait Sealed {}
 
@@ -288,3 +290,84 @@ impl_alternate!(Input<PullUp>);
 impl_alternate!(Input<PullDown>);
 impl_alternate!(Output<PushPull>);
 impl_alternate!(Output<OpenDrain>);
+
+// A macro to implement aliases on top of into_mode and into_mode_in_state.
+macro_rules! into_mode_aliases {
+    (plain $(vis $vis:tt)?, ($($as:tt)*), ($($args:tt)*), $doc:literal, $name:ident, $mode:ty, {$($body:tt)*}) => {
+        #[doc = $doc]
+        #[inline(always)]
+        $($vis)? fn $name(self) -> $($as)*<$($args)*$mode> {
+            $($body)*
+        }
+    };
+
+    ($(vis $vis:tt,)? ($($as:tt)*), ($($args:tt)*)) => {
+        /// Convert pin into a floating input.
+        #[inline(always)]
+        $($vis)? fn into_floating_input(self) -> $($as)*<$($args)* Input<Floating>> {
+            self.into_mode()
+        }
+
+        /// Convert pin into an input with a pull-up resistor.
+        #[inline(always)]
+        $($vis)? fn into_pull_up_input(self) -> $($as)*<$($args)* Input<PullUp>> {
+            self.into_mode()
+        }
+
+        /// Convert pin into an input with a pull-down resistor.
+        #[inline(always)]
+        $($vis)? fn into_pull_down_input(self) -> $($as)*<$($args)* Input<PullDown>> {
+            self.into_mode()
+        }
+
+        /// Convert pin into a push-pull output, initially low.
+        #[inline(always)]
+        $($vis)? fn into_push_pull_output(self) -> $($as)*<$($args)* Output<PushPull>> {
+            self.into_mode_in_state(PinState::Low)
+        }
+
+        /// Convert a pin into a push-pull output in the given state.
+        #[inline(always)]
+        $($vis)? fn into_push_pull_output_in_state(
+            self,
+            state: PinState,
+        ) -> $($as)*<$($args)* Output<PushPull>> {
+            self.into_mode_in_state(state)
+        }
+
+        /// Convert pin into an open-drain output, initially low.
+        #[inline(always)]
+        $($vis)? fn into_open_drain_output(self) -> $($as)*<$($args)* Output<OpenDrain>> {
+            self.into_mode_in_state(PinState::Low)
+        }
+
+        /// Convert pin into an open-drain output, initially low.
+        #[inline(always)]
+        $($vis)? fn into_open_drain_output_in_state(
+            self,
+            state: PinState,
+        ) -> $($as)*<$($args)* Output<OpenDrain>> {
+            self.into_mode_in_state(state)
+        }
+    };
+}
+
+pub(super) use into_mode_aliases;
+
+/// A pin that can change mode.
+pub trait IntoMode: Sized {
+    /// The current pin type, with the mode changed to Mode.
+    type As<Mode>;
+
+    /// Convert pin into a new mode.
+    fn into_mode<Mode>(self) -> Self::As<Mode>
+    where
+        Mode: PinMode;
+
+    /// Convert pin into a new mode, in the given initial state.
+    fn into_mode_in_state<Mode>(self, state: PinState) -> Self::As<Output<Mode>>
+    where
+        Output<Mode>: PinMode;
+
+    into_mode_aliases!((Self::As), ());
+}

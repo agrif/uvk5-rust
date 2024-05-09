@@ -1,6 +1,8 @@
 use crate::pac;
 
-use super::{Alternate, Floating, Input, OpenDrain, Output, PinMode, PullDown, PullUp, PushPull};
+use super::{
+    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PinMode, PullDown, PullUp, PushPull,
+};
 
 /// Digital pin state.
 #[repr(u8)]
@@ -219,6 +221,16 @@ where
         unsafe { Pin::steal() }
     }
 
+    /// Convert pin into a new mode, in the given initial state.
+    #[inline(always)]
+    fn into_mode_in_state<M>(mut self, state: PinState) -> Pin<P, N, Output<M>>
+    where
+        Output<M>: PinMode,
+    {
+        self.write_data(state);
+        self.into_mode()
+    }
+
     // internal helper to read data register
     #[inline(always)]
     fn read_data(&self) -> PinState {
@@ -270,55 +282,7 @@ where
         }
     }
 
-    /// Convert pin into a floating input.
-    #[inline(always)]
-    pub fn into_floating_input(self) -> Pin<P, N, Input<Floating>> {
-        self.into_mode()
-    }
-
-    /// Convert pin into an input with a pull-up resistor.
-    #[inline(always)]
-    pub fn into_pull_up_input(self) -> Pin<P, N, Input<PullUp>> {
-        self.into_mode()
-    }
-
-    /// Convert pin into an input with a pull-down resistor.
-    #[inline(always)]
-    pub fn into_pull_down_input(self) -> Pin<P, N, Input<PullDown>> {
-        self.into_mode()
-    }
-
-    /// Convert pin into a push-pull output, initially low.
-    #[inline(always)]
-    pub fn into_push_pull_output(self) -> Pin<P, N, Output<PushPull>> {
-        self.into_push_pull_output_in_state(PinState::Low)
-    }
-
-    /// Convert a pin into a push-pull output in the given state.
-    #[inline(always)]
-    pub fn into_push_pull_output_in_state(
-        mut self,
-        state: PinState,
-    ) -> Pin<P, N, Output<PushPull>> {
-        self.write_data(state);
-        self.into_mode()
-    }
-
-    /// Convert pin into an open-drain output, initially low.
-    #[inline(always)]
-    pub fn into_open_drain_output(self) -> Pin<P, N, Output<OpenDrain>> {
-        self.into_open_drain_output_in_state(PinState::Low)
-    }
-
-    /// Convert pin into an open-drain output, initially low.
-    #[inline(always)]
-    pub fn into_open_drain_output_in_state(
-        mut self,
-        state: PinState,
-    ) -> Pin<P, N, Output<OpenDrain>> {
-        self.write_data(state);
-        self.into_mode()
-    }
+    super::mode::into_mode_aliases!(vis pub, (Pin), (P, N,));
 
     /// Convert pin into an alternate mode but otherwise preserve state.
     #[inline(always)]
@@ -405,5 +369,28 @@ where
     pub fn toggle(&mut self) {
         // FIXME this could be done with atomic xor
         self.set_state(!self.get_state());
+    }
+}
+
+impl<const P: char, const N: u8, Mode> IntoMode for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    type As<M> = Pin<P, N, M>;
+
+    #[inline(always)]
+    fn into_mode<M>(self) -> Self::As<M>
+    where
+        M: PinMode,
+    {
+        Pin::into_mode(self)
+    }
+
+    #[inline(always)]
+    fn into_mode_in_state<M>(self, state: PinState) -> Self::As<Output<M>>
+    where
+        Output<M>: PinMode,
+    {
+        Pin::into_mode_in_state(self, state)
     }
 }
