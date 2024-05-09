@@ -1,11 +1,58 @@
 use crate::pac;
 
+use crate::gpio::alt::{xtah, xtal};
+
+/// Holding this token means the XTAL port is configured and
+/// has a known frequency.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct XtalPort {
+    _private: (),
+}
+
+impl core::fmt::Debug for XtalPort {
+    #[allow(clippy::missing_inline_in_public_items)]
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_tuple("XtalPort").finish()
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for XtalPort {
+    #[allow(clippy::missing_inline_in_public_items)]
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "XtalPort");
+    }
+}
+
+/// Holding this token means the XTAH port is configured and
+/// has a known frequency.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct XtahPort {
+    _private: (),
+}
+
+impl core::fmt::Debug for XtahPort {
+    #[allow(clippy::missing_inline_in_public_items)]
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_tuple("XtahPort").finish()
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for XtahPort {
+    #[allow(clippy::missing_inline_in_public_items)]
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "XtahPort");
+    }
+}
+
 // used internally to cart around source frequencies
 #[derive(Debug)]
 struct SourceFreqs {
     rchf_high: u32,
     rclf: u32,
-    xtal: u32,
+    xtal: Option<u32>, // is_some() if XtalPort is held
+    xtah: Option<u32>, // is_some() if XtahPort is held
 }
 
 /// Choices for ADC sample clock, dividing the system clock.
@@ -25,14 +72,15 @@ pub enum RtcSel {
     /// Internal RCLF oscillator, 32.768 KHz.
     Rclf,
     /// External XTAL port, 32.768 KHz.
-    Xtal,
+    Xtal(XtalPort),
 }
 
 impl RtcSel {
     #[inline(always)]
     fn freq(&self, freqs: &SourceFreqs) -> u32 {
         match self {
-            Self::Xtal => freqs.xtal,
+            // unwrap: we have an XtalPort token
+            Self::Xtal(_) => freqs.xtal.unwrap(),
             Self::Rclf => freqs.rclf,
         }
     }
@@ -40,7 +88,7 @@ impl RtcSel {
     #[inline(always)]
     fn xtal(&self) -> bool {
         match self {
-            Self::Xtal => true,
+            Self::Xtal(_) => true,
             Self::Rclf => false,
         }
     }
@@ -117,9 +165,9 @@ pub enum SrcSel {
     /// PLL output.
     Pll(PllSel, PllN, PllM),
     /// External XTAH input, 4-32MHz.
-    Xtah(u32),
+    Xtah(XtahPort),
     /// External XTAL input, 32.768kHz.
-    Xtal,
+    Xtal(XtalPort),
     /// Internal RCLF oscillator, 32.768kHz.
     Rclf,
 }
@@ -132,7 +180,7 @@ impl SrcSel {
             Self::Rchf48 => Some(true),
             Self::Pll(pll_sel, _, _) => pll_sel.rchf(),
             Self::Xtah(_) => None,
-            Self::Xtal => None,
+            Self::Xtal(_) => None,
             Self::Rclf => None,
         }
     }
@@ -144,7 +192,7 @@ impl SrcSel {
             Self::Rchf48 => false,
             Self::Pll(pll_sel, _, _) => pll_sel.xtah(),
             Self::Xtah(_) => true,
-            Self::Xtal => false,
+            Self::Xtal(_) => false,
             Self::Rclf => false,
         }
     }
@@ -156,7 +204,7 @@ impl SrcSel {
             Self::Rchf48 => false,
             Self::Pll(_, _, _) => false,
             Self::Xtah(_) => false,
-            Self::Xtal => true,
+            Self::Xtal(_) => true,
             Self::Rclf => false,
         }
     }
@@ -168,8 +216,10 @@ impl SrcSel {
             Self::Rchf48 => freqs.rchf_high,
             // overflow safety: u32 can hold up to 80x RCHF, more than we need
             Self::Pll(pll_sel, n, m) => pll_sel.freq(freqs) * pll_n(*n) / pll_m(*m),
-            Self::Xtah(f) => *f,
-            Self::Xtal => freqs.xtal,
+            // unwrap: we have an XtahPort token
+            Self::Xtah(_) => freqs.xtah.unwrap(),
+            // unwrap: we have an XtalPort token
+            Self::Xtal(_) => freqs.xtal.unwrap(),
             Self::Rclf => freqs.rclf,
         }
     }
@@ -204,7 +254,7 @@ pub enum PllSel {
     /// Internal RCHF oscillator, 24MHz.
     Rchf24,
     /// External XTAH input, 4-32MHz.
-    Xtah(u32),
+    Xtah(XtahPort),
 }
 
 impl PllSel {
@@ -231,7 +281,8 @@ impl PllSel {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
             Self::Rchf48 => freqs.rchf_high,
-            Self::Xtah(f) => *f,
+            // unwrap: we have an XtahPort token
+            Self::Xtah(_) => freqs.xtah.unwrap(),
         }
     }
 }
@@ -240,7 +291,8 @@ impl PllSel {
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ClockConfig {
-    xtal: u32,
+    xtal: Option<u32>,
+    xtah: Option<u32>,
 
     saradc_sample: SaradcSel,
     rtc: RtcSel,
@@ -290,7 +342,8 @@ impl ClockConfig {
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {
-            xtal: 32_768,
+            xtal: None,
+            xtah: None,
 
             saradc_sample: SaradcSel::Div1,
             rtc: RtcSel::Rclf,
@@ -321,8 +374,8 @@ impl ClockConfig {
 
     /// Set the RTC clock to external.
     #[inline(always)]
-    pub fn rtc_external(self) -> Self {
-        self.rtc(RtcSel::Xtal)
+    pub fn rtc_external(self, xtal: XtalPort) -> Self {
+        self.rtc(RtcSel::Xtal(xtal))
     }
 
     /// Set the system clock source.
@@ -357,7 +410,7 @@ impl ClockConfig {
 
     /// Set the system clock to be the external XTAH clock with divider.
     #[inline(always)]
-    pub fn sys_external_div(self, xtah: u32, div: DivSel) -> Self {
+    pub fn sys_external_div(self, xtah: XtahPort, div: DivSel) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Xtah(xtah)))
     }
 
@@ -375,14 +428,28 @@ impl ClockConfig {
 
     /// Set the system clock to be the external XTAH clock with divider and PLL.
     #[inline(always)]
-    pub fn sys_external_pll(self, xtah: u32, div: DivSel, n: PllN, m: PllM) -> Self {
+    pub fn sys_external_pll(self, xtah: XtahPort, div: DivSel, n: PllN, m: PllM) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Pll(PllSel::Xtah(xtah), n, m)))
     }
 
-    /// Override the XTAL external crystal frequency.
+    /// Use the XTAL port at 32.768kHz.
     #[inline(always)]
-    pub fn xtal(self, xtal: u32) -> Self {
-        Self { xtal, ..self }
+    pub fn xtal(&mut self, xi: xtal::Xi, xo: xtal::Xo) -> XtalPort {
+        self.xtal_with(xi, xo, 32_786)
+    }
+
+    /// Use the XTAL port with a custom frequency.
+    #[inline(always)]
+    pub fn xtal_with(&mut self, _xi: xtal::Xi, _xo: xtal::Xo, xtal: u32) -> XtalPort {
+        self.xtal = Some(xtal);
+        XtalPort { _private: () }
+    }
+
+    /// Use the XTAH port with the given frequency.
+    #[inline(always)]
+    pub fn xtah(&mut self, _xi: xtah::Xi, _xo: xtah::Xo, xtah: u32) -> XtahPort {
+        self.xtah = Some(xtah);
+        XtahPort { _private: () }
     }
 
     /// Freeze the clock configuration and return the clock frequencies.
@@ -441,7 +508,7 @@ impl ClockConfig {
             // select rtc clock
             match self.rtc {
                 RtcSel::Rclf => w.rtc_clk_sel().rclf(),
-                RtcSel::Xtal => w.rtc_clk_sel().xtal(),
+                RtcSel::Xtal(_) => w.rtc_clk_sel().xtal(),
             }
         });
 
@@ -475,7 +542,7 @@ impl ClockConfig {
                         }
                     }
                     SrcSel::Xtah(_) => w.src_clk_sel().xtah(),
-                    SrcSel::Xtal => w.src_clk_sel().xtal(),
+                    SrcSel::Xtal(_) => w.src_clk_sel().xtal(),
                     SrcSel::Rclf => w.src_clk_sel().rclf(),
                 };
             }
@@ -562,6 +629,7 @@ impl ClockConfig {
                 rchf_high: rchf,
                 rclf,
                 xtal: self.xtal,
+                xtah: self.xtah,
             }
         };
 

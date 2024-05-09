@@ -2,6 +2,8 @@
 
 use crate::pac;
 
+pub mod alt;
+
 mod hal02;
 mod hal1;
 
