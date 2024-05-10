@@ -6,8 +6,13 @@ edition = "2021"
 authors = ["Aaron Griffith <aargri@gmail.com>"]
 
 [package.metadata.docs.rs]
+features = ["defmt"]
 default-target = "thumbv6m-none-eabi"
 targets = []
+
+[lib]
+test = false
+bench = false
 
 [dependencies]
 cortex-m = "0.7.6"
