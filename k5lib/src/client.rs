@@ -1,13 +1,13 @@
 use crate::protocol;
 use crate::protocol::crc;
-use crate::protocol::obfuscation;
 use crate::protocol::{
-    HostMessage, Message, MessageParse, MessageSerialize, ParseResult, RadioMessage, MAX_FRAME_SIZE,
+    HostMessage, Message, MessageParse, MessageSerialize, Parse, ParseMut, ParseResult,
+    RadioMessage, MAX_FRAME_SIZE,
 };
 
 /// A trait to encapsulate a buffer with filled and unfilled areas.
 pub trait ClientBuffer {
-    type Slice<'a>: protocol::InputParse
+    type Slice<'a>: ParseMut
     where
         Self: 'a;
 
@@ -23,7 +23,10 @@ pub trait ClientBuffer {
         R: std::io::Read;
 
     /// Get a hold of the accumulated data to do some parsin'.
-    fn data(&self) -> Self::Slice<'_>;
+    fn data_mut(&mut self) -> Self::Slice<'_>;
+
+    /// Get a hold of the accumulated data to do some introspectin'.
+    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input;
 
     /// Clear the buffer.
     fn clear(&mut self);
@@ -52,7 +55,7 @@ impl<const SIZE: usize> Default for ArrayBuffer<SIZE> {
 }
 
 impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
-    type Slice<'a> = &'a [u8];
+    type Slice<'a> = &'a mut [u8];
 
     fn skip(&mut self, n: usize) {
         self.buffer.copy_within(n..self.len, 0);
@@ -72,7 +75,11 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
         Ok(amt)
     }
 
-    fn data(&self) -> Self::Slice<'_> {
+    fn data_mut(&mut self) -> Self::Slice<'_> {
+        &mut self.buffer[..self.len]
+    }
+
+    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input {
         &self.buffer[..self.len]
     }
 
@@ -185,14 +192,16 @@ where
         &self.out_crc
     }
 
-    /// Read from the port and attempt to parse a message, while also
-    /// returning the buffer used for parsing.
-    pub fn read_debug<'a, M>(&'a mut self) -> std::io::Result<(&'a B, ParseResult<B::Slice<'a>, M>)>
+    /// Read from the port into the internal buffer, if needed. First
+    /// half of read().
+    ///
+    /// If you call this while self.buffer().is_full(), this will clear
+    /// the internal buffer to make room for new data.
+    pub fn read_into_buffer(&mut self) -> std::io::Result<()>
     where
-        M: MessageParse<obfuscation::Deobfuscated<B::Slice<'a>>>,
         F: std::io::Read,
     {
-        // apply skip from last read cycle. see below.
+        // apply skip from last read cycle. see parse().
         if let Some(skip) = self.skip.take() {
             self.buffer.skip(skip);
         }
@@ -217,60 +226,71 @@ where
             self.needs_read = false;
         }
 
+        Ok(())
+    }
+
+    /// Parse from the internal buffer. Second half of read().
+    pub fn parse<'a, M, I>(&'a mut self) -> ParseResult<I, M>
+    where
+        M: MessageParse<I>,
+        I: Parse,
+        B::Slice<'a>: ParseMut<Input = I>,
+    {
         // attempt to parse it
-        let (skip, res) = protocol::parse(&self.in_crc, self.buffer.data());
+        let (skip, res) = protocol::parse(&self.in_crc, self.buffer.data_mut());
 
         if let ParseResult::None = res {
             // we didn't find anything, not even an error, so we need more data
             self.needs_read = true;
         }
 
-        // store the skip value until next read, because
+        // store the skip value until next read_into_buffer, because
         // modifying self.buffer would interfere with the borrow in res
         if skip > 0 {
             self.skip = Some(skip);
         }
-        Ok((&self.buffer, res))
+
+        res
     }
 
-    /// Read from the port and attempt to parse a message.
-    pub fn read<'a, M>(&'a mut self) -> std::io::Result<ParseResult<B::Slice<'a>, M>>
+    /// Read from the port and attempt to parse a message, while also
+    /// returning the buffer used for parsing.
+    pub fn read<'a, M, I>(&'a mut self) -> std::io::Result<ParseResult<I, M>>
     where
-        M: MessageParse<obfuscation::Deobfuscated<B::Slice<'a>>>,
+        M: MessageParse<I>,
+        I: Parse,
+        B::Slice<'a>: ParseMut<Input = I>,
         F: std::io::Read,
     {
-        Ok(self.read_debug()?.1)
+        self.read_into_buffer()?;
+        Ok(self.parse())
     }
 
     /// Read a Message.
-    pub fn read_any(
-        &mut self,
-    ) -> std::io::Result<ParseResult<B::Slice<'_>, Message<obfuscation::Deobfuscated<B::Slice<'_>>>>>
+    pub fn read_any<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, Message<I>>>
     where
+        I: Parse,
+        B::Slice<'a>: ParseMut<Input = I>,
         F: std::io::Read,
     {
         self.read()
     }
 
     /// Read a HostMessage.
-    pub fn read_host(
-        &mut self,
-    ) -> std::io::Result<
-        ParseResult<B::Slice<'_>, HostMessage<obfuscation::Deobfuscated<B::Slice<'_>>>>,
-    >
+    pub fn read_host<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, HostMessage<I>>>
     where
+        I: Parse,
+        B::Slice<'a>: ParseMut<Input = I>,
         F: std::io::Read,
     {
         self.read()
     }
 
     /// Read a RadioMessage.
-    pub fn read_radio(
-        &mut self,
-    ) -> std::io::Result<
-        ParseResult<B::Slice<'_>, RadioMessage<obfuscation::Deobfuscated<B::Slice<'_>>>>,
-    >
+    pub fn read_radio<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, RadioMessage<I>>>
     where
+        I: Parse,
+        B::Slice<'a>: ParseMut<Input = I>,
         F: std::io::Read,
     {
         self.read()

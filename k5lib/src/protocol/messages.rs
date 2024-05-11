@@ -1,12 +1,12 @@
 use nom::{error::Error, Parser};
 
-use super::parse::{InputParse, MessageParse};
+use super::parse::{MessageParse, Parse};
 use super::serialize::{MessageSerialize, Serializer};
 
 /// Parse a version.
 fn parse_version<I>(input: I) -> nom::IResult<I, crate::Version>
 where
-    I: InputParse,
+    I: Parse,
 {
     let (input, data) = parse_array(nom::number::complete::u8)(input)?;
     Ok((input, crate::Version::new(data)))
@@ -15,7 +15,7 @@ where
 /// Parse a statically-sized array with a parser.
 fn parse_array<I, P, A, const LEN: usize>(parser: P) -> impl FnMut(I) -> nom::IResult<I, [A; LEN]>
 where
-    I: InputParse,
+    I: Parse,
     P: Fn(I) -> nom::IResult<I, A>,
     A: Default + Copy,
 {
@@ -49,7 +49,7 @@ impl<const LEN: usize> Padding<LEN> {
 
     pub fn parse<I>(input: I) -> nom::IResult<I, Self>
     where
-        I: InputParse,
+        I: Parse,
     {
         let (input, data) = parse_array(nom::number::complete::u8)(input)?;
         Ok((input, Self::new_data(data)))
@@ -115,7 +115,7 @@ impl<I> Message<I> {
 
 impl<I> MessageSerialize for Message<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn message_type(&self) -> u16 {
         match self {
@@ -137,7 +137,7 @@ where
 
 impl<I> MessageParse<I> for Message<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         nom::branch::alt((
@@ -188,7 +188,7 @@ impl<I> HostMessage<I> {
 
 impl<I> MessageSerialize for HostMessage<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn message_type(&self) -> u16 {
         match self {
@@ -214,7 +214,7 @@ where
 
 impl<I> MessageParse<I> for HostMessage<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
@@ -276,7 +276,7 @@ impl<I> RadioMessage<I> {
 
 impl<I> MessageSerialize for RadioMessage<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn message_type(&self) -> u16 {
         match self {
@@ -302,7 +302,7 @@ where
 
 impl<I> MessageParse<I> for RadioMessage<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| match typ {
@@ -358,11 +358,11 @@ impl MessageSerialize for Hello {
 
 impl<I> MessageParse<I> for Hello
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>>
     where
-        I: InputParse,
+        I: Parse,
     {
         move |input| {
             let input = if typ != Self::TYPE {
@@ -423,7 +423,7 @@ impl MessageSerialize for HelloReply {
 
 impl<I> MessageParse<I> for HelloReply
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -489,7 +489,7 @@ impl MessageSerialize for BootloaderReady {
 
 impl<I> MessageParse<I> for BootloaderReady
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -574,7 +574,7 @@ impl<I> WriteFlash<I> {
 
 impl<I> MessageSerialize for WriteFlash<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn message_type(&self) -> u16 {
         Self::TYPE
@@ -599,11 +599,11 @@ where
 
 impl<I> MessageParse<I> for WriteFlash<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>>
     where
-        I: InputParse,
+        I: Parse,
     {
         move |input| {
             let input = if typ != Self::TYPE {
@@ -668,7 +668,7 @@ impl MessageSerialize for WriteFlashReply {
 
 impl<I> MessageParse<I> for WriteFlashReply
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -729,7 +729,7 @@ impl MessageSerialize for ReadEeprom {
 
 impl<I> MessageParse<I> for ReadEeprom
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -801,7 +801,7 @@ impl<I> ReadEepromReply<I> {
 
 impl<I> MessageSerialize for ReadEepromReply<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn message_type(&self) -> u16 {
         Self::TYPE
@@ -820,7 +820,7 @@ where
 
 impl<I> MessageParse<I> for ReadEepromReply<I>
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -873,7 +873,7 @@ impl MessageSerialize for BootloaderReadyReply {
 
 impl<I> MessageParse<I> for BootloaderReadyReply
 where
-    I: InputParse,
+    I: Parse,
 {
     fn parse_body(typ: u16) -> impl Parser<I, Self, Error<I>> {
         move |input| {
@@ -893,7 +893,6 @@ where
 #[cfg(test)]
 mod test {
     use super::super::crc::CrcXModem;
-    use super::super::obfuscation::Deobfuscated;
     use super::super::{parse, serialize};
     use super::*;
 
@@ -920,10 +919,10 @@ mod test {
 
     fn roundtrip<M>(msg: M) -> bool
     where
-        M: for<'a> MessageParse<Deobfuscated<&'a [u8]>> + MessageSerialize + PartialEq + Eq,
+        M: for<'a> MessageParse<&'a [u8]> + MessageSerialize + PartialEq + Eq,
     {
-        let a = roundtrip_a(&msg);
-        let b = a.as_ref().and_then(|ser| roundtrip_b(ser));
+        let mut a = roundtrip_a(&msg);
+        let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
         Some(msg) == b
     }
 
@@ -938,16 +937,17 @@ mod test {
             .map(|_| serialized)
     }
 
-    fn roundtrip_b<'a, M>(serialized: &'a [u8]) -> Option<M>
+    fn roundtrip_b<'a, M>(serialized: &'a mut [u8]) -> Option<M>
     where
-        M: MessageParse<Deobfuscated<&'a [u8]>>,
+        M: MessageParse<&'a [u8]>,
     {
         let crc = CrcXModem::new();
-        let (amt, unserialized) = parse(&crc, &serialized[..]);
-        if amt != serialized.len() {
+        let len = serialized.len();
+        let (amt, unserialized) = parse(&crc, serialized);
+        if amt != len {
             None
         } else {
-            unserialized.ignore_error()
+            unserialized.ok()
         }
     }
 
@@ -1023,12 +1023,10 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_write_flash(msg: WriteFlash<Vec<u8>>) -> bool {
-        let a = roundtrip_a(&msg.map_ref(|d| &d[..]));
-        let b = a
-            .as_ref()
-            .and_then(|ser| roundtrip_b(&ser))
-            .map(|m: WriteFlash<Deobfuscated<_>>| m.map(|d| d.to_vec()));
-        Some(msg) == b
+        let msgref = msg.map_ref(|d| &d[..]);
+        let mut a = roundtrip_a(&msgref);
+        let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
+        Some(msgref) == b
     }
 
     impl Arbitrary for WriteFlashReply {
@@ -1077,12 +1075,10 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_read_eeprom_reply(msg: ReadEepromReply<Vec<u8>>) -> bool {
-        let a = roundtrip_a(&msg.map_ref(|d| &d[..]));
-        let b = a
-            .as_ref()
-            .and_then(|ser| roundtrip_b(&ser))
-            .map(|m: ReadEepromReply<Deobfuscated<_>>| m.map(|d| d.to_vec()));
-        Some(msg) == b
+        let msgref = msg.map_ref(|d| &d[..]);
+        let mut a = roundtrip_a(&msgref);
+        let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
+        Some(msgref) == b
     }
 
     impl Arbitrary for BootloaderReadyReply {

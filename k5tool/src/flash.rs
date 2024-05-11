@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 use crate::common::{FLASH_MAX, RAM_MAX, RAM_START};
 
 use k5lib::protocol::{
-    BootloaderReady, BootloaderReadyReply, ParseResult, WriteFlash, WriteFlashReply,
-    WRITE_FLASH_LEN, WRITE_FLASH_SESSION_ID,
+    BootloaderReady, BootloaderReadyReply, WriteFlash, WriteFlashReply, WRITE_FLASH_LEN,
+    WRITE_FLASH_SESSION_ID,
 };
 use k5lib::Version;
 
@@ -148,7 +148,7 @@ where
 
         // wait for a bootloader ready message
         let m = loop {
-            if let ParseResult::Ok(m) = self.client.read::<BootloaderReady>()? {
+            if let Some(m) = self.client.read::<BootloaderReady>()?.ok() {
                 break m;
             }
         };
@@ -202,7 +202,7 @@ where
 
             // wait for a confirmation
             let m = loop {
-                if let ParseResult::Ok(m) = self.client.read::<WriteFlashReply>()? {
+                if let Some(m) = self.client.read::<WriteFlashReply>()?.ok() {
                     break m;
                 }
             };

@@ -1,8 +1,6 @@
 use std::io::{Read, Write};
 
-use k5lib::protocol::{
-    Hello, HelloReply, ParseResult, ReadEeprom, ReadEepromReply, HELLO_SESSION_ID,
-};
+use k5lib::protocol::{Hello, HelloReply, ReadEeprom, ReadEepromReply, HELLO_SESSION_ID};
 
 const CHUNK_SIZE: u8 = 0x80;
 
@@ -36,7 +34,7 @@ impl ReadEepromOpts {
 
         client.write(&Hello { session_id })?;
         let m = loop {
-            if let ParseResult::Ok(m) = client.read::<HelloReply>()? {
+            if let Some(m) = client.read::<HelloReply>()?.ok() {
                 break m;
             }
         };
@@ -86,7 +84,7 @@ impl ReadEepromOpts {
                 session_id,
             })?;
             let m = loop {
-                if let ParseResult::Ok(m) = client.read::<ReadEepromReply<_>>()? {
+                if let Some(m) = client.read::<ReadEepromReply<_>>()?.ok() {
                     break m;
                 }
             };
@@ -95,9 +93,7 @@ impl ReadEepromOpts {
                 anyhow::bail!("Reply had different address!");
             }
 
-            for b in m.data.iter() {
-                output.write_all(&[b])?;
-            }
+            output.write_all(m.data)?;
 
             address += m.len as u16;
             bar.set_position(address as u64);

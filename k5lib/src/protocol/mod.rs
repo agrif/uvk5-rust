@@ -11,7 +11,7 @@ pub mod crc;
 pub mod obfuscation;
 
 pub mod parse;
-pub use parse::{InputParse, MessageParse, ParseResult};
+pub use parse::{MessageParse, Parse, ParseMut, ParseResult};
 
 mod messages;
 pub use messages::*;
@@ -24,19 +24,16 @@ pub use serialize::MessageSerialize;
 /// fails, it will still consume the frame from the input.
 ///
 /// Returns the *number of consumed bytes* and the parse or CRC
-/// result. Note this is different from the MessageParse trait!
+/// result.
 ///
-/// This includes frame start/end, length, obfuscation, and CRC.
-pub fn parse<C, I, M>(crc: &C, input: I) -> (usize, ParseResult<I, M>)
+/// This handles frame start/end, length, obfuscation, and CRC.
+pub fn parse<C, I, M>(crc: &C, input: I) -> (usize, ParseResult<I::Input, M>)
 where
     C: crc::CrcStyle,
-    I: InputParse,
-    M: MessageParse<obfuscation::Deobfuscated<I>>,
+    I: ParseMut,
+    M: MessageParse<I::Input>,
 {
-    let start_len = input.input_len();
-    let (rest, res) = parse::message_parse_frame(&crc, input);
-
-    (start_len - rest.input_len(), res)
+    M::parse_frame(&crc, input)
 }
 
 /// Serialize a message into a full frame, with obfuscation, CRC, and

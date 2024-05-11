@@ -157,7 +157,7 @@ where
 
             // try to parse a message
             match self.client.read_host() {
-                Ok(ParseResult::Ok(msg)) => {
+                Ok(ParseResult::Ok(_, msg)) => {
                     // FIXME can't write to client while borrowing. Hm.
                     let msg = msg.map(|d| d.to_vec());
                     if self.opts.boot {

@@ -1,9 +1,8 @@
 use k5lib::protocol::crc;
-use k5lib::protocol::obfuscation;
 use k5lib::protocol::serialize::{Serializer, SerializerWrap};
 use k5lib::protocol::{
     parse, serialize, HostMessage, Message, MessageParse, MessageSerialize, ParseResult,
-    RadioMessage, FRAME_END, FRAME_START,
+    RadioMessage,
 };
 use k5lib::ClientBuffer;
 
@@ -87,26 +86,21 @@ where
 {
     pub fn read<'a, M>(&'a mut self) -> std::io::Result<ParseResult<&'a [u8], M>>
     where
-        M: MessageParse<obfuscation::Deobfuscated<&'a [u8]>> + std::fmt::Debug,
+        M: MessageParse<&'a [u8]> + std::fmt::Debug,
         F: std::io::Read,
     {
-        let (buf, res) = self.client.read_debug()?;
+        // two-step read, to grab the buffer to look into
+        self.client.read_into_buffer()?;
+        // only make a copy of the data if we need it later
+        let data = (self.args.debug >= 2 || self.dump.is_some())
+            .then(|| self.client.buffer().data().to_owned());
+        let res = self.client.parse();
 
-        if self.args.debug >= 2 || self.dump.is_some() {
-            let data = buf.data();
-            // if this data produced a frame, we have to find it. This
-            // involves some assumptions, which we check
-            if let (rest, Some(frame)) = parse::frame_raw(data) {
+        if let Some(mut data) = data {
+            // if this data produced a frame, we have to find it.
+            if let Some(range) = res.range() {
                 if self.args.debug >= 3 || self.dump.is_some() {
-                    let end = data.len() - rest.len();
-                    let body_end = end - FRAME_END.len();
-                    assert_eq!(data[body_end..end], FRAME_END);
-                    let body_start = body_end - frame.len();
-                    let len_start = body_start - 2; // 2 byte length
-                    let start = len_start - FRAME_START.len();
-                    assert_eq!(data[start..len_start], FRAME_START);
-
-                    let raw = &data[start..end];
+                    let raw = &data[range.clone()];
 
                     if let Some(ref mut dump) = self.dump {
                         dump.write_u8(self.direction.flip() as u8)?;
@@ -121,25 +115,26 @@ where
                 }
 
                 if self.args.debug >= 2 {
-                    let deob = obfuscation::Deobfuscated::new(frame);
-                    eprintln!("<<< deobfuscated:");
-                    crate::hexdump::ehexdump_prefix("<<<   ", &deob.to_vec());
+                    if let (_, Some((range, _))) = parse::frame_raw(data.as_mut()) {
+                        eprintln!("<<< deobfuscated:");
+                        crate::hexdump::ehexdump_prefix("<<<   ", &data[range]);
+                    }
                 }
             }
         }
 
         if self.args.debug >= 1 {
             match res {
-                ParseResult::Ok(ref m) => {
+                ParseResult::Ok(_, ref m) => {
                     eprintln!("<<< {:?}", m);
                     eprintln!();
                 }
-                ParseResult::ParseErr(ref inp, ref e) => {
+                ParseResult::ParseErr(_, inp, ref e) => {
                     eprintln!("!!! parse error: {:?}", e);
                     crate::hexdump::ehexdump_prefix("!!!   ", inp.to_vec().as_ref());
                     eprintln!();
                 }
-                ParseResult::CrcErr(ref inp) => {
+                ParseResult::CrcErr(_, inp) => {
                     eprintln!("!!! crc error:");
                     crate::hexdump::ehexdump_prefix("!!!   ", inp.to_vec().as_ref());
                     eprintln!();
@@ -151,9 +146,7 @@ where
     }
 
     /// Read a Message.
-    pub fn read_any(
-        &mut self,
-    ) -> std::io::Result<ParseResult<&[u8], Message<obfuscation::Deobfuscated<&[u8]>>>>
+    pub fn read_any(&mut self) -> std::io::Result<ParseResult<&[u8], Message<&[u8]>>>
     where
         F: std::io::Read,
     {
@@ -161,9 +154,7 @@ where
     }
 
     /// Read a HostMessage.
-    pub fn read_host(
-        &mut self,
-    ) -> std::io::Result<ParseResult<&[u8], HostMessage<obfuscation::Deobfuscated<&[u8]>>>>
+    pub fn read_host(&mut self) -> std::io::Result<ParseResult<&[u8], HostMessage<&[u8]>>>
     where
         F: std::io::Read,
     {
@@ -171,9 +162,7 @@ where
     }
 
     /// Read a RadioMessage.
-    pub fn read_radio(
-        &mut self,
-    ) -> std::io::Result<ParseResult<&[u8], RadioMessage<obfuscation::Deobfuscated<&[u8]>>>>
+    pub fn read_radio(&mut self) -> std::io::Result<ParseResult<&[u8], RadioMessage<&[u8]>>>
     where
         F: std::io::Read,
     {
