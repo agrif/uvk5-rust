@@ -26,14 +26,12 @@ pub trait Serializer {
         self.write_bytes(val)
     }
 
-    // this one is tricky. if this becomes a bottleneck, split out a
-    // new trait that can be implemented one-by-one on special-case I
     fn write_slice<I>(&mut self, val: &I) -> Result<(), Self::Error>
     where
         I: Parse,
     {
-        for b in val.iter_elements() {
-            self.write_u8(b)?;
+        for chunk in val.iter_slices() {
+            self.write_bytes(chunk)?;
         }
         Ok(())
     }

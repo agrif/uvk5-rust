@@ -6,7 +6,8 @@ use super::crc::{CrcDigest, CrcStyle};
 use super::obfuscation::Key;
 use super::{FRAME_END, FRAME_START, MAX_FRAME_SIZE};
 
-/// A helpful short name for a whole bundle of useful parser traits.
+/// A helpful short name for a whole bundle of useful parser traits,
+/// plus iterating over slice chunks.
 pub trait Parse:
     nom::InputTakeAtPosition<Item = u8>
     + nom::Compare<&'static [u8]>
@@ -20,21 +21,16 @@ pub trait Parse:
     + Clone
     + PartialEq
 {
+    /// Iterate over chunks of byte slices.
+    ///
+    /// Used to speed up CRC digests and round-trip writes.
+    fn iter_slices(&self) -> impl Iterator<Item = &[u8]>;
 }
 
-impl<T> Parse for T where
-    T: nom::InputTakeAtPosition<Item = u8>
-        + nom::Compare<&'static [u8]>
-        + nom::InputLength
-        + nom::InputTake
-        + nom::InputIter<Item = u8>
-        + nom::Slice<std::ops::Range<usize>>
-        + nom::Slice<std::ops::RangeFrom<usize>>
-        + nom::Slice<std::ops::RangeFull>
-        + nom::Slice<std::ops::RangeTo<usize>>
-        + Clone
-        + PartialEq
-{
+impl<'a> Parse for &'a [u8] {
+    fn iter_slices(&self) -> impl Iterator<Item = &[u8]> {
+        std::iter::once(*self)
+    }
 }
 
 /// A trait for something we can deobfuscated and extract frames from.
@@ -334,21 +330,20 @@ where
     C: CrcStyle,
     I: Parse,
 {
-    let mut bytes = input.iter_indices();
+    if input.input_len() < 2 {
+        return None;
+    }
+
+    let (suffix, prefix) = input.take_split(input.input_len() - 2);
     let mut digest = crc.digest();
-    for (i, b) in &mut bytes {
-        digest.update(&[b]);
-        // break if the next i (that is, i + 1) is 2 before end
-        if (i + 1) + 2 >= input.input_len() {
-            break;
-        }
+    for chunk in prefix.iter_slices() {
+        digest.update(chunk);
     }
 
     let calculated = digest.finalize();
 
-    if let Some(provided) = read_le_u16(&mut bytes) {
+    if let Some(provided) = read_le_u16(&mut suffix.iter_indices()) {
         if crc.validate(calculated, provided) {
-            drop(bytes);
             Some(input.slice(0..input.input_len() - 2))
         } else {
             None
