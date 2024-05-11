@@ -1,7 +1,7 @@
 use elf::endian::AnyEndian;
 use elf::ElfBytes;
 
-use k5lib::pack::{PackedFirmware, UnpackedFirmware};
+use crate::packed::{PackedFirmware, UnpackedFirmware};
 use k5lib::Version;
 
 /// Binary formats accepted by this tool.
