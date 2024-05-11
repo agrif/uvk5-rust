@@ -62,8 +62,8 @@ impl crate::ToolRun for SimulateOpts {
 
             let client = k5lib::ClientRadio::new(stream);
             let client = self.debug.wrap_radio(client)?;
-            match Simulator::new(client, self, &mut eeprom, &mut flash).simulate() {
-                Err(e) => match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
+            if let Err(e) = Simulator::new(client, self, &mut eeprom, &mut flash).simulate() {
+                match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
                     // an expected error, at disconnect
                     Some(std::io::ErrorKind::UnexpectedEof)
                     | Some(std::io::ErrorKind::ConnectionReset)
@@ -82,9 +82,7 @@ impl crate::ToolRun for SimulateOpts {
                     }
                     // any other error is unexpected
                     _ => anyhow::bail!(e),
-                },
-                // statically impossible, but ! not stable
-                _ => {}
+                }
             }
         }
     }
@@ -134,7 +132,7 @@ where
     fn send_boot_ready(&mut self) -> anyhow::Result<()> {
         self.client.write(&protocol::BootloaderReady {
             chip_id: [0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210],
-            version: k5lib::Version::from_str(&self.opts.version)?,
+            version: k5lib::Version::new_from_str(&self.opts.version)?,
         })?;
         Ok(())
     }
@@ -187,7 +185,7 @@ where
             HostMessage::Hello(m) => {
                 self.session_id = Some(m.session_id);
                 self.client.write(&protocol::HelloReply {
-                    version: k5lib::Version::from_str(&self.opts.version)?,
+                    version: k5lib::Version::new_from_str(&self.opts.version)?,
                     has_custom_aes_key: false,
                     is_in_lock_screen: false,
                     _pad: Default::default(),

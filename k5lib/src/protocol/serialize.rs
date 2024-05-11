@@ -150,6 +150,7 @@ pub struct SerializerLength {
     len: usize,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl SerializerLength {
     pub fn new() -> Self {
         SerializerLength { len: 0 }
@@ -157,6 +158,12 @@ impl SerializerLength {
 
     pub fn len(&self) -> usize {
         self.len
+    }
+}
+
+impl Default for SerializerLength {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -13,7 +13,7 @@ pub enum DedupLine<'a, A = u16> {
 }
 
 pub fn printable(chr: u8) -> Option<char> {
-    if 0x20 <= chr && chr < 0x7f {
+    if (0x20..0x7f).contains(&chr) {
         Some(chr as char)
     } else {
         None
@@ -42,7 +42,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.address.format_addr(f)?;
 
-        if self.data.len() == 0 {
+        if self.data.is_empty() {
             return Ok(());
         }
 

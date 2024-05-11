@@ -34,6 +34,7 @@ impl<'a> Parse for &'a [u8] {
 }
 
 /// A trait for something we can deobfuscated and extract frames from.
+#[allow(clippy::len_without_is_empty)]
 pub trait ParseMut: Sized {
     /// A non-mutable slice of input, suitable for nom.
     type Input: Parse;
@@ -181,6 +182,7 @@ fn read_le_u16(iter: &mut impl Iterator<Item = (usize, u8)>) -> Option<u16> {
 ///
 /// If a frame is found, return the range for the full frame, and a
 /// slice of the deobfuscated body and CRC.
+#[allow(clippy::type_complexity)]
 pub fn frame_raw<I>(input: I) -> (usize, Option<(Range<usize>, I::Input)>)
 where
     I: ParseMut,

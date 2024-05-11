@@ -234,10 +234,10 @@ pub fn flatten_elf(elf: ElfBytes<AnyEndian>) -> anyhow::Result<(UnpackedFirmware
 
         let version = std::ffi::CStr::from_bytes_until_nul(&flat[start..end]).ok()?;
 
-        Version::from_c_str(version).ok().and_then(|v| {
+        Version::new_from_c_str(version).ok().and_then(|v| {
             // sanity check -- is the version utf-8 and at least 1 char
             if let Ok(s) = v.as_str() {
-                if s.len() > 0 {
+                if !s.is_empty() {
                     return Some(v);
                 }
             }

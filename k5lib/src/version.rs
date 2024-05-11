@@ -1,7 +1,7 @@
 /// Max size of version string, including terminating NUL.
 pub const VERSION_LEN: usize = 16;
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub struct Version([u8; VERSION_LEN]);
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -32,15 +32,15 @@ impl Version {
         Self(data)
     }
 
-    pub fn from_str(name: &str) -> Result<Self, VersionError> {
-        Self::from_bytes(name.as_bytes())
+    pub fn new_from_str(name: &str) -> Result<Self, VersionError> {
+        Self::new_from_bytes(name.as_bytes())
     }
 
-    pub fn from_c_str(name: &std::ffi::CStr) -> Result<Self, VersionError> {
-        Self::from_bytes(name.to_bytes())
+    pub fn new_from_c_str(name: &std::ffi::CStr) -> Result<Self, VersionError> {
+        Self::new_from_bytes(name.to_bytes())
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
+    pub fn new_from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
         if bytes.len() > VERSION_LEN {
             return Err(VersionError::TooLong);
         }

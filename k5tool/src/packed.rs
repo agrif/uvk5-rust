@@ -16,7 +16,7 @@ const VERSION_LOC: usize = 0x2000;
 fn obfuscate_skip(data: &mut [u8], skip: usize) {
     let mut i = skip % OBFUSCATION.len();
     for x in data.iter_mut() {
-        *x = *x ^ OBFUSCATION[i];
+        *x ^= OBFUSCATION[i];
         i = (i + 1) % OBFUSCATION.len();
     }
 }

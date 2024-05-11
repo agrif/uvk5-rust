@@ -14,7 +14,7 @@ pub struct PackOpts {
 impl crate::ToolRun for PackOpts {
     fn run(&self) -> anyhow::Result<()> {
         let version = if let Some(ref v) = self.version {
-            Some(k5lib::Version::from_str(v)?)
+            Some(k5lib::Version::new_from_str(v)?)
         } else {
             None
         };

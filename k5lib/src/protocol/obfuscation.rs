@@ -13,7 +13,7 @@ impl Key {
         Self { index: 0 }
     }
 
-    pub fn next(&mut self) -> u8 {
+    pub fn get(&mut self) -> u8 {
         let v = OBFUSCATION[self.index];
         self.index += 1;
         if self.index >= OBFUSCATION.len() {
@@ -23,11 +23,29 @@ impl Key {
     }
 
     pub fn apply(&mut self, val: u8) -> u8 {
-        val ^ self.next()
+        val ^ self.get()
     }
 
-    pub fn advance(&self, num: usize) -> Self {
-        let index = (self.index + num) % OBFUSCATION.len();
-        Self { index }
+    pub fn advance(&mut self, num: usize) {
+        self.index = (self.index + num) % OBFUSCATION.len();
     }
 }
+
+impl Iterator for Key {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.get())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.advance(n);
+        self.next()
+    }
+}
+
+impl std::iter::FusedIterator for Key {}

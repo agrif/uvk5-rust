@@ -4,7 +4,7 @@ pub trait CrcStyle {
     where
         Self: 'a;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a>;
+    fn digest(&self) -> Self::Digest<'_>;
 
     fn validate(&self, calculated: u16, provided: u16) -> bool {
         calculated == provided
@@ -23,7 +23,7 @@ where
 {
     type Digest<'a> = C::Digest<'a> where Self: 'a;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         (*self).digest()
     }
 
@@ -46,7 +46,7 @@ where
 {
     type Digest<'a> = CrcEither<A::Digest<'a>, B::Digest<'a>> where Self: 'a;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         match self {
             Self::Left(a) => Self::Digest::Left(a.digest()),
             Self::Right(b) => Self::Digest::Right(b.digest()),
@@ -88,7 +88,7 @@ pub struct CrcConstant(pub u16);
 impl CrcStyle for CrcConstant {
     type Digest<'a> = CrcConstant;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         CrcConstant(self.0)
     }
 }
@@ -108,7 +108,7 @@ pub struct CrcConstantIgnore(pub u16);
 impl CrcStyle for CrcConstantIgnore {
     type Digest<'a> = CrcConstant;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         CrcConstant(self.0)
     }
 
@@ -131,10 +131,16 @@ impl CrcXModem {
     }
 }
 
+impl Default for CrcXModem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CrcStyle for CrcXModem {
     type Digest<'a> = CrcXModemDigest<'a>;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         CrcXModemDigest(self.0.digest())
     }
 }
@@ -152,7 +158,7 @@ impl<'a> CrcDigest for CrcXModemDigest<'a> {
 impl CrcStyle for crc::Crc<u16, crc::NoTable> {
     type Digest<'a> = crc::Digest<'a, u16, crc::NoTable>;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         self.digest()
     }
 }
@@ -170,7 +176,7 @@ impl<'a> CrcDigest for crc::Digest<'a, u16, crc::NoTable> {
 impl CrcStyle for crc::Crc<u16, crc::Table<1>> {
     type Digest<'a> = crc::Digest<'a, u16, crc::Table<1>>;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         self.digest()
     }
 }
@@ -188,7 +194,7 @@ impl<'a> CrcDigest for crc::Digest<'a, u16, crc::Table<1>> {
 impl CrcStyle for crc::Crc<u16, crc::Table<16>> {
     type Digest<'a> = crc::Digest<'a, u16, crc::Table<16>>;
 
-    fn digest<'a>(&'a self) -> Self::Digest<'a> {
+    fn digest(&self) -> Self::Digest<'_> {
         self.digest()
     }
 }

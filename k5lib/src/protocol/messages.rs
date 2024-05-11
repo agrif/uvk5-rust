@@ -973,7 +973,7 @@ mod test {
         fn arbitrary(g: &mut Gen) -> Self {
             let mut version = Vec::<u8>::arbitrary(g);
             version.truncate(crate::VERSION_LEN);
-            crate::Version::from_bytes(&version).unwrap()
+            crate::Version::new_from_bytes(&version).unwrap()
         }
     }
 

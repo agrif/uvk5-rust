@@ -47,7 +47,7 @@ enum Ignores {
 impl crate::ToolRun for FlashOpts {
     fn run(&self) -> anyhow::Result<()> {
         let version = if let Some(ref v) = self.version {
-            Some(Version::from_str(v)?)
+            Some(Version::new_from_str(v)?)
         } else {
             None
         };
@@ -109,22 +109,18 @@ where
 
         self.info.report();
 
-        if !self.opts.ignore.contains(&Ignores::Stack) {
-            if self.info.stack_top <= RAM_START || self.info.stack_top > RAM_START + RAM_MAX {
-                anyhow::bail!("Stack pointer is not inside RAM.");
-            }
+        if !self.opts.ignore.contains(&Ignores::Stack)
+            && (self.info.stack_top <= RAM_START || self.info.stack_top > RAM_START + RAM_MAX)
+        {
+            anyhow::bail!("Stack pointer is not inside RAM.");
         }
 
-        if !self.opts.ignore.contains(&Ignores::Entry) {
-            if self.info.entry_point >= FLASH_MAX {
-                anyhow::bail!("Entry point is not inside flash.");
-            }
+        if !self.opts.ignore.contains(&Ignores::Entry) && self.info.entry_point >= FLASH_MAX {
+            anyhow::bail!("Entry point is not inside flash.");
         }
 
-        if !self.opts.ignore.contains(&Ignores::Size) {
-            if self.data.len() > FLASH_MAX {
-                anyhow::bail!("Image is larger than available flash.");
-            }
+        if !self.opts.ignore.contains(&Ignores::Size) && self.data.len() > FLASH_MAX {
+            anyhow::bail!("Image is larger than available flash.");
         }
 
         Ok(())
