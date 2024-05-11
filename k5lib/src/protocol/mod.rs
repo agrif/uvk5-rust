@@ -17,7 +17,7 @@ mod messages;
 pub use messages::*;
 
 pub mod serialize;
-pub use serialize::MessageSerialize;
+pub use serialize::{MessageSerialize, Serializer};
 
 /// Parse an entire frame containing a message, skipping data before
 /// the frame. If the frame doesn't parse as this message, or the CRC
@@ -38,12 +38,11 @@ where
 
 /// Serialize a message into a full frame, with obfuscation, CRC, and
 /// start/end markers.
-pub fn serialize<C, W, M>(crc: &C, writer: &mut W, message: &M) -> std::io::Result<()>
+pub fn serialize<C, S, M>(crc: &C, serializer: &mut S, message: &M) -> Result<(), S::Error>
 where
     C: crc::CrcStyle,
-    W: std::io::Write,
+    S: Serializer,
     M: MessageSerialize,
 {
-    let mut ser = serialize::SerializerWrap::new(writer);
-    message.frame(&crc, &mut ser)
+    message.frame(&crc, serializer)
 }

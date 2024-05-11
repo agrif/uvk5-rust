@@ -101,11 +101,13 @@ where
 }
 
 /// Wrap an std::io::Write to become a Serializer
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SerializerWrap<T> {
     inner: T,
 }
 
+#[cfg(feature = "std")]
 impl<T> SerializerWrap<T> {
     pub fn new(inner: T) -> Self {
         Self { inner }
@@ -116,19 +118,22 @@ impl<T> SerializerWrap<T> {
     }
 }
 
-impl<T> std::ops::Deref for SerializerWrap<T> {
+#[cfg(feature = "std")]
+impl<T> core::ops::Deref for SerializerWrap<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<T> std::ops::DerefMut for SerializerWrap<T> {
+#[cfg(feature = "std")]
+impl<T> core::ops::DerefMut for SerializerWrap<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> Serializer for SerializerWrap<T>
 where
     T: std::io::Write,
@@ -141,6 +146,67 @@ where
 
     fn write_bytes(&mut self, val: &[u8]) -> Result<(), Self::Error> {
         self.inner.write_all(val)
+    }
+}
+
+/// Wrap a Vec<u8> to become a Serializer
+#[cfg(feature = "alloc")]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SerializerVec {
+    inner: alloc::vec::Vec<u8>,
+}
+
+#[cfg(feature = "alloc")]
+impl SerializerVec {
+    pub fn new() -> Self {
+        Self {
+            inner: alloc::vec::Vec::new(),
+        }
+    }
+
+    pub fn new_with(inner: alloc::vec::Vec<u8>) -> Self {
+        Self { inner }
+    }
+
+    pub fn done(self) -> alloc::vec::Vec<u8> {
+        self.inner
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Default for SerializerVec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl core::ops::Deref for SerializerVec {
+    type Target = alloc::vec::Vec<u8>;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl core::ops::DerefMut for SerializerVec {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Serializer for SerializerVec {
+    type Error = void::Void;
+
+    fn write_u8(&mut self, val: u8) -> Result<(), Self::Error> {
+        self.inner.push(val);
+        Ok(())
+    }
+
+    fn write_bytes(&mut self, val: &[u8]) -> Result<(), Self::Error> {
+        self.inner.extend_from_slice(val);
+        Ok(())
     }
 }
 
@@ -240,7 +306,7 @@ where
     }
 }
 
-impl<'a, C, T> std::ops::Deref for SerializerCrc<'a, C, T>
+impl<'a, C, T> core::ops::Deref for SerializerCrc<'a, C, T>
 where
     C: CrcStyle + 'a,
 {
@@ -250,7 +316,7 @@ where
     }
 }
 
-impl<'a, C, T> std::ops::DerefMut for SerializerCrc<'a, C, T>
+impl<'a, C, T> core::ops::DerefMut for SerializerCrc<'a, C, T>
 where
     C: CrcStyle + 'a,
 {
@@ -297,14 +363,14 @@ impl<T> SerializerObfuscated<T> {
     }
 }
 
-impl<T> std::ops::Deref for SerializerObfuscated<T> {
+impl<T> core::ops::Deref for SerializerObfuscated<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<T> std::ops::DerefMut for SerializerObfuscated<T> {
+impl<T> core::ops::DerefMut for SerializerObfuscated<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }

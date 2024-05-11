@@ -69,8 +69,8 @@ impl<const LEN: usize> Default for Padding<LEN> {
     }
 }
 
-impl<const LEN: usize> std::fmt::Debug for Padding<LEN> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl<const LEN: usize> core::fmt::Debug for Padding<LEN> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         if self.0.iter().all(|b| *b == 0) {
             f.debug_tuple("Padding").finish()
         } else {
@@ -112,16 +112,17 @@ impl<I> Message<I> {
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub fn to_owned(&self) -> Message<I::Owned>
     where
-        I: ToOwned,
+        I: alloc::borrow::ToOwned,
     {
         self.map_ref(I::to_owned)
     }
 
     pub fn borrow<Borrowed: ?Sized>(&self) -> Message<&Borrowed>
     where
-        I: std::borrow::Borrow<Borrowed>,
+        I: core::borrow::Borrow<Borrowed>,
     {
         self.map_ref(I::borrow)
     }
@@ -199,16 +200,17 @@ impl<I> HostMessage<I> {
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub fn to_owned(&self) -> HostMessage<I::Owned>
     where
-        I: ToOwned,
+        I: alloc::borrow::ToOwned,
     {
         self.map_ref(I::to_owned)
     }
 
     pub fn borrow<Borrowed: ?Sized>(&self) -> HostMessage<&Borrowed>
     where
-        I: std::borrow::Borrow<Borrowed>,
+        I: core::borrow::Borrow<Borrowed>,
     {
         self.map_ref(I::borrow)
     }
@@ -301,16 +303,17 @@ impl<I> RadioMessage<I> {
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub fn to_owned(&self) -> RadioMessage<I::Owned>
     where
-        I: ToOwned,
+        I: alloc::borrow::ToOwned,
     {
         self.map_ref(I::to_owned)
     }
 
     pub fn borrow<Borrowed: ?Sized>(&self) -> RadioMessage<&Borrowed>
     where
-        I: std::borrow::Borrow<Borrowed>,
+        I: core::borrow::Borrow<Borrowed>,
     {
         self.map_ref(I::borrow)
     }
@@ -613,16 +616,17 @@ impl<I> WriteFlash<I> {
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub fn to_owned(&self) -> WriteFlash<I::Owned>
     where
-        I: ToOwned,
+        I: alloc::borrow::ToOwned,
     {
         self.map_ref(I::to_owned)
     }
 
     pub fn borrow<Borrowed: ?Sized>(&self) -> WriteFlash<&Borrowed>
     where
-        I: std::borrow::Borrow<Borrowed>,
+        I: core::borrow::Borrow<Borrowed>,
     {
         self.map_ref(I::borrow)
     }
@@ -854,16 +858,17 @@ impl<I> ReadEepromReply<I> {
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub fn to_owned(&self) -> ReadEepromReply<I::Owned>
     where
-        I: ToOwned,
+        I: alloc::borrow::ToOwned,
     {
         self.map_ref(I::to_owned)
     }
 
     pub fn borrow<Borrowed: ?Sized>(&self) -> ReadEepromReply<&Borrowed>
     where
-        I: std::borrow::Borrow<Borrowed>,
+        I: core::borrow::Borrow<Borrowed>,
     {
         self.map_ref(I::borrow)
     }
@@ -961,7 +966,10 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "alloc")]
 mod test {
+    use alloc::vec::Vec;
+
     use super::super::crc::CrcXModem;
     use super::super::{parse, serialize};
     use super::*;
@@ -1001,10 +1009,10 @@ mod test {
         M: MessageSerialize,
     {
         let crc = CrcXModem::new();
-        let mut serialized = Vec::new();
+        let mut serialized = serialize::SerializerVec::new();
         serialize(&crc, &mut serialized, msg)
             .ok()
-            .map(|_| serialized)
+            .map(|_| serialized.done())
     }
 
     fn roundtrip_b<'a, M>(serialized: &'a mut [u8]) -> Option<M>

@@ -13,3 +13,8 @@ void = "1"
 [dev-dependencies]
 quickcheck = "1"
 quickcheck_macros = "1"
+
+[features]
+default = ["std"]
+alloc = []
+std = ["alloc"]

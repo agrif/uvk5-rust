@@ -1,5 +1,6 @@
 use crate::protocol;
 use crate::protocol::crc;
+use crate::protocol::serialize;
 use crate::protocol::{
     HostMessage, Message, MessageParse, MessageSerialize, Parse, ParseMut, ParseResult,
     RadioMessage, MAX_FRAME_SIZE,
@@ -302,7 +303,8 @@ where
         F: std::io::Write,
         M: MessageSerialize,
     {
-        protocol::serialize(&self.out_crc, &mut self.port, msg)?;
+        let mut ser = serialize::SerializerWrap::new(&mut self.port);
+        protocol::serialize(&self.out_crc, &mut ser, msg)?;
         self.port.flush()
     }
 }

@@ -48,4 +48,4 @@ impl Iterator for Key {
     }
 }
 
-impl std::iter::FusedIterator for Key {}
+impl core::iter::FusedIterator for Key {}

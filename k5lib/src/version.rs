@@ -9,10 +9,11 @@ pub enum VersionError {
     TooLong,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for VersionError {}
 
-impl std::fmt::Display for VersionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Display for VersionError {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
             VersionError::TooLong => write!(
                 f,
@@ -36,7 +37,7 @@ impl Version {
         Self::new_from_bytes(name.as_bytes())
     }
 
-    pub fn new_from_c_str(name: &std::ffi::CStr) -> Result<Self, VersionError> {
+    pub fn new_from_c_str(name: &core::ffi::CStr) -> Result<Self, VersionError> {
         Self::new_from_bytes(name.to_bytes())
     }
 
@@ -53,14 +54,14 @@ impl Version {
         Ok(Self(data))
     }
 
-    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
+    pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
         // unwrap: always at least one element
         let zero_terminated = self.0.split(|b| *b == 0).next().unwrap();
-        std::str::from_utf8(zero_terminated)
+        core::str::from_utf8(zero_terminated)
     }
 
-    pub fn as_c_str(&self) -> Result<&std::ffi::CStr, std::ffi::FromBytesUntilNulError> {
-        std::ffi::CStr::from_bytes_until_nul(&self.0)
+    pub fn as_c_str(&self) -> Result<&core::ffi::CStr, core::ffi::FromBytesUntilNulError> {
+        core::ffi::CStr::from_bytes_until_nul(&self.0)
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -68,8 +69,8 @@ impl Version {
     }
 }
 
-impl std::fmt::Debug for Version {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl core::fmt::Debug for Version {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         match self.as_str() {
             Ok(s) => f.debug_tuple("Version").field(&s).finish(),
             Err(_) => f.debug_tuple("Version").field(&self.as_bytes()).finish(),
@@ -77,7 +78,7 @@ impl std::fmt::Debug for Version {
     }
 }
 
-impl std::ops::Deref for Version {
+impl core::ops::Deref for Version {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
         self.as_bytes()

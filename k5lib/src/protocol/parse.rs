@@ -1,6 +1,6 @@
+use core::ops::Range;
 use nom::error::Error;
 use nom::IResult;
-use std::ops::Range;
 
 use super::crc::{CrcDigest, CrcStyle};
 use super::obfuscation::Key;
@@ -14,10 +14,10 @@ pub trait Parse:
     + nom::InputLength
     + nom::InputTake
     + nom::InputIter<Item = u8>
-    + nom::Slice<std::ops::Range<usize>>
-    + nom::Slice<std::ops::RangeFrom<usize>>
-    + nom::Slice<std::ops::RangeFull>
-    + nom::Slice<std::ops::RangeTo<usize>>
+    + nom::Slice<core::ops::Range<usize>>
+    + nom::Slice<core::ops::RangeFrom<usize>>
+    + nom::Slice<core::ops::RangeFull>
+    + nom::Slice<core::ops::RangeTo<usize>>
     + Clone
     + PartialEq
 {
@@ -29,7 +29,7 @@ pub trait Parse:
 
 impl<'a> Parse for &'a [u8] {
     fn iter_slices(&self) -> impl Iterator<Item = &[u8]> {
-        std::iter::once(*self)
+        core::iter::once(*self)
     }
 }
 
@@ -464,7 +464,10 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "alloc")]
 mod test {
+    use alloc::borrow::ToOwned;
+
     use super::super::crc::CrcConstant;
     use super::*;
 
