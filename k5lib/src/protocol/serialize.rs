@@ -197,7 +197,7 @@ impl core::ops::DerefMut for SerializerVec {
 
 #[cfg(feature = "alloc")]
 impl Serializer for SerializerVec {
-    type Error = void::Void;
+    type Error = core::convert::Infallible;
 
     fn write_u8(&mut self, val: u8) -> Result<(), Self::Error> {
         self.inner.push(val);
@@ -234,7 +234,7 @@ impl Default for SerializerLength {
 }
 
 impl Serializer for SerializerLength {
-    type Error = void::Void;
+    type Error = core::convert::Infallible;
 
     fn write_u8(&mut self, _val: u8) -> Result<(), Self::Error> {
         self.len += 1;
@@ -422,11 +422,10 @@ pub trait MessageSerialize {
     where
         S: Serializer,
     {
-        use void::ResultVoidExt;
-
         // run it once to get a length
         let mut len_ser = SerializerLength::new();
-        self.message_body(&mut len_ser).void_unwrap();
+        self.message_body(&mut len_ser)
+            .unwrap_or_else(|e| match e {});
         let len = len_ser.len() as u16;
 
         // frame is type, length, body
@@ -455,11 +454,9 @@ pub trait MessageSerialize {
         C: CrcStyle,
         S: Serializer,
     {
-        use void::ResultVoidExt;
-
         // run it once to get a length
         let mut len_ser = SerializerLength::new();
-        self.frame_body(&mut len_ser).void_unwrap();
+        self.frame_body(&mut len_ser).unwrap_or_else(|e| match e {});
         let len = len_ser.len() as u16;
 
         // frame is start, len, obfuscated(body, crc), end
