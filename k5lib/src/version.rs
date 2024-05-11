@@ -5,6 +5,7 @@ pub const VERSION_LEN: usize = 16;
 pub struct Version([u8; VERSION_LEN]);
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum VersionError {
     TooLong,
 }
@@ -74,6 +75,16 @@ impl core::fmt::Debug for Version {
         match self.as_str() {
             Ok(s) => f.debug_tuple("Version").field(&s).finish(),
             Err(_) => f.debug_tuple("Version").field(&self.as_bytes()).finish(),
+        }
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Version {
+    fn format(&self, f: defmt::Formatter) {
+        match self.as_str() {
+            Ok(s) => defmt::write!(f, "Version({})", s),
+            Err(_) => defmt::write!(f, "Version({})", self.as_bytes()),
         }
     }
 }

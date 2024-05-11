@@ -34,6 +34,7 @@ where
 
 /// A CRC that is one of two possible implementations.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CrcEither<A, B> {
     Left(A),
     Right(B),
@@ -83,6 +84,7 @@ where
 
 /// A CRC that is always a specific given value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CrcConstant(pub u16);
 
 impl CrcStyle for CrcConstant {
@@ -103,6 +105,7 @@ impl CrcDigest for CrcConstant {
 
 /// A CRC that is always a specific given value, and always validates.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CrcConstantIgnore(pub u16);
 
 impl CrcStyle for CrcConstantIgnore {

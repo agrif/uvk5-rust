@@ -4,6 +4,7 @@ pub const OBFUSCATION: [u8; 16] = [
 
 /// Infinite deobfuscation key iterator.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Key {
     index: usize,
 }

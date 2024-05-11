@@ -119,14 +119,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        features: ["", "alloc", "std"]
+        std: ["", "alloc", "std"]
+        defmt: ["", ",defmt"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
-      - run: cargo build --no-default-features --features "${{ matrix.features }}"
+      - run: cargo build --no-default-features --features "${{ matrix.std }}${{ matrix.defmt }}"
         working-directory: k5lib
-      - run: cargo test --no-default-features --features "${{ matrix.features }}"
+      - run: cargo test --no-default-features --features "${{ matrix.std }}${{ matrix.defmt }}"
         working-directory: k5lib
 
   tool:

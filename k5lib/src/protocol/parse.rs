@@ -88,6 +88,7 @@ impl<'a> ParseMut for &'a mut [u8] {
 
 /// A helper to match a sequence of bytes.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 struct Matcher<'a> {
     needle: &'a [u8],
     start: Option<usize>,
@@ -96,6 +97,7 @@ struct Matcher<'a> {
 
 /// Result of match_().
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum MatchResult {
     /// Match successful, with the matched range.
     Matched(Range<usize>),
@@ -268,6 +270,7 @@ where
 
 /// A possible result from frame().
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ParseResult<I, O, E = Error<I>> {
     /// Frame parse result, alongside range where whole frame was located.
     Ok(Range<usize>, O),

@@ -103,6 +103,7 @@ where
 /// Wrap an std::io::Write to become a Serializer
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerWrap<T> {
     inner: T,
 }
@@ -212,6 +213,7 @@ impl Serializer for SerializerVec {
 
 /// A serializer that only counts bytes written.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerLength {
     len: usize,
 }
@@ -345,6 +347,7 @@ where
 
 /// A serializer that also computes a CRC on the side.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerObfuscated<T> {
     key: super::obfuscation::Key,
     inner: T,

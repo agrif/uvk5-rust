@@ -79,6 +79,17 @@ impl<const LEN: usize> core::fmt::Debug for Padding<LEN> {
     }
 }
 
+#[cfg(feature = "defmt")]
+impl<const LEN: usize> defmt::Format for Padding<LEN> {
+    fn format(&self, f: defmt::Formatter) {
+        if self.0.iter().all(|b| *b == 0) {
+            defmt::write!(f, "Padding");
+        } else {
+            defmt::write!(f, "Padding({})", self.0);
+        }
+    }
+}
+
 /// A trait for messages that have statically-known message types.
 pub trait MessageType {
     const TYPE: u16;
@@ -86,6 +97,7 @@ pub trait MessageType {
 
 /// Any kind of message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Message<I> {
     Host(HostMessage<I>),
     Radio(RadioMessage<I>),
@@ -164,6 +176,7 @@ where
 
 /// Messages sent from the host computer.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HostMessage<I> {
     /// 0x0514 Hello
     Hello(Hello),
@@ -267,6 +280,7 @@ where
 
 /// Messages sent from the radio.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RadioMessage<I> {
     /// 0x0515 HelloReply
     HelloReply(HelloReply),
@@ -376,6 +390,7 @@ pub const HELLO_SESSION_ID: u32 = 0x6457396a;
 
 /// 0x0514 Hello, host message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Hello {
     /// Session ID on all host messages. All further messages must use
     /// this same ID or they will be ignored.
@@ -424,6 +439,7 @@ where
 
 /// 0x0515 HelloReply, radio message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HelloReply {
     /// HelloReply, provided by the radio.
     /// Assume UTF-8, or at least, ASCII, padded by zeros.
@@ -505,6 +521,7 @@ where
 
 /// 0x0518 Bootloader Ready, radio message (bootloader mode).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BootloaderReady {
     /// Chip ID for the radio's CPU.
     pub chip_id: [u32; 4],
@@ -563,6 +580,7 @@ pub const WRITE_FLASH_LEN: usize = 0x100;
 
 /// 0x0519 Write Flash, host message (bootloader mode).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct WriteFlash<I> {
     /// Session ID unique to this flash sequence. Use
     /// WRITE_FLASH_SESSION_ID if unsure.
@@ -698,6 +716,7 @@ where
 
 /// 0x051a Write Flash Reply, radio message (bootloader mode).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct WriteFlashReply {
     /// Session ID, matches the session id sent in the WriteFlash message.
     pub session_id: u32,
@@ -756,6 +775,7 @@ where
 
 /// 0x051b Read EEPROM, host message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ReadEeprom {
     /// Address to read.
     pub address: u16,
@@ -818,6 +838,7 @@ where
 
 /// 0x051c Read Eeprom Reply, radio message.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ReadEepromReply<I> {
     /// Address of data read.
     pub address: u16,
@@ -924,6 +945,7 @@ where
 
 /// 0x0530 Bootloader Ready Reply, host message (bootloader mode).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BootloaderReadyReply {
     /// Incoming firmware version.
     pub version: crate::Version,
