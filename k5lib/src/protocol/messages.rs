@@ -111,6 +111,20 @@ impl<I> Message<I> {
             Self::Radio(o) => Message::Radio(o.map_ref(f)),
         }
     }
+
+    pub fn to_owned(&self) -> Message<I::Owned>
+    where
+        I: ToOwned,
+    {
+        self.map_ref(I::to_owned)
+    }
+
+    pub fn borrow<Borrowed: ?Sized>(&self) -> Message<&Borrowed>
+    where
+        I: std::borrow::Borrow<Borrowed>,
+    {
+        self.map_ref(I::borrow)
+    }
 }
 
 impl<I> MessageSerialize for Message<I>
@@ -183,6 +197,20 @@ impl<I> HostMessage<I> {
             Self::ReadEeprom(o) => HostMessage::ReadEeprom(o.clone()),
             Self::BootloaderReadyReply(o) => HostMessage::BootloaderReadyReply(o.clone()),
         }
+    }
+
+    pub fn to_owned(&self) -> HostMessage<I::Owned>
+    where
+        I: ToOwned,
+    {
+        self.map_ref(I::to_owned)
+    }
+
+    pub fn borrow<Borrowed: ?Sized>(&self) -> HostMessage<&Borrowed>
+    where
+        I: std::borrow::Borrow<Borrowed>,
+    {
+        self.map_ref(I::borrow)
     }
 }
 
@@ -271,6 +299,20 @@ impl<I> RadioMessage<I> {
             Self::WriteFlashReply(o) => RadioMessage::WriteFlashReply(o.clone()),
             Self::ReadEepromReply(o) => RadioMessage::ReadEepromReply(o.map_ref(f)),
         }
+    }
+
+    pub fn to_owned(&self) -> RadioMessage<I::Owned>
+    where
+        I: ToOwned,
+    {
+        self.map_ref(I::to_owned)
+    }
+
+    pub fn borrow<Borrowed: ?Sized>(&self) -> RadioMessage<&Borrowed>
+    where
+        I: std::borrow::Borrow<Borrowed>,
+    {
+        self.map_ref(I::borrow)
     }
 }
 
@@ -570,6 +612,20 @@ impl<I> WriteFlash<I> {
             data: f(&self.data),
         }
     }
+
+    pub fn to_owned(&self) -> WriteFlash<I::Owned>
+    where
+        I: ToOwned,
+    {
+        self.map_ref(I::to_owned)
+    }
+
+    pub fn borrow<Borrowed: ?Sized>(&self) -> WriteFlash<&Borrowed>
+    where
+        I: std::borrow::Borrow<Borrowed>,
+    {
+        self.map_ref(I::borrow)
+    }
 }
 
 impl<I> MessageSerialize for WriteFlash<I>
@@ -797,6 +853,20 @@ impl<I> ReadEepromReply<I> {
             data: f(&self.data),
         }
     }
+
+    pub fn to_owned(&self) -> ReadEepromReply<I::Owned>
+    where
+        I: ToOwned,
+    {
+        self.map_ref(I::to_owned)
+    }
+
+    pub fn borrow<Borrowed: ?Sized>(&self) -> ReadEepromReply<&Borrowed>
+    where
+        I: std::borrow::Borrow<Borrowed>,
+    {
+        self.map_ref(I::borrow)
+    }
 }
 
 impl<I> MessageSerialize for ReadEepromReply<I>
@@ -1023,10 +1093,9 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_write_flash(msg: WriteFlash<Vec<u8>>) -> bool {
-        let msgref = msg.map_ref(|d| &d[..]);
-        let mut a = roundtrip_a(&msgref);
+        let mut a = roundtrip_a(&msg.borrow());
         let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
-        Some(msgref) == b
+        Some(msg.borrow()) == b
     }
 
     impl Arbitrary for WriteFlashReply {
@@ -1075,10 +1144,9 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_read_eeprom_reply(msg: ReadEepromReply<Vec<u8>>) -> bool {
-        let msgref = msg.map_ref(|d| &d[..]);
-        let mut a = roundtrip_a(&msgref);
+        let mut a = roundtrip_a(&msg.borrow());
         let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
-        Some(msgref) == b
+        Some(msg.borrow()) == b
     }
 
     impl Arbitrary for BootloaderReadyReply {
