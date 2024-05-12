@@ -95,6 +95,17 @@ macro_rules! port_mod {
                         }
                     }
 
+                    /// Enable this port and get access to its pins.
+                    #[inline(always)]
+                    pub fn enable(_port: Port, mut gate: Gate<$reg>) -> Self {
+                        gate.enable();
+
+                        // safety: we've enabled this port and control the gate
+                        unsafe {
+                            Self::steal()
+                        }
+                    }
+
                     /// Disable this port and regain its original components.
                     #[inline(always)]
                     pub fn disable(self) -> (Port, Gate<$reg>) {
@@ -138,13 +149,8 @@ macro_rules! port_mod {
 
                     /// Enable this port and get access to its pins.
                     #[inline(always)]
-                    pub fn enable(self, mut gate: Gate<$reg>) -> Pins {
-                        gate.enable();
-
-                        // safety: we've enabled this port and control the gate
-                        unsafe {
-                            Pins::steal()
-                        }
+                    pub fn enable(self, gate: Gate<$reg>) -> Pins {
+                        Pins::enable(self, gate)
                     }
                 }
 
