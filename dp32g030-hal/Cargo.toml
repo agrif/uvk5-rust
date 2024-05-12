@@ -21,6 +21,7 @@ dp32g030 = { path = "../dp32g030", features = ["atomics"] }
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}
 embedded-hal-1 = { package = "embedded-hal", version = "1" }
 fugit = "0.3.7"
+muldiv = "1"
 nb = "1.1"
 paste = "1"
 

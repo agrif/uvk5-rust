@@ -88,10 +88,11 @@ fn main() -> ! {
 
     // timer test
     let mut timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency(&clocks, 1.kHz())
+        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&clocks)
+        .unwrap()
         .split(&clocks)
         .high
-        .counter_ms();
+        .counter();
     timer.start(500.millis()).unwrap();
 
     // turn on flashlight
