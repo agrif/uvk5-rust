@@ -2,12 +2,12 @@ use crate::pac;
 
 use crate::power::Device;
 
-// local sealed trait for Base
-trait Sealed {}
-
 /// A trait for base timers.
 #[allow(private_bounds)]
-pub trait Base: Device + Sealed {
+pub trait Base: BaseSealed + Device {}
+
+/// A trait for base timers.
+pub(super) trait BaseSealed {
     /// Reset the timer peripheral.
     ///
     /// # Safety
@@ -63,9 +63,9 @@ pub trait Base: Device + Sealed {
 
 macro_rules! impl_base {
     ($timer:path) => {
-        impl Sealed for $timer {}
+        impl Base for $timer {}
 
-        impl Base for $timer {
+        impl BaseSealed for $timer {
             #[inline(always)]
             unsafe fn reset(&mut self) {
                 self.en().reset();

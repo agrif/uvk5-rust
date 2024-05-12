@@ -5,11 +5,12 @@ use crate::time::{TimerDuration, TimerInstant};
 
 use super::{Base, High, Low, System};
 
-trait Sealed {}
-
 /// Timers that can be used in Counter.
 #[allow(private_bounds)]
-pub trait Count<const HZ: u32>: Sealed {
+pub trait Count<const HZ: u32>: CountSealed<HZ> {}
+
+/// Timers that can be used in Counter.
+trait CountSealed<const HZ: u32> {
     /// What is the current count?
     fn now(&mut self) -> TimerInstant<HZ>;
 
@@ -25,9 +26,9 @@ pub trait Count<const HZ: u32>: Sealed {
 
 macro_rules! impl_count {
     ($highlow:ident, $highbool:expr) => {
-        impl<Timer> Sealed for $highlow<Timer> where Timer: Base {}
+        impl<Timer, const HZ: u32> Count<HZ> for $highlow<Timer> where Timer: Base {}
 
-        impl<Timer, const HZ: u32> Count<HZ> for $highlow<Timer>
+        impl<Timer, const HZ: u32> CountSealed<HZ> for $highlow<Timer>
         where
             Timer: Base,
         {
@@ -92,9 +93,9 @@ macro_rules! impl_count {
 impl_count!(Low, false);
 impl_count!(High, true);
 
-impl Sealed for System {}
+impl<const HZ: u32> Count<HZ> for System {}
 
-impl<const HZ: u32> Count<HZ> for System {
+impl<const HZ: u32> CountSealed<HZ> for System {
     #[inline(always)]
     fn now(&mut self) -> TimerInstant<HZ> {
         let clocks = pac::SYST::get_reload() - pac::SYST::get_current();

@@ -5,13 +5,13 @@ pub struct Gate<Dev> {
     _marker: core::marker::PhantomData<Dev>,
 }
 
-// seal for Device trait
-trait Sealed {}
+/// A trait for devices with a device gate.
+#[allow(private_bounds)]
+pub trait Device: DeviceSealed {}
 
 /// An unsafe trait for accessing device gates.
-#[allow(private_bounds)]
-pub trait Device: Sealed {
-    /// The name of the device, used in Debug instances.
+trait DeviceSealed {
+    /// The name of the device, used in Debug instances for Gate.
     const NAME: &'static str;
 
     /// Write to this device gate.
@@ -119,9 +119,9 @@ macro_rules! dev_gate_impl {
 
     // helper to implement the Device trait
     (trait $dev:ident, $field: ident) => {
-        impl Sealed for pac::$dev {}
+        impl Device for pac::$dev {}
 
-        impl Device for pac::$dev {
+        impl DeviceSealed for pac::$dev {
             const NAME: &'static str = stringify!($dev);
 
             #[inline(always)]

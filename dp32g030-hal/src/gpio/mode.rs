@@ -4,12 +4,7 @@ use super::PinState;
 trait Sealed {}
 
 /// A trait for pin mode type states.
-#[allow(private_bounds)]
-pub trait PinMode: Sealed + core::fmt::Debug + Default {
-    /// For Alternate modes, this is the inner mode. For all others, this
-    /// is Self.
-    type Inner: PinMode;
-
+pub(super) trait PinModeSealed {
     /// Whether to force full reconfiguration if this is the current pin mode.
     const UNSPECIFIED: bool;
 
@@ -29,15 +24,34 @@ pub trait PinMode: Sealed + core::fmt::Debug + Default {
     const DIR: bool;
 }
 
+/// A trait for pin mode type states.
+#[allow(private_bounds)]
+#[cfg(not(feature = "defmt"))]
+pub trait PinMode: PinModeSealed + core::fmt::Debug + Default {
+    /// For Alternate modes, this is the inner mode. For all others, this
+    /// is Self.
+    type Inner: PinMode;
+}
+
+/// A trait for pin mode type states.
+#[allow(private_bounds)]
+#[cfg(feature = "defmt")]
+pub trait PinMode: PinModeSealed + core::fmt::Debug + defmt::Format + Default {
+    /// For Alternate modes, this is the inner mode. For all others, this
+    /// is Self.
+    type Inner: PinMode;
+}
+
 /// Unspecified pin state, unusable until changed. (type state)
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Unspecified;
 
-impl Sealed for Unspecified {}
 impl PinMode for Unspecified {
     type Inner = Self;
+}
 
+impl PinModeSealed for Unspecified {
     const UNSPECIFIED: bool = true;
 
     const IE: bool = false;
@@ -100,10 +114,11 @@ where
     }
 }
 
-impl Sealed for Input<Floating> {}
 impl PinMode for Input<Floating> {
     type Inner = Self;
+}
 
+impl PinModeSealed for Input<Floating> {
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -116,10 +131,11 @@ impl PinMode for Input<Floating> {
     const DIR: bool = false;
 }
 
-impl Sealed for Input<PullUp> {}
 impl PinMode for Input<PullUp> {
     type Inner = Self;
+}
 
+impl PinModeSealed for Input<PullUp> {
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -132,10 +148,11 @@ impl PinMode for Input<PullUp> {
     const DIR: bool = false;
 }
 
-impl Sealed for Input<PullDown> {}
 impl PinMode for Input<PullDown> {
     type Inner = Self;
+}
 
+impl PinModeSealed for Input<PullDown> {
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -193,10 +210,11 @@ where
     }
 }
 
-impl Sealed for Output<PushPull> {}
 impl PinMode for Output<PushPull> {
     type Inner = Self;
+}
 
+impl PinModeSealed for Output<PushPull> {
     const UNSPECIFIED: bool = false;
 
     const IE: bool = false;
@@ -209,10 +227,11 @@ impl PinMode for Output<PushPull> {
     const DIR: bool = true;
 }
 
-impl Sealed for Output<OpenDrain> {}
 impl PinMode for Output<OpenDrain> {
     type Inner = Self;
+}
 
+impl PinModeSealed for Output<OpenDrain> {
     const UNSPECIFIED: bool = false;
 
     const IE: bool = false;
@@ -266,18 +285,18 @@ where
 // avoid repitition for alternate modes
 macro_rules! impl_alternate {
     ($Mode:ty) => {
-        impl<const A: u8> Sealed for Alternate<A, $Mode> {}
-
         impl<const A: u8> PinMode for Alternate<A, $Mode> {
             type Inner = $Mode;
+        }
 
-            const UNSPECIFIED: bool = <$Mode as PinMode>::UNSPECIFIED;
+        impl<const A: u8> PinModeSealed for Alternate<A, $Mode> {
+            const UNSPECIFIED: bool = <$Mode as PinModeSealed>::UNSPECIFIED;
 
-            const IE: bool = <$Mode as PinMode>::IE;
-            const PD: bool = <$Mode as PinMode>::PD;
-            const PU: bool = <$Mode as PinMode>::PU;
+            const IE: bool = <$Mode as PinModeSealed>::IE;
+            const PD: bool = <$Mode as PinModeSealed>::PD;
+            const PU: bool = <$Mode as PinModeSealed>::PU;
 
-            const OD: bool = <$Mode as PinMode>::OD;
+            const OD: bool = <$Mode as PinModeSealed>::OD;
 
             const SEL: u8 = A;
             const DIR: bool = false;
