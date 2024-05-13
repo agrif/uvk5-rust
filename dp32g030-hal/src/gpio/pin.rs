@@ -201,7 +201,8 @@ impl<const P: char, const N: u8, Mode> Pin<P, N, Mode>
 where
     Mode: PinMode,
 {
-    /// Safety: this must be the only place this pin is accessed in both
+    /// # Safety
+    /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO. You should also be sure Mode matches the pin's mode.
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {

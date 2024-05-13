@@ -5,7 +5,7 @@ pub(super) trait PinModeSealed {
     /// The result of a static assert that this mode is valid.
     const VALID: ();
 
-    /// call this to statically assert that VALID is set
+    /// Call this to statically assert that [Self::VALID] is set.
     #[inline(always)]
     #[allow(path_statements)]
     fn static_assert_valid() {
@@ -20,7 +20,7 @@ pub(super) trait PinModeSealed {
     const IE: bool;
     /// Pull-down.
     const PD: bool;
-    /// Pull-up;
+    /// Pull-up.
     const PU: bool;
 
     /// Open-drain.
@@ -28,7 +28,8 @@ pub(super) trait PinModeSealed {
 
     /// Function selection, 4 bits at most.
     const SEL: u8;
-    /// GPIO direction, 0 is input, 1 is output. Probably the same as !IE.
+    /// GPIO direction, 0 is input, 1 is output. Probably the same
+    /// as ![Self::IE].
     const DIR: bool;
 }
 
@@ -422,7 +423,8 @@ macro_rules! with_mode_aliases {
             self.with_mode(f)
         }
 
-        /// Temporarily configure pin as an open-drain output in the given state.
+        /// Temporarily configure pin as an open-drain output in the
+        /// given state.
         #[inline(always)]
         $($vis)? fn with_open_drain_output_in_state<R>(
             &mut self,

@@ -33,7 +33,7 @@ impl<'a> Parse for &'a [u8] {
     }
 }
 
-/// A trait for something we can deobfuscated and extract frames from.
+/// A trait for something we can deobfuscate and extract frames from.
 #[allow(clippy::len_without_is_empty)]
 pub trait ParseMut: Sized {
     /// A non-mutable slice of input, suitable for nom.
@@ -95,7 +95,7 @@ struct Matcher<'a> {
     pos: usize,
 }
 
-/// Result of match_().
+/// Result of [Matcher::match_()].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum MatchResult {
@@ -268,7 +268,7 @@ where
     }
 }
 
-/// A possible result from frame().
+/// A possible result from [frame()].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ParseResult<I, O, E = Error<I>> {
@@ -327,7 +327,7 @@ impl<I, O, E> ParseResult<I, O, E> {
     }
 }
 
-/// Check the LE u16 CRC at the end of a frame body.
+/// Check the little-endian u16 CRC at the end of a frame body.
 ///
 /// Return the body (without CRC) on success.
 pub fn check_crc<C, I>(crc: C, input: I) -> Option<I>
@@ -362,11 +362,12 @@ where
 ///
 /// The parser is always run against an entire frame.
 ///
-/// Returns number of consumed bytes and Ok(..) on successful parse,
-/// ParseErr(..) if the provided parser failed, CrcErr(..) if the
-/// checksum was wrong, and None if it only skipped data and found no
-/// complete frames.  In all cases, any frames passed to the parser
-/// are removed from the input.
+/// Returns number of consumed bytes and [ParseResult::Ok] on
+/// successful parse, [ParseResult::ParseErr] if the provided parser
+/// failed, [ParseResult::CrcErr] if the checksum was wrong, and
+/// [ParseResult::None] if it only skipped data and found no complete
+/// frames.  In all cases, any frames passed to the parser are removed
+/// from the input.
 pub fn frame<C, I, P, O>(crc: C, input: I, parser: P) -> (usize, ParseResult<I::Input, O>)
 where
     C: CrcStyle,
@@ -456,7 +457,6 @@ where
     /// Returns the number of consumed bytes and the parse or CRC result.
     ///
     /// This parses and handles frame start/end, length, obfuscation, and CRC.
-    ///
     fn parse_frame<C, IM>(crc: &C, input: IM) -> (usize, ParseResult<I, Self>)
     where
         C: CrcStyle,

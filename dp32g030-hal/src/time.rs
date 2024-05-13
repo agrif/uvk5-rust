@@ -1,4 +1,6 @@
 //! Generic types and units for working with time.
+//!
+//! This is a re-export of parts of the [fugit] crate.
 
 pub use fugit::HertzU32 as Hertz;
 pub use fugit::HoursDurationU32 as HoursDuration;

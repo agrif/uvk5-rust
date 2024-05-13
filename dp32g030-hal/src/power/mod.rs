@@ -12,7 +12,7 @@ mod gate;
 pub use gate::*;
 
 #[inline(always)]
-/// Split the SYSCON and PMU registers into usable parts.
+/// Split the [pac::SYSCON] and [pac::PMU] registers into usable parts.
 pub fn new(syscon: pac::SYSCON, pmu: pac::PMU) -> Power {
     Power::new(syscon, pmu)
 }
@@ -27,9 +27,10 @@ pub struct Power {
 }
 
 impl Power {
-    /// Safety: this access SYSCON and PMU registers. Notably, having this
-    /// allows you to change the clock speed out from under all other
-    /// peripherals
+    /// # Safety
+    /// This accesses [pac::SYSCON] and [pac::PMU] registers. Notably,
+    /// having this allows you to change the clock speed out from under
+    /// all other peripherals.
     #[inline(always)]
     unsafe fn steal() -> Self {
         Self {
@@ -40,7 +41,7 @@ impl Power {
     }
 
     #[inline(always)]
-    /// Split the SYSCON and PMU registers into usable parts.
+    /// Split the [pac::SYSCON] and [pac::PMU] registers into usable parts.
     pub fn new(_syscon: pac::SYSCON, _pmu: pac::PMU) -> Self {
         // safety: all of these operate on disjoint registers of these blocks
         // which we are now owners of

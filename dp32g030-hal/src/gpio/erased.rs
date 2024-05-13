@@ -43,7 +43,8 @@ impl<Mode> ErasedPin<Mode>
 where
     Mode: PinMode,
 {
-    /// Safety: this must be the only place this pin is accessed in both
+    /// # Safety
+    /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO, and the mode must match the pin's mode.
     #[inline(always)]
     unsafe fn steal(n: u8, p: char) -> Self {

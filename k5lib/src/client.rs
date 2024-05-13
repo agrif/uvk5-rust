@@ -12,10 +12,10 @@ pub trait ClientBuffer {
     where
         Self: 'a;
 
-    /// Modify the filled part of the buffer to remove the first n bytes.
+    /// Modify the filled part of the buffer to remove the first `n` bytes.
     fn skip(&mut self, n: usize);
 
-    /// Returns true if the buffer is full.
+    /// Returns [true] if the buffer is full.
     fn is_full(&self) -> bool;
 
     /// Read data from a reader into the filled part, consuming unfilled areas.
@@ -33,10 +33,10 @@ pub trait ClientBuffer {
     fn clear(&mut self);
 }
 
-/// A ClientBuffer using a flat array.
+/// A [ClientBuffer] using a flat array.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct ArrayBuffer<const SIZE: usize = { MAX_FRAME_SIZE }> {
+pub struct ArrayBuffer<const SIZE: usize = MAX_FRAME_SIZE> {
     len: usize,
     buffer: [u8; SIZE],
 }
@@ -160,7 +160,8 @@ where
     InC: crc::CrcStyle,
     OutC: crc::CrcStyle,
 {
-    /// Create a new client with the provided incoming and outgoing CRCs.
+    /// Create a new client with the provided incoming and
+    /// outgoing [crc::CrcStyle]s.
     pub fn new_crc(in_crc: InC, out_crc: OutC, port: F) -> Self
     where
         B: Default,
@@ -185,21 +186,21 @@ where
         &self.buffer
     }
 
-    /// Get the incoming CRC implementation.
+    /// Get the incoming [crc::CrcStyle] implementation.
     pub fn in_crc(&self) -> &InC {
         &self.in_crc
     }
 
-    /// Get the outgoing CRC implementation.
+    /// Get the outgoing [crc::CrcStyle] implementation.
     pub fn out_crc(&self) -> &OutC {
         &self.out_crc
     }
 
     /// Read from the port into the internal buffer, if needed. First
-    /// half of read().
+    /// half of [Self::read()].
     ///
-    /// If you call this while self.buffer().is_full(), this will clear
-    /// the internal buffer to make room for new data.
+    /// If you call this while [self.buffer().is_full()][ClientBuffer::is_full],
+    /// this will clear the internal buffer to make room for new data.
     pub fn read_into_buffer(&mut self) -> std::io::Result<()>
     where
         F: std::io::Read,
@@ -232,7 +233,7 @@ where
         Ok(())
     }
 
-    /// Parse from the internal buffer. Second half of read().
+    /// Parse from the internal buffer. Second half of [Self::read()].
     pub fn parse<'a, M, I>(&'a mut self) -> ParseResult<I, M>
     where
         M: MessageParse<I>,
@@ -269,7 +270,7 @@ where
         Ok(self.parse())
     }
 
-    /// Read a Message.
+    /// Read a [Message].
     pub fn read_any<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, Message<I>>>
     where
         I: Parse,
@@ -279,7 +280,7 @@ where
         self.read()
     }
 
-    /// Read a HostMessage.
+    /// Read a [HostMessage].
     pub fn read_host<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, HostMessage<I>>>
     where
         I: Parse,
@@ -289,7 +290,7 @@ where
         self.read()
     }
 
-    /// Read a RadioMessage.
+    /// Read a [RadioMessage].
     pub fn read_radio<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, RadioMessage<I>>>
     where
         I: Parse,

@@ -1,9 +1,16 @@
+/// Frame start sequence.
 pub const FRAME_START: [u8; 2] = [0xab, 0xcd];
+
+/// Frame end sequence.
 pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
 
-/// Total guess, here.
+/// Largest size for an entire frame.
+///
+/// This is an educated guess. [WriteFlash] payload is at most 0x100
+/// bytes, so this gives a little bit of wiggle room on top of that.
 pub const MAX_FRAME_SIZE: usize = 0x200;
 
+/// Default baud rate for radio UART.
 pub const BAUD_RATE: u32 = 38400;
 
 pub mod crc;

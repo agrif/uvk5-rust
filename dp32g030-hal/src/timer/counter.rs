@@ -7,11 +7,11 @@ use crate::time::{TimerDuration, TimerInstant};
 
 use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low, System};
 
-/// Timers that can be used in Counter.
+/// Timers that can be used in [Counter].
 #[allow(private_bounds)]
 pub trait Count<const HZ: u32, const DYN: bool>: CountSealed<HZ, DYN> {}
 
-/// Timers that can be used in Counter.
+/// Timers that can be used in [Counter].
 trait CountSealed<const HZ: u32, const DYN: bool> {
     /// What is the current count? At minimum this time has passed.
     fn now(&mut self) -> TimerInstant<HZ>;
@@ -208,13 +208,13 @@ pub struct Counter<Timer, const HZ: u32, const DYN: bool = false> {
     timer: Timer,
 }
 
-/// A counter with nanosecond precision.
+/// A dynamic counter with nanosecond precision.
 pub type CounterNs<Timer> = Counter<Timer, 1_000_000_000, true>;
 
-/// A counter with microsecond precision.
+/// A dynamic counter with microsecond precision.
 pub type CounterUs<Timer> = Counter<Timer, 1_000_000, true>;
 
-/// A counter with millisecond precision.
+/// A dynamic counter with millisecond precision.
 pub type CounterMs<Timer> = Counter<Timer, 1_000, true>;
 
 impl<Timer, const HZ: u32, const DYN: bool> Counter<Timer, HZ, DYN>

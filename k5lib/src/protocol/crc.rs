@@ -11,7 +11,7 @@ pub trait CrcStyle {
     }
 }
 
-/// Interface for a CRC digest.
+/// Interface for a CRC digest created by a [CrcStyle].
 pub trait CrcDigest {
     fn update(&mut self, bytes: &[u8]);
     fn finalize(self) -> u16;
@@ -32,7 +32,7 @@ where
     }
 }
 
-/// A CRC that is one of two possible implementations.
+/// A [CrcStyle] that is one of two possible implementations.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CrcEither<A, B> {
@@ -82,7 +82,7 @@ where
     }
 }
 
-/// A CRC that is always a specific given value.
+/// A [CrcStyle] that is always a specific given value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CrcConstant(pub u16);
@@ -103,7 +103,7 @@ impl CrcDigest for CrcConstant {
     }
 }
 
-/// A CRC that is always a specific given value, and always validates.
+/// A [CrcStyle] that writes a specific given value, and always validates.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CrcConstantIgnore(pub u16);
@@ -120,11 +120,11 @@ impl CrcStyle for CrcConstantIgnore {
     }
 }
 
-/// A 16-bit XModem CRC, used for host to radio frames.
+/// A 16-bit XModem [CrcStyle], used for host to radio frames.
 #[derive(Clone)]
 pub struct CrcXModem(crc::Crc<u16>);
 
-/// A 16-bit XModem CRC digest struct.
+/// A 16-bit XModem [CrcDigest].
 #[derive(Clone)]
 pub struct CrcXModemDigest<'a>(crc::Digest<'a, u16, crc::Table<1>>);
 

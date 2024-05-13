@@ -21,7 +21,8 @@ pub trait Serializer {
         Ok(())
     }
 
-    /// Use this instead of write_bytes when the input buffer is scratch space.
+    /// Use this instead of [Self::write_bytes] when the input buffer
+    /// is usable as scratch space.
     fn write_bytes_mut(&mut self, val: &mut [u8]) -> Result<(), Self::Error> {
         self.write_bytes(val)
     }
@@ -100,7 +101,7 @@ where
     }
 }
 
-/// Wrap an std::io::Write to become a Serializer
+/// Wrap an [std::io::Write] to become a [Serializer].
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -150,7 +151,7 @@ where
     }
 }
 
-/// Wrap a Vec<u8> to become a Serializer
+/// Wrap a [`Vec<u8>`] to become a [Serializer].
 #[cfg(feature = "alloc")]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SerializerVec {
@@ -211,7 +212,7 @@ impl Serializer for SerializerVec {
     }
 }
 
-/// A serializer that only counts bytes written.
+/// A [Serializer] that only counts bytes written.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerLength {
@@ -282,7 +283,7 @@ impl Serializer for SerializerLength {
     }
 }
 
-/// A serializer that also computes a CRC on the side.
+/// A [Serializer] that also computes a CRC on the side.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SerializerCrc<'a, C, T>
 where
@@ -345,7 +346,7 @@ where
     }
 }
 
-/// A serializer that also computes a CRC on the side.
+/// A [Serializer] that also obfuscates written bytes.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerObfuscated<T> {
@@ -413,7 +414,7 @@ pub trait MessageSerialize {
     ///
     /// For this to work correctly, it *must* perform the same actions
     /// every time it is called with the same message. That means no
-    /// IO, no funny business.
+    /// IO, and no funny business.
     fn message_body<S>(&self, ser: &mut S) -> Result<(), S::Error>
     where
         S: Serializer;

@@ -11,7 +11,7 @@ pub trait Device: DeviceSealed {}
 
 /// An unsafe trait for accessing device gates.
 trait DeviceSealed {
-    /// The name of the device, used in Debug instances for Gate.
+    /// The name of the device, used in [Debug] instances for [Gate].
     const NAME: &'static str;
 
     /// Write to this device gate.
@@ -60,7 +60,8 @@ impl<Dev> Gate<Dev>
 where
     Dev: Device,
 {
-    /// safety: this reads and writes the bit for Dev in dev_clk_gate
+    /// # Safety
+    /// This reads and writes the bit for Dev in `dev_clk_gate`.
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {
@@ -105,7 +106,8 @@ macro_rules! dev_gate_impl {
         }
 
         impl Gates {
-            /// safety: this peripheral reads and writes SYSCON.dev_clk_gate()
+            /// # Safety
+            /// This peripheral reads and writes `SYSCON.dev_clk_gate()`.
             #[inline(always)]
             pub(crate) unsafe fn steal() -> Self {
                 Self {

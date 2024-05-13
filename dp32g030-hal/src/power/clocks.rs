@@ -337,9 +337,10 @@ impl Clocks {
 }
 
 impl ClockConfig {
-    /// safety: this peripheral reads and writes:
-    ///  * SYSCON: clk_sel, div_clk_gate, rc_freq_delta, pll_ctrl, pll_st
-    ///  * PMU: src_cfg
+    /// # Safety:
+    /// This peripheral reads and writes:
+    ///  * `SYSCON`: `clk_sel`, `div_clk_gate`, `rc_freq_delta`, `pll_ctrl`, `pll_st`
+    ///  * `PMU`: `src_cfg`
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {

@@ -3,7 +3,7 @@ use crate::time::Hertz;
 
 use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low};
 
-/// Wrap the timer register into a configurator.
+/// Wrap a timer register into a configurator.
 #[inline(always)]
 pub fn new<Timer>(timer: Timer, gate: Gate<Timer>) -> Config<Timer, 0>
 where
@@ -19,7 +19,7 @@ pub struct Config<Timer, const HZ: u32> {
     timer: Timer,
 }
 
-/// The two timers in each peripheral, Low and High.
+/// The two timers in each peripheral, [Low] and [High].
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LowHigh<Timer, const HZ: u32> {
@@ -31,7 +31,7 @@ impl<Timer> Config<Timer, 0>
 where
     Timer: Base,
 {
-    /// Wrap the timer register into a configurator.
+    /// Wrap a timer register into a configurator.
     #[inline(always)]
     pub fn new(mut timer: Timer, mut gate: Gate<Timer>) -> Self {
         // safety: we own timer exclusively, which gives us control here
@@ -56,7 +56,7 @@ where
         (self.timer, gate)
     }
 
-    /// Use sys_clk as input, and set the divider to 1 + div.
+    /// Use `sys_clk` as input, and set the divider to 1 + `div`.
     ///
     /// # Safety
     ///
@@ -64,7 +64,7 @@ where
     /// timer arbitrarily. You must use type annotations to ensure it
     /// reflects the real resulting frequency of this timer.
     ///
-    /// Use frequency() instead for a safer interface.
+    /// Use [Self::frequency()] instead for a safer interface.
     #[inline(always)]
     pub unsafe fn divider<const C_HZ: u32>(mut self, div: u16) -> Config<Timer, C_HZ> {
         // safety: we own self, which gives us control here
@@ -72,10 +72,10 @@ where
         Config { timer: self.timer }
     }
 
-    /// Use sys_clk as input, and set the divider to most closely
+    /// Use `sys_clk` as input, and set the divider to most closely
     /// match the given frequency.
     ///
-    /// If the frequency is too or high to be matched, returns None.
+    /// If the frequency is too or high to be matched, returns [Err].
     #[inline(always)]
     pub fn frequency<const C_HZ: u32>(self, clocks: &Clocks) -> Result<Config<Timer, C_HZ>, Error> {
         let div = clocks
@@ -103,10 +103,10 @@ where
         clocks.sys_clk() / (self.timer.get_div() as u32 + 1)
     }
 
-    /// Split the configured timer into Low and High parts.
+    /// Split the configured timer into [Low] and [High] parts.
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
-    /// frequency() to configure HZ.
+    /// [Self::frequency()] to configure HZ.
     #[inline(always)]
     pub fn split(self, clocks: &Clocks) -> LowHigh<Timer, HZ> {
         LowHigh::new(self, clocks)
@@ -117,10 +117,10 @@ impl<Timer, const HZ: u32> LowHigh<Timer, HZ>
 where
     Timer: Base,
 {
-    /// Split the configured timer into Low and High parts.
+    /// Split the configured timer into [Low] and [High] parts.
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
-    /// frequency() to configure HZ.
+    /// [Config::frequency()] to configure HZ.
     #[inline(always)]
     pub fn new(config: Config<Timer, HZ>, clocks: &Clocks) -> Self {
         static_assert_timer_hz_not_zero::<HZ>();

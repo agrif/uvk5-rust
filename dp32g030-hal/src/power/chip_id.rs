@@ -21,7 +21,8 @@ impl defmt::Format for ChipId {
 }
 
 impl ChipId {
-    /// safety: this peripheral reads SYSCON.chip_idN()
+    /// # Safety:
+    /// This peripheral reads `SYSCON.chip_idN()`.
     #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self { _private: () }

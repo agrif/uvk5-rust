@@ -3,7 +3,7 @@ use nom::{error::Error, Parser};
 use super::parse::{MessageParse, Parse};
 use super::serialize::{MessageSerialize, Serializer};
 
-/// Parse a version.
+/// Parse a [crate::Version].
 fn parse_version<I>(input: I) -> nom::IResult<I, crate::Version>
 where
     I: Parse,
@@ -95,7 +95,7 @@ pub trait MessageType {
     const TYPE: u16;
 }
 
-/// Any kind of message.
+/// Any kind of message, either a [HostMessage] or a [RadioMessage].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Message<I> {
@@ -174,7 +174,7 @@ where
     }
 }
 
-/// Messages sent from the host computer.
+/// Messages sent from the host computer to the radio.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HostMessage<I> {
@@ -278,7 +278,7 @@ where
     }
 }
 
-/// Messages sent from the radio.
+/// Messages sent from the radio to the host computer.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RadioMessage<I> {
@@ -384,8 +384,7 @@ where
     }
 }
 
-/// Session ID for host messages. Should be the same as the one used
-/// in Hello in all messages.
+/// Known good session ID for host messages. Introduced by [Hello].
 pub const HELLO_SESSION_ID: u32 = 0x6457396a;
 
 /// 0x0514 Hello, host message.
@@ -395,7 +394,7 @@ pub struct Hello {
     /// Session ID on all host messages. All further messages must use
     /// this same ID or they will be ignored.
     ///
-    /// If unsure, use HELLO_SESSION_ID.
+    /// If unsure, use [HELLO_SESSION_ID].
     pub session_id: u32,
 }
 
@@ -441,7 +440,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HelloReply {
-    /// HelloReply, provided by the radio.
+    /// Version provided by the radio.
     /// Assume UTF-8, or at least, ASCII, padded by zeros.
     pub version: crate::Version,
 
@@ -572,10 +571,10 @@ where
     }
 }
 
-/// Unknown value in WriteFlash messages.
+/// Known good session ID for flash messages. Used in [WriteFlash].
 pub const WRITE_FLASH_SESSION_ID: u32 = 0x1d9f8d8a;
 
-/// Size of the data in a WriteFlash message.
+/// Size of the data in a [WriteFlash] message.
 pub const WRITE_FLASH_LEN: usize = 0x100;
 
 /// 0x0519 Write Flash, host message (bootloader mode).
@@ -583,21 +582,22 @@ pub const WRITE_FLASH_LEN: usize = 0x100;
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct WriteFlash<I> {
     /// Session ID unique to this flash sequence. Use
-    /// WRITE_FLASH_SESSION_ID if unsure.
+    /// [WRITE_FLASH_SESSION_ID] if unsure. This must be the same
+    /// for all writes in a given session.
     pub session_id: u32,
     /// Which 0x100 byte page to write. Increments by 1 each message.
     pub page: u16,
     /// Maximum flash page, exclusive. Device boots after writing when
-    /// page + 1 == max_page.
+    /// `page + 1 == max_page`.
     pub max_page: u16,
-    /// Length of data. Note data.len() is always 0x100, this
-    /// indicates how much data inside is used.
+    /// Length of data. Note `data.len()` is always 0x100, this
+    /// field instead indicates how much data inside is used.
     ///
     /// This seems to be ignored by the bootloader.
     pub len: u16,
     /// Alignment padding.
     pub _pad: Padding<2>,
-    /// Data to write to flash. Must be 0x100 bytes!
+    /// Data to write to flash. Must be 0x100 / [WRITE_FLASH_LEN] bytes!
     pub data: I,
 }
 
@@ -718,9 +718,9 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct WriteFlashReply {
-    /// Session ID, matches the session id sent in the WriteFlash message.
+    /// Session ID, matches the session id sent in the [WriteFlash] message.
     pub session_id: u32,
-    /// Page number, matches the page sent in the WriteFlash message.
+    /// Page number, matches the page sent in the [WriteFlash] message.
     pub page: u16,
     /// Error, 0 indicates success and non-zero indiates error.
     pub error: u16,
@@ -783,7 +783,7 @@ pub struct ReadEeprom {
     pub len: u8,
     /// Alignment padding.
     pub _pad: Padding<1>,
-    /// Session ID, must match the one provided by initial Hello.
+    /// Session ID, must match the one provided by initial [Hello].
     pub session_id: u32,
 }
 

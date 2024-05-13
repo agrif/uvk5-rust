@@ -35,7 +35,8 @@ pub struct Ports {
 }
 
 impl Ports {
-    /// Safety: This accesses PORTCON and all GPIO registers.
+    /// # Safety
+    /// This accesses PORTCON and all GPIO registers.
     #[inline(always)]
     unsafe fn steal() -> Self {
         Self {

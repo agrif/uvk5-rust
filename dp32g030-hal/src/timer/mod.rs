@@ -92,30 +92,33 @@ impl defmt::Format for System {
 
 macro_rules! counter_methods {
     () => {
-        /// Create a Counter from this timer, with specific precision.
+        /// Create a dynamic [Counter] from this timer, with specific precision.
         ///
         /// This discards any statically-known frequency of the base
         /// timer, and instead calculates ticks from the dynamic
-        /// sys_clk value. This *might* be more accurate, at the cost
-        /// of runtime.
+        /// `sys_clk` value. This *might* be more accurate, at the cost
+        /// of runtime and code size.
         #[inline(always)]
         pub fn counter_hz<const C_HZ: u32>(self) -> Counter<Self, C_HZ, true> {
             Counter::new(self)
         }
 
-        /// Create a Counter with nanosecond precision with this timer.
+        /// Create a dynamic [Counter] with nanosecond precision
+        /// with this timer.
         #[inline(always)]
         pub fn counter_ns(self) -> CounterNs<Self> {
             self.counter_hz()
         }
 
-        /// Create a Counter with microsecond precision with this timer.
+        /// Create a dynamic [Counter] with microsecond precision
+        /// with this timer.
         #[inline(always)]
         pub fn counter_us(self) -> CounterUs<Self> {
             self.counter_hz()
         }
 
-        /// Create a Counter with millisecond precision with this timer.
+        /// Create a dynamic [Counter] with millisecond precision
+        /// with this timer.
         #[inline(always)]
         pub fn counter_ms(self) -> CounterMs<Self> {
             self.counter_hz()
@@ -147,14 +150,14 @@ where
     counter_methods!(native);
 }
 
-/// Create the system timer from the SYST register;
+/// Create the system timer from the [pac::SYST] register.
 #[inline(always)]
 pub fn new_system(syst: pac::SYST, clocks: &Clocks) -> System {
     System::new(syst, clocks)
 }
 
 impl System {
-    /// Create the system timer from the SYST register.
+    /// Create the system timer from the [pac::SYST] register.
     #[inline(always)]
     pub fn new(syst: pac::SYST, clocks: &Clocks) -> Self {
         Self {
@@ -163,7 +166,7 @@ impl System {
         }
     }
 
-    /// Recover the SYST register from this timer.
+    /// Recover the [pac::SYST] register from this timer.
     #[inline(always)]
     pub fn free(self) -> pac::SYST {
         // safety: self owns SYST, and we're dropping self here

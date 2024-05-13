@@ -1,4 +1,4 @@
-/// Max size of version string, including terminating NUL.
+/// Max size of version string, including terminating `NUL`.
 pub const VERSION_LEN: usize = 16;
 
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
