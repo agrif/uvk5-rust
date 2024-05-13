@@ -1,8 +1,5 @@
 use super::PinState;
 
-// seal for PinMode trait
-trait Sealed {}
-
 /// A trait for pin mode type states.
 pub(super) trait PinModeSealed {
     /// Whether to force full reconfiguration if this is the current pin mode.
