@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: generated-pac
+          name: generated-pac.zip
           path: |
             dp32g030/svd/dp32g030.vendor.svd.patched
             dp32g030/svd/memorymap.txt
@@ -62,7 +62,7 @@ jobs:
           targets: thumbv6m-none-eabi
       - uses: actions/download-artifact@v4
         with:
-          name: generated-pac
+          name: generated-pac.zip
           path: dp32g030
 
       - run: cargo build --no-default-features --features "${{ matrix.features }}"
@@ -83,7 +83,7 @@ jobs:
           targets: thumbv6m-none-eabi
       - uses: actions/download-artifact@v4
         with:
-          name: generated-pac
+          name: generated-pac.zip
           path: dp32g030
 
       - run: mkdir -p github-work/examples
@@ -126,7 +126,7 @@ jobs:
           targets: thumbv6m-none-eabi
       - uses: actions/download-artifact@v4
         with:
-          name: generated-pac
+          name: generated-pac.zip
           path: dp32g030
 
       - run: cargo build --release
