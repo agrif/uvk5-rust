@@ -68,9 +68,6 @@ jobs:
       - run: cargo build --no-default-features --features "${{ matrix.features }}"
         working-directory: dp32g030-hal
 
-      - run: cargo build --release --examples
-        working-directory: dp32g030-hal
-
   hal-examples:
     name: HAL examples
     runs-on: ubuntu-latest
