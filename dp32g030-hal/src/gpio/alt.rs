@@ -2,6 +2,8 @@
 
 use super::*;
 
+use crate::pac::portcon::porta_sel0::{PORTA1_A, PORTA2_A, PORTA3_A, PORTA4_A};
+
 macro_rules! pin {
     ($name:literal, enum $pinname:ident {$($var:ident<$mode:ty>),*$(,)?}) => {
         #[derive(Debug)]
@@ -44,21 +46,21 @@ macro_rules! pins {
 // total guesses on pin modes
 pins!(xtah, "XTAH port", {
     enum Xi {
-        PA3<Alternate<2, Input<Floating>>>,
+        PA3<Alternate<{PORTA3_A::XtahXi as u8}, Input<Floating>>>,
     }
 
     enum Xo {
-        PA4<Alternate<2, Output<PushPull>>>,
+        PA4<Alternate<{PORTA4_A::XtahXo as u8}, Output<PushPull>>>,
     }
 });
 
 // also total guesses on pin modes
 pins!(xtal, "XTAL port", {
     enum Xi {
-        PA1<Alternate<1, Input<Floating>>>,
+        PA1<Alternate<{PORTA1_A::XtalXi as u8}, Input<Floating>>>,
     }
 
     enum Xo {
-        PA2<Alternate<1, Output<PushPull>>>,
+        PA2<Alternate<{PORTA2_A::XtalXo as u8}, Output<PushPull>>>,
     }
 });
