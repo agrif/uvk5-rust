@@ -495,12 +495,11 @@ impl<const P: char, const N: u8, Mode> TryFrom<PartiallyErasedPin<P, Mode>> for 
 where
     Mode: PinMode,
 {
-    // FIXME actual pin erasure error?
-    type Error = ();
+    type Error = PartiallyErasedPin<P, Mode>;
 
     #[inline(always)]
     fn try_from(value: PartiallyErasedPin<P, Mode>) -> Result<Self, Self::Error> {
-        value.restore().ok_or(())
+        value.restore()
     }
 }
 
@@ -508,11 +507,10 @@ impl<const P: char, const N: u8, Mode> TryFrom<ErasedPin<Mode>> for Pin<P, N, Mo
 where
     Mode: PinMode,
 {
-    // FIXME actual pin erasure error?
-    type Error = ();
+    type Error = ErasedPin<Mode>;
 
     #[inline(always)]
     fn try_from(value: ErasedPin<Mode>) -> Result<Self, Self::Error> {
-        value.restore().ok_or(())
+        value.restore()
     }
 }

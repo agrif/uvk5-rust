@@ -108,25 +108,25 @@ where
 
     /// Restore the erased pin.
     #[inline(always)]
-    pub fn restore<const P: char, const N: u8>(self) -> Option<Pin<P, N, Mode>> {
+    pub fn restore<const P: char, const N: u8>(self) -> Result<Pin<P, N, Mode>, Self> {
         let (pin, port) = self.pin_port();
         if N == pin && P == port {
             // safety: we own this pin via self, and drop self here.
-            Some(unsafe { Pin::steal() })
+            Ok(unsafe { Pin::steal() })
         } else {
-            None
+            Err(self)
         }
     }
 
     /// Restore the erased pin into a partially-erased pin.
     #[inline(always)]
-    pub fn restore_partial<const P: char>(self) -> Option<PartiallyErasedPin<P, Mode>> {
+    pub fn restore_partial<const P: char>(self) -> Result<PartiallyErasedPin<P, Mode>, Self> {
         let (pin, port) = self.pin_port();
         if P == port {
             // safety: we own this pin via self, and drop self here
-            Some(unsafe { PartiallyErasedPin::steal(pin) })
+            Ok(unsafe { PartiallyErasedPin::steal(pin) })
         } else {
-            None
+            Err(self)
         }
     }
 

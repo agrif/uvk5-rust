@@ -83,12 +83,12 @@ where
 
     /// Restore the erased pin.
     #[inline(always)]
-    pub fn restore<const N: u8>(self) -> Option<Pin<P, N, Mode>> {
+    pub fn restore<const N: u8>(self) -> Result<Pin<P, N, Mode>, Self> {
         if N == self.n {
             // safety: we own this pin via self, and drop self here.
-            Some(unsafe { Pin::steal() })
+            Ok(unsafe { Pin::steal() })
         } else {
-            None
+            Err(self)
         }
     }
 
@@ -389,11 +389,10 @@ impl<const P: char, Mode> TryFrom<ErasedPin<Mode>> for PartiallyErasedPin<P, Mod
 where
     Mode: PinMode,
 {
-    // FIXME actual pin erasure error?
-    type Error = ();
+    type Error = ErasedPin<Mode>;
 
     #[inline(always)]
     fn try_from(value: ErasedPin<Mode>) -> Result<Self, Self::Error> {
-        value.restore_partial().ok_or(())
+        value.restore_partial()
     }
 }
