@@ -71,6 +71,50 @@ jobs:
       - run: cargo build --release --examples
         working-directory: dp32g030-hal
 
+  hal-examples:
+    name: HAL examples
+    runs-on: ubuntu-latest
+    # silly: don't need firmware pack, just want summary text after it
+    needs: [generate-pac, tool-linux, firmware-pack]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-pac
+          path: dp32g030
+
+      - run: mkdir -p github-work/examples
+      - uses: actions/download-artifact@v4
+        with:
+          name: k5tool-linux.zip
+          path: github-work
+      - run: chmod +x github-work/k5tool
+
+      - run: cargo build --release --examples
+        working-directory: dp32g030-hal
+      - run: cargo metadata | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/examples.txt
+        working-directory: dp32g030-hal
+
+      - shell: bash
+        working-directory: github-work
+        run: |
+          echo "### Example Summary" >> $GITHUB_STEP_SUMMARY
+          for name in $(cat examples.txt); do
+            echo "#### $name" >> $GITHUB_STEP_SUMMARY
+            echo "~~~~" >> $GITHUB_STEP_SUMMARY
+            cp "../dp32g030-hal/target/thumbv6m-none-eabi/release/examples/$name" "examples/$name.elf"
+            ./k5tool pack "examples/$name.elf" "examples/$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
+            echo "~~~~" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: examples.zip
+          path: github-work/examples
+
   firmware:
     name: Firmware
     runs-on: ubuntu-latest
