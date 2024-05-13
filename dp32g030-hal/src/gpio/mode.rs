@@ -2,6 +2,17 @@ use super::PinState;
 
 /// A trait for pin mode type states.
 pub(super) trait PinModeSealed {
+    /// The result of a static assert that this mode is valid.
+    const VALID: ();
+
+    /// call this to statically assert that VALID is set
+    #[inline(always)]
+    #[allow(path_statements)]
+    fn static_assert_valid() {
+        #[allow(clippy::no_effect)]
+        Self::VALID;
+    }
+
     /// Whether to force full reconfiguration if this is the current pin mode.
     const UNSPECIFIED: bool;
 
@@ -49,6 +60,7 @@ impl PinMode for Unspecified {
 }
 
 impl PinModeSealed for Unspecified {
+    const VALID: () = ();
     const UNSPECIFIED: bool = true;
 
     const IE: bool = false;
@@ -116,6 +128,7 @@ impl PinMode for Input<Floating> {
 }
 
 impl PinModeSealed for Input<Floating> {
+    const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -133,6 +146,7 @@ impl PinMode for Input<PullUp> {
 }
 
 impl PinModeSealed for Input<PullUp> {
+    const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -150,6 +164,7 @@ impl PinMode for Input<PullDown> {
 }
 
 impl PinModeSealed for Input<PullDown> {
+    const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
     const IE: bool = true;
@@ -212,6 +227,7 @@ impl PinMode for Output<PushPull> {
 }
 
 impl PinModeSealed for Output<PushPull> {
+    const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
     const IE: bool = false;
@@ -229,6 +245,7 @@ impl PinMode for Output<OpenDrain> {
 }
 
 impl PinModeSealed for Output<OpenDrain> {
+    const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
     const IE: bool = false;
@@ -287,6 +304,7 @@ macro_rules! impl_alternate {
         }
 
         impl<const A: u8> PinModeSealed for Alternate<A, $Mode> {
+            const VALID: () = assert!(A < 16);
             const UNSPECIFIED: bool = <$Mode as PinModeSealed>::UNSPECIFIED;
 
             const IE: bool = <$Mode as PinModeSealed>::IE;

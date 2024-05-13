@@ -94,6 +94,7 @@ where
 // generic interface.
 macro_rules! change_mode {
     ($Gpio:ty, $port:ident, $N:expr, $From:ty, $To:ty) => {
+        <$To>::static_assert_valid();
         let force = <$From>::UNSPECIFIED;
         let portcon = pac::PORTCON::steal();
         let port = <$Gpio>::steal();
