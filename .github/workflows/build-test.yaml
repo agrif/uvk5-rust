@@ -68,6 +68,9 @@ jobs:
       - run: cargo build --no-default-features --features "${{ matrix.features }}"
         working-directory: dp32g030-hal
 
+      - run: cargo build --release --examples
+        working-directory: dp32g030-hal
+
   firmware:
     name: Firmware
     runs-on: ubuntu-latest
