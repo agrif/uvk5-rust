@@ -30,8 +30,14 @@ jobs:
         with:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          name: generated-pac
+          name: generated-pac.zip
           path: dp32g030
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: memorymap.txt
 
       - run: cargo doc
         working-directory: k5firmware
@@ -40,6 +46,7 @@ jobs:
 
       - run: |
           mkdir docs
+          mv memorymap.txt docs/memorymap.txt
           mv k5tool/target/doc docs/k5tool
           mv k5firmware/target/thumbv6m-none-eabi/doc docs/k5firmware
 
