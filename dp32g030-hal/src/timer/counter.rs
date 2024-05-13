@@ -90,8 +90,7 @@ macro_rules! impl_count {
                 };
 
                 let clocks = clocks
-                    .checked_sub(1)
-                    .ok_or(Error::OutOfRange)?
+                    .saturating_sub(1)
                     .try_into()
                     .map_err(|_| Error::OutOfRange)?;
 
@@ -162,8 +161,7 @@ impl<const C_HZ: u32> CountSealed<C_HZ, true> for System {
             .ticks()
             .mul_div_ceil(self.input_clk.to_Hz(), C_HZ)
             .ok_or(Error::OutOfRange)?
-            .checked_sub(1)
-            .ok_or(Error::OutOfRange)?;
+            .saturating_sub(1);
 
         if clocks > 0x00ffffff {
             return Err(Error::OutOfRange);
@@ -258,5 +256,12 @@ where
     #[inline(always)]
     pub fn wait(&mut self) -> block::Result<(), Error> {
         self.timer.wait()
+    }
+
+    /// Blocking wait for a duration.
+    #[inline(always)]
+    pub fn delay(&mut self, duration: TimerDuration<HZ>) -> Result<(), Error> {
+        self.timer.start(duration)?;
+        block::block!(self.timer.wait())
     }
 }

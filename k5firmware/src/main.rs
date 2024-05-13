@@ -93,13 +93,12 @@ fn main() -> ! {
         .split(&clocks)
         .high
         .counter();
-    timer.start(500.millis()).unwrap();
 
     // turn on flashlight
     light.set_high();
 
     loop {
-        hal::block::block!(timer.wait()).unwrap();
+        timer.delay(500.millis()).unwrap();
 
         // ptt pressed means ptt low
         // ptt pressed means toggle light

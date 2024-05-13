@@ -11,6 +11,10 @@ pub use config::*;
 mod counter;
 pub use counter::*;
 
+mod fugit;
+mod hal02;
+mod hal1;
+
 mod peripherals;
 pub use peripherals::*;
 
