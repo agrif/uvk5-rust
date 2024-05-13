@@ -2,7 +2,7 @@ use crate::pac;
 
 use super::{
     Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin, PinMode,
-    PinState, PullDown, PullUp, PushPull,
+    PinPort, PinState, PullDown, PullUp, PushPull, WithMode,
 };
 
 /// An erased pin with dynamic port and pin number.
@@ -264,6 +264,7 @@ where
     }
 
     super::mode::into_mode_aliases!(vis pub, (ErasedPin), ());
+    super::mode::with_mode_aliases!(vis pub, (ErasedPin), ());
 
     /// Convert pin into an alternate mode but otherwise preserve state.
     #[inline(always)]
@@ -353,12 +354,10 @@ where
     }
 }
 
-impl<Mode> IntoMode for ErasedPin<Mode>
+impl<Mode> PinPort for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
-    type As<M> = ErasedPin<M>;
-
     #[inline(always)]
     fn pin(&self) -> u8 {
         ErasedPin::pin(self)
@@ -368,6 +367,13 @@ where
     fn port(&self) -> char {
         ErasedPin::port(self)
     }
+}
+
+impl<Mode> IntoMode for ErasedPin<Mode>
+where
+    Mode: PinMode,
+{
+    type As<M> = ErasedPin<M>;
 
     #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
@@ -384,9 +390,16 @@ where
     {
         ErasedPin::into_mode_in_state(self, state)
     }
+}
+
+impl<Mode> WithMode for ErasedPin<Mode>
+where
+    Mode: PinMode,
+{
+    type With<M> = ErasedPin<M>;
 
     #[inline(always)]
-    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::As<M>) -> R) -> R
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::With<M>) -> R) -> R
     where
         M: PinMode,
     {
@@ -397,7 +410,7 @@ where
     fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
-        f: impl FnOnce(&mut Self::As<Output<M>>) -> R,
+        f: impl FnOnce(&mut Self::With<Output<M>>) -> R,
     ) -> R
     where
         Output<M>: PinMode,

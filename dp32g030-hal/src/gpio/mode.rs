@@ -316,22 +316,10 @@ macro_rules! into_mode_aliases {
             self.into_mode()
         }
 
-        /// Temporarily configure pin as a floating input.
-        #[inline(always)]
-        $($vis)? fn with_floating_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<Floating>>) -> R) -> R {
-            self.with_mode(f)
-        }
-
         /// Convert pin into an input with a pull-up resistor.
         #[inline(always)]
         $($vis)? fn into_pull_up_input(self) -> $($as)*<$($args)* Input<PullUp>> {
             self.into_mode()
-        }
-
-        /// Temporarily configure pin as an input with a pull-up resistor.
-        #[inline(always)]
-        $($vis)? fn with_pull_up_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullUp>>) -> R) -> R {
-            self.with_mode(f)
         }
 
         /// Convert pin into an input with a pull-down resistor.
@@ -340,25 +328,10 @@ macro_rules! into_mode_aliases {
             self.into_mode()
         }
 
-        /// Temporarily configure pin as an input with a pull-down resistor.
-        #[inline(always)]
-        $($vis)? fn with_pull_down_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullDown>>) -> R) -> R {
-            self.with_mode(f)
-        }
-
         /// Convert pin into a push-pull output, initially low.
         #[inline(always)]
         $($vis)? fn into_push_pull_output(self) -> $($as)*<$($args)* Output<PushPull>> {
             self.into_mode_in_state(PinState::Low)
-        }
-
-        /// Temporarily configure pin as a push-pull output.
-        ///
-        /// The initial state is retained if the original mode was
-        /// also an output mode. It is otherwise undefined.
-        #[inline(always)]
-        $($vis)? fn with_push_pull_output<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Output<PushPull>>) -> R) -> R {
-            self.with_mode(f)
         }
 
         /// Convert a pin into a push-pull output in the given state.
@@ -368,6 +341,53 @@ macro_rules! into_mode_aliases {
             state: PinState,
         ) -> $($as)*<$($args)* Output<PushPull>> {
             self.into_mode_in_state(state)
+        }
+
+        /// Convert pin into an open-drain output, initially low.
+        #[inline(always)]
+        $($vis)? fn into_open_drain_output(self) -> $($as)*<$($args)* Output<OpenDrain>> {
+            self.into_mode_in_state(PinState::Low)
+        }
+
+        /// Convert pin into an open-drain output, initially low.
+        #[inline(always)]
+        $($vis)? fn into_open_drain_output_in_state(
+            self,
+            state: PinState,
+        ) -> $($as)*<$($args)* Output<OpenDrain>> {
+            self.into_mode_in_state(state)
+        }
+    };
+}
+
+// A macro to implement aliases on top of with_mode and with_mode_in_state.
+macro_rules! with_mode_aliases {
+    ($(vis $vis:tt,)? ($($as:tt)*), ($($args:tt)*)) => {
+        /// Temporarily configure pin as a floating input.
+        #[inline(always)]
+        $($vis)? fn with_floating_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<Floating>>) -> R) -> R {
+            self.with_mode(f)
+        }
+
+        /// Temporarily configure pin as an input with a pull-up resistor.
+        #[inline(always)]
+        $($vis)? fn with_pull_up_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullUp>>) -> R) -> R {
+            self.with_mode(f)
+        }
+
+        /// Temporarily configure pin as an input with a pull-down resistor.
+        #[inline(always)]
+        $($vis)? fn with_pull_down_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullDown>>) -> R) -> R {
+            self.with_mode(f)
+        }
+
+        /// Temporarily configure pin as a push-pull output.
+        ///
+        /// The initial state is retained if the original mode was
+        /// also an output mode. It is otherwise undefined.
+        #[inline(always)]
+        $($vis)? fn with_push_pull_output<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Output<PushPull>>) -> R) -> R {
+            self.with_mode(f)
         }
 
         /// Temporarily configure pin as a push-pull output in the given state.
@@ -380,12 +400,6 @@ macro_rules! into_mode_aliases {
             self.with_mode_in_state(state, f)
         }
 
-        /// Convert pin into an open-drain output, initially low.
-        #[inline(always)]
-        $($vis)? fn into_open_drain_output(self) -> $($as)*<$($args)* Output<OpenDrain>> {
-            self.into_mode_in_state(PinState::Low)
-        }
-
         /// Temporarily configure pin as an open-drain output.
         ///
         /// The initial state is retained if the original mode was
@@ -393,15 +407,6 @@ macro_rules! into_mode_aliases {
         #[inline(always)]
         $($vis)? fn with_open_drain_output<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Output<OpenDrain>>) -> R) -> R {
             self.with_mode(f)
-        }
-
-        /// Convert pin into an open-drain output, initially low.
-        #[inline(always)]
-        $($vis)? fn into_open_drain_output_in_state(
-            self,
-            state: PinState,
-        ) -> $($as)*<$($args)* Output<OpenDrain>> {
-            self.into_mode_in_state(state)
         }
 
         /// Temporarily configure pin as an open-drain output in the given state.
@@ -417,18 +422,12 @@ macro_rules! into_mode_aliases {
 }
 
 // allow this to be used elsewhere in gpio
-pub(super) use into_mode_aliases;
+pub(super) use {into_mode_aliases, with_mode_aliases};
 
 /// A pin that can change mode.
 pub trait IntoMode: Sized {
     /// The current pin type, with the mode changed to Mode.
     type As<Mode>;
-
-    /// Get the pin number of this pin.
-    fn pin(&self) -> u8;
-
-    /// Get the port of this pin.
-    fn port(&self) -> char;
 
     /// Convert pin into a new mode.
     fn into_mode<Mode>(self) -> Self::As<Mode>
@@ -440,12 +439,20 @@ pub trait IntoMode: Sized {
     where
         Output<Mode>: PinMode;
 
+    into_mode_aliases!((Self::As), ());
+}
+
+/// A pin that can be borrowed in a changed mode.
+pub trait WithMode {
+    /// The type of the borrowed pin, with mode changed to Mode.
+    type With<Mode>;
+
     /// Temporarily configure this pin in a new mode.
     ///
     /// If this is an output mode, the initial state is retained if
     /// the original mode was also an output mode. It is otherwise
     /// undefined.
-    fn with_mode<Mode, R>(&mut self, f: impl FnOnce(&mut Self::As<Mode>) -> R) -> R
+    fn with_mode<Mode, R>(&mut self, f: impl FnOnce(&mut Self::With<Mode>) -> R) -> R
     where
         Mode: PinMode;
 
@@ -454,10 +461,10 @@ pub trait IntoMode: Sized {
     fn with_mode_in_state<Mode, R>(
         &mut self,
         state: PinState,
-        f: impl FnOnce(&mut Self::As<Output<Mode>>) -> R,
+        f: impl FnOnce(&mut Self::With<Output<Mode>>) -> R,
     ) -> R
     where
         Output<Mode>: PinMode;
 
-    into_mode_aliases!((Self::As), ());
+    with_mode_aliases!((Self::With), ());
 }

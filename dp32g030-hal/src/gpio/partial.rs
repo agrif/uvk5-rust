@@ -1,8 +1,8 @@
 use crate::pac;
 
 use super::{
-    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, Pin, PinMode, PinState,
-    PullDown, PullUp, PushPull,
+    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, Pin, PinMode, PinPort,
+    PinState, PullDown, PullUp, PushPull, WithMode,
 };
 
 /// A partially-erased pin with static port and dynamic number.
@@ -233,6 +233,7 @@ where
     }
 
     super::mode::into_mode_aliases!(vis pub, (PartiallyErasedPin), (P,));
+    super::mode::with_mode_aliases!(vis pub, (PartiallyErasedPin), (P,));
 
     /// Convert pin into an alternate mode but otherwise preserve state.
     #[inline(always)]
@@ -322,12 +323,10 @@ where
     }
 }
 
-impl<const P: char, Mode> IntoMode for PartiallyErasedPin<P, Mode>
+impl<const P: char, Mode> PinPort for PartiallyErasedPin<P, Mode>
 where
     Mode: PinMode,
 {
-    type As<M> = PartiallyErasedPin<P, M>;
-
     #[inline(always)]
     fn pin(&self) -> u8 {
         PartiallyErasedPin::pin(self)
@@ -337,6 +336,13 @@ where
     fn port(&self) -> char {
         PartiallyErasedPin::port(self)
     }
+}
+
+impl<const P: char, Mode> IntoMode for PartiallyErasedPin<P, Mode>
+where
+    Mode: PinMode,
+{
+    type As<M> = PartiallyErasedPin<P, M>;
 
     #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
@@ -353,9 +359,16 @@ where
     {
         PartiallyErasedPin::into_mode_in_state(self, state)
     }
+}
+
+impl<const P: char, Mode> WithMode for PartiallyErasedPin<P, Mode>
+where
+    Mode: PinMode,
+{
+    type With<M> = PartiallyErasedPin<P, M>;
 
     #[inline(always)]
-    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::As<M>) -> R) -> R
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::With<M>) -> R) -> R
     where
         M: PinMode,
     {
@@ -366,7 +379,7 @@ where
     fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
-        f: impl FnOnce(&mut Self::As<Output<M>>) -> R,
+        f: impl FnOnce(&mut Self::With<Output<M>>) -> R,
     ) -> R
     where
         Output<M>: PinMode,

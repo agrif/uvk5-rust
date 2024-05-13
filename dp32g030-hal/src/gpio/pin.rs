@@ -2,7 +2,7 @@ use crate::pac;
 
 use super::{
     Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin,
-    PinMode, PullDown, PullUp, PushPull,
+    PinMode, PullDown, PullUp, PushPull, WithMode,
 };
 
 /// Digital pin state.
@@ -49,6 +49,15 @@ impl PinState {
     pub fn is_low(&self) -> bool {
         *self == Self::Low
     }
+}
+
+/// Generic access to pin and port.
+pub trait PinPort {
+    /// Get the pin number of this pin.
+    fn pin(&self) -> u8;
+
+    /// Get the port of this pin.
+    fn port(&self) -> char;
 }
 
 /// A generic pin type, with type state indicating mode.
@@ -349,6 +358,7 @@ where
     }
 
     super::mode::into_mode_aliases!(vis pub, (Pin), (P, N,));
+    super::mode::with_mode_aliases!(vis pub, (Pin), (P, N,));
 
     /// Convert pin into an alternate mode but otherwise preserve state.
     #[inline(always)]
@@ -438,12 +448,10 @@ where
     }
 }
 
-impl<const P: char, const N: u8, Mode> IntoMode for Pin<P, N, Mode>
+impl<const P: char, const N: u8, Mode> PinPort for Pin<P, N, Mode>
 where
     Mode: PinMode,
 {
-    type As<M> = Pin<P, N, M>;
-
     #[inline(always)]
     fn pin(&self) -> u8 {
         Pin::pin(self)
@@ -453,6 +461,13 @@ where
     fn port(&self) -> char {
         Pin::port(self)
     }
+}
+
+impl<const P: char, const N: u8, Mode> IntoMode for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    type As<M> = Pin<P, N, M>;
 
     #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
@@ -469,9 +484,16 @@ where
     {
         Pin::into_mode_in_state(self, state)
     }
+}
+
+impl<const P: char, const N: u8, Mode> WithMode for Pin<P, N, Mode>
+where
+    Mode: PinMode,
+{
+    type With<M> = Pin<P, N, M>;
 
     #[inline(always)]
-    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::As<M>) -> R) -> R
+    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::With<M>) -> R) -> R
     where
         M: PinMode,
     {
@@ -482,7 +504,7 @@ where
     fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
-        f: impl FnOnce(&mut Self::As<Output<M>>) -> R,
+        f: impl FnOnce(&mut Self::With<Output<M>>) -> R,
     ) -> R
     where
         Output<M>: PinMode,
