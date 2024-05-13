@@ -296,34 +296,29 @@ where
     }
 }
 
-// avoid repitition for alternate modes
-macro_rules! impl_alternate {
-    ($Mode:ty) => {
-        impl<const A: u8> PinMode for Alternate<A, $Mode> {
-            type Inner = $Mode;
-        }
-
-        impl<const A: u8> PinModeSealed for Alternate<A, $Mode> {
-            const VALID: () = assert!(A < 16);
-            const UNSPECIFIED: bool = <$Mode as PinModeSealed>::UNSPECIFIED;
-
-            const IE: bool = <$Mode as PinModeSealed>::IE;
-            const PD: bool = <$Mode as PinModeSealed>::PD;
-            const PU: bool = <$Mode as PinModeSealed>::PU;
-
-            const OD: bool = <$Mode as PinModeSealed>::OD;
-
-            const SEL: u8 = A;
-            const DIR: bool = false;
-        }
-    };
+impl<const A: u8, Mode> PinMode for Alternate<A, Mode>
+where
+    Mode: PinMode<Inner = Mode>,
+{
+    type Inner = Mode;
 }
 
-impl_alternate!(Input<Floating>);
-impl_alternate!(Input<PullUp>);
-impl_alternate!(Input<PullDown>);
-impl_alternate!(Output<PushPull>);
-impl_alternate!(Output<OpenDrain>);
+impl<const A: u8, Mode> PinModeSealed for Alternate<A, Mode>
+where
+    Mode: PinMode<Inner = Mode>,
+{
+    const VALID: () = assert!(A < 16);
+    const UNSPECIFIED: bool = <Mode as PinModeSealed>::UNSPECIFIED;
+
+    const IE: bool = <Mode as PinModeSealed>::IE;
+    const PD: bool = <Mode as PinModeSealed>::PD;
+    const PU: bool = <Mode as PinModeSealed>::PU;
+
+    const OD: bool = <Mode as PinModeSealed>::OD;
+
+    const SEL: u8 = A;
+    const DIR: bool = false;
+}
 
 // A macro to implement aliases on top of into_mode and into_mode_in_state.
 macro_rules! into_mode_aliases {
