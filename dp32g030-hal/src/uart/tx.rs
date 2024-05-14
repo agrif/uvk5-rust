@@ -75,15 +75,17 @@ where
             }
         }
 
-        uart.fifo().set_bits(|w| w.tf_clr().clear());
-        uart.ctrl().set_bits(|w| w.txen().enabled());
-
-        Self {
+        let mut tx = Self {
             uart,
             tx,
             cts,
             _marker: Default::default(),
-        }
+        };
+
+        tx.clear();
+        tx.uart.ctrl().set_bits(|w| w.txen().enabled());
+
+        tx
     }
 
     #[inline(always)]
@@ -94,6 +96,15 @@ where
             self.uart.fc().clear_bits(|w| w.ctsen().disabled());
         }
         (self.uart, self.tx, self.cts)
+    }
+
+    /// Clear the FIFO.
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        // safety: we control this half, so we can clear the fifo
+        unsafe {
+            self.uart.fifo().set_bits(|w| w.tf_clr().clear());
+        }
     }
 
     /// Is the transmitter busy?
@@ -147,7 +158,7 @@ where
     }
 
     /// Write at least one byte to the UART.
-    #[inline(always)]
+    #[inline]
     pub fn write(&mut self, data: &[u8]) -> block::Result<usize, Infallible> {
         for (i, b) in data.iter().enumerate() {
             match self.write_one(*b) {
@@ -167,7 +178,7 @@ where
     }
 
     /// Write all bytes to the UART, blocking as needed.
-    #[inline(always)]
+    #[inline]
     pub fn write_all(&mut self, data: &[u8]) -> Result<(), Infallible> {
         for b in data {
             block::block!(self.write_one(*b))?;

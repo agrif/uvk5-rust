@@ -1,3 +1,7 @@
+use core::convert::Infallible;
+
+use crate::block;
+
 use super::{Config, Flow, Instance, Lonely, Paired, UartData};
 
 /// The Rx half of a UART.
@@ -71,15 +75,17 @@ where
             }
         }
 
-        uart.fifo().set_bits(|w| w.rf_clr().clear());
-        uart.ctrl().set_bits(|w| w.rxen().enabled());
-
-        Self {
+        let mut rx = Self {
             uart,
             rx,
             rts,
             _marker: Default::default(),
-        }
+        };
+
+        rx.clear();
+        rx.uart.ctrl().set_bits(|w| w.rxen().enabled());
+
+        rx
     }
 
     #[inline(always)]
@@ -90,5 +96,92 @@ where
             self.uart.fc().clear_bits(|w| w.rtsen().disabled());
         }
         (self.uart, self.rx, self.rts)
+    }
+
+    /// Clear the FIFO.
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        // safety: we control this half, so we can clear the fifo
+        unsafe {
+            self.uart.fifo().set_bits(|w| w.rf_clr().clear());
+        }
+    }
+
+    /// Is the FIFO full?
+    #[inline(always)]
+    pub fn is_full(&self) -> bool {
+        self.uart.if_().read().rxfifo_full().is_full()
+    }
+
+    /// Is the FIFO half full?
+    #[inline(always)]
+    pub fn is_half_full(&self) -> bool {
+        self.uart.if_().read().rxfifo_hfull().is_half_full()
+    }
+
+    /// Is the FIFO empty?
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.uart.if_().read().rxfifo_empty().is_empty()
+    }
+
+    /// Get the FIFO level, 0 is empty and 8 is full.
+    #[inline(always)]
+    pub fn level(&self) -> u8 {
+        match self.uart.if_().read().rf_level().bits() {
+            0 => {
+                if self.is_full() {
+                    8
+                } else {
+                    0
+                }
+            }
+            l => l,
+        }
+    }
+
+    /// Read a single byte from the UART.
+    #[inline(always)]
+    pub fn read_one(&mut self) -> block::Result<u8, Infallible> {
+        if self.is_empty() {
+            Err(block::Error::WouldBlock)
+        } else {
+            Ok(self.uart.rdr().read().data().bits())
+        }
+    }
+
+    /// Read at least one byte from the UART.
+    #[inline]
+    pub fn read(&mut self, buf: &mut [u8]) -> block::Result<usize, Infallible> {
+        let mut amt = 0;
+        while amt < buf.len() {
+            match self.read_one() {
+                Ok(b) => {
+                    buf[amt] = b;
+                    amt += 1;
+                    continue;
+                }
+                Err(block::Error::WouldBlock) => {
+                    if amt == 0 {
+                        return Err(block::Error::WouldBlock);
+                    } else {
+                        return Ok(amt);
+                    }
+                }
+                Err(block::Error::Other(e)) => match e {},
+            }
+        }
+        Ok(amt)
+    }
+
+    /// Read bytes from the UART, filling the buffer and blocking if needed.
+    #[inline]
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), Infallible> {
+        let mut start = 0;
+        while start < buf.len() {
+            start += block::block!(self.read(&mut buf[start..]))?;
+        }
+
+        Ok(())
     }
 }
