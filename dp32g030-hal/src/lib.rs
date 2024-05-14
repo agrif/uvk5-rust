@@ -16,6 +16,7 @@ pub mod gpio;
 pub mod power;
 pub mod time;
 pub mod timer;
+pub mod uart;
 
 // FIXME this should probably be in a board support crate, not here
 /// A macro for producing a `VERSION` symbol containing the given string

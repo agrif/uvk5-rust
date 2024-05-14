@@ -2,7 +2,11 @@
 
 use super::*;
 
-use crate::pac::portcon::porta_sel0::{PORTA1_A, PORTA2_A, PORTA3_A, PORTA4_A};
+use crate::pac::portcon::porta_sel0::*;
+use crate::pac::portcon::porta_sel1::*;
+use crate::pac::portcon::portb_sel0::*;
+use crate::pac::portcon::portb_sel1::*;
+use crate::pac::portcon::portc_sel0::*;
 
 macro_rules! pin {
     ($name:literal, enum $pinname:ident {$($var:ident<$mode:ty>),*$(,)?}) => {
@@ -27,40 +31,102 @@ macro_rules! pin {
 }
 
 macro_rules! pins {
-    ($mod:ident, $name:literal, {$(enum $pinname:ident {$($var:ident<$mode:ty>),*$(,)?})*}) => {
+    ($mod:ident, $name:literal, {$(enum $pinname:ident : $varname:ident {$($var:ident<$mode:ty>),*$(,)?})*}) => {
         #[doc = concat!($name, ".")]
         pub mod $mod {
-            use super::*;
+            paste::paste! {
+                use super::*;
 
-            $(
-                pin!($name, enum $pinname {
-                    $(
-                        $var<$mode>,
-                    )*
-                });
-            )*
+                $(
+                    pin!($name, enum $pinname {
+                        $(
+                            [<P $var>]<Alternate<{[<PORT $var _A>]::$varname as u8}, $mode>>,
+                        )*
+                    });
+                )*
+            }
         }
     };
 }
 
 // total guesses on pin modes
 pins!(xtah, "XTAH port", {
-    enum Xi {
-        PA3<Alternate<{PORTA3_A::XtahXi as u8}, Input<Floating>>>,
+    enum Xi: XtahXi {
+        A3<Input<Floating>>,
     }
 
-    enum Xo {
-        PA4<Alternate<{PORTA4_A::XtahXo as u8}, Output<PushPull>>>,
+    enum Xo: XtahXo {
+        A4<Output<PushPull>>,
     }
 });
 
 // also total guesses on pin modes
 pins!(xtal, "XTAL port", {
-    enum Xi {
-        PA1<Alternate<{PORTA1_A::XtalXi as u8}, Input<Floating>>>,
+    enum Xi: XtalXi {
+        A1<Input<Floating>>,
     }
 
-    enum Xo {
-        PA2<Alternate<{PORTA2_A::XtalXo as u8}, Output<PushPull>>>,
+    enum Xo: XtalXo {
+        A2<Output<PushPull>>,
+    }
+});
+
+pins!(uart0, "UART0", {
+    enum Rx: Uart0Rx {
+        B8<Input<Floating>>,
+        C4<Input<Floating>>,
+    }
+
+    enum Tx: Uart0Tx {
+        B7<Output<PushPull>>,
+        C3<Output<PushPull>>,
+    }
+
+    enum Rts: Uart0Rts {
+        B10<Output<PushPull>>,
+    }
+
+    enum Cts: Uart0Cts {
+        B9<Input<Floating>>,
+    }
+});
+
+pins!(uart1, "UART1", {
+    enum Rx: Uart1Rx {
+        A8<Input<Floating>>,
+        B13<Input<Floating>>,
+    }
+
+    enum Tx: Uart1Tx {
+        A7<Output<PushPull>>,
+        B12<Output<PushPull>>,
+    }
+
+    enum Rts: Uart1Rts {
+        A6<Output<PushPull>>,
+    }
+
+    enum Cts: Uart1Cts {
+        A5<Input<Floating>>,
+    }
+});
+
+pins!(uart2, "UART2", {
+    enum Rx: Uart2Rx {
+        B1<Input<Floating>>,
+        B15<Input<Floating>>,
+    }
+
+    enum Tx: Uart2Tx {
+        B0<Output<PushPull>>,
+        B14<Output<PushPull>>,
+    }
+
+    enum Rts: Uart2Rts {
+        C1<Output<PushPull>>,
+    }
+
+    enum Cts: Uart2Cts {
+        C0<Input<Floating>>,
     }
 });
