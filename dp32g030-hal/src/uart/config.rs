@@ -8,7 +8,12 @@ use super::{Instance, Port, RxOnly, TxOnly, UartData};
 /// Wrap a UART register into a configurator. Returns [None] if baud
 /// rate is not achievable.
 #[inline(always)]
-pub fn new<Uart>(uart: Uart, gate: Gate<Uart>, clocks: &Clocks, baud: Hertz) -> Option<Config<Uart>>
+pub fn new<Uart>(
+    uart: Uart,
+    gate: Gate<Uart>,
+    clocks: &Clocks,
+    baud: Hertz,
+) -> Result<Config<Uart>, Error>
 where
     Uart: Instance,
 {
@@ -67,7 +72,12 @@ where
     /// Wrap a UART register into a configurator. Returns [None] if baud
     /// rate is not achievable.
     #[inline(always)]
-    pub fn new(uart: Uart, mut gate: Gate<Uart>, clocks: &Clocks, baud: Hertz) -> Option<Self> {
+    pub fn new(
+        uart: Uart,
+        mut gate: Gate<Uart>,
+        clocks: &Clocks,
+        baud: Hertz,
+    ) -> Result<Self, Error> {
         // safety: we now own this uart, we can reset what we want
         uart.ctrl().reset();
         uart.baud().reset();
@@ -201,10 +211,14 @@ where
 
     /// Set the baud rate. Returns none if `baud` is not achievable.
     #[inline(always)]
-    pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Option<Self> {
-        let counter = clocks.sys_clk().checked_add(baud / 2)? / baud;
+    pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Result<Self, Error> {
+        let counter = clocks
+            .sys_clk()
+            .checked_add(baud / 2)
+            .ok_or(Error::OutOfRange)?
+            / baud;
         if counter > u16::MAX as u32 {
-            return None;
+            return Err(Error::OutOfRange);
         }
 
         self.uart
@@ -212,7 +226,7 @@ where
             // safety: we are sole owner of uart
             .write(|w| unsafe { w.baud().bits(counter as u16) });
 
-        Some(Config {
+        Ok(Config {
             uart: self.uart,
             _marker: Default::default(),
         })
