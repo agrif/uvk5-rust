@@ -3,7 +3,7 @@ use crate::time::Hertz;
 
 use crate::pac;
 
-use super::{Instance, Port, Rx, Tx, UartData};
+use super::{Instance, Port, RxOnly, TxOnly, UartData};
 
 /// Wrap a UART register into a configurator. Returns [None] if baud
 /// rate is not achievable.
@@ -242,27 +242,27 @@ where
         Port::new(self, rx, tx, rts, cts)
     }
 
-    /// Get the configured lonely [Rx] using the provided pins.
+    /// Get the configured [RxOnly] using the provided pins.
     #[inline(always)]
-    pub fn rx(self, rx: Uart::Rx) -> Rx<Uart, Data, false> {
+    pub fn rx(self, rx: Uart::Rx) -> RxOnly<Uart, Data> {
         self.rx_flow(rx, Flow::None)
     }
 
-    /// Get the configured lonely [Rx] using the provided pins and flow control.
+    /// Get the configured [RxOnly] using the provided pins and flow control.
     #[inline(always)]
-    pub fn rx_flow(self, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Rx<Uart, Data, false> {
-        Rx::new(self, rx, rts)
+    pub fn rx_flow(self, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> RxOnly<Uart, Data> {
+        RxOnly::new(self, rx, rts)
     }
 
-    /// Get the configured lonely [Tx] using the provided pins.
+    /// Get the configured [TxOnly] using the provided pins.
     #[inline(always)]
-    pub fn tx(self, tx: Uart::Tx) -> Tx<Uart, Data, false> {
+    pub fn tx(self, tx: Uart::Tx) -> TxOnly<Uart, Data> {
         self.tx_flow(tx, Flow::None)
     }
 
-    /// Get the configured lonely [Tx] using the provided pins and flow control.
+    /// Get the configured [TxOnly] using the provided pins and flow control.
     #[inline(always)]
-    pub fn tx_flow(self, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Tx<Uart, Data, false> {
-        Tx::new(self, tx, cts)
+    pub fn tx_flow(self, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> TxOnly<Uart, Data> {
+        TxOnly::new(self, tx, cts)
     }
 }

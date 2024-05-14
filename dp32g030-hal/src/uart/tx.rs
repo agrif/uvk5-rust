@@ -2,25 +2,28 @@ use core::convert::Infallible;
 
 use crate::block;
 
-use super::{Config, Flow, Instance, UartData};
+use super::{Config, Flow, Instance, Lonely, Paired, UartData};
 
 /// The Tx half of a UART.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Tx<Uart: Instance, Data = u8, const PAIR: bool = true> {
+pub struct Tx<Uart: Instance, Data = u8, Pair = Paired> {
     uart: Uart,
     tx: Uart::Tx,
     cts: Flow<Uart::Cts>,
     // this consumes data
-    _marker: core::marker::PhantomData<fn(Data) -> ()>,
+    _marker: core::marker::PhantomData<(fn(Data) -> (), Pair)>,
 }
 
-impl<Uart, Data> Tx<Uart, Data, false>
+/// A UART configured for only [Tx].
+pub type TxOnly<Uart, Data = u8> = Tx<Uart, Data, Lonely>;
+
+impl<Uart, Data> TxOnly<Uart, Data>
 where
     Uart: Instance,
     Data: UartData,
 {
-    /// Create a lonely Rx from a configurator.
+    /// Create a [TxOnly] from a configurator.
     #[inline(always)]
     pub fn new(config: Config<Uart, Data>, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Self {
         // safety: we have configured the uart
@@ -30,7 +33,7 @@ where
         }
     }
 
-    /// Recover a configurator from a lonely Rx.
+    /// Recover a configurator from a [TxOnly].
     #[inline(always)]
     pub fn free(self) -> (Config<Uart, Data>, Uart::Tx, Flow<Uart::Cts>) {
         let (uart, tx, cts) = self.teardown();
@@ -51,7 +54,7 @@ where
     }
 }
 
-impl<Uart, Data, const PAIR: bool> Tx<Uart, Data, PAIR>
+impl<Uart, Data, Pair> Tx<Uart, Data, Pair>
 where
     Uart: Instance,
     Data: UartData,
@@ -157,7 +160,7 @@ where
     }
 }
 
-impl<Uart, Data, const PAIR: bool> core::fmt::Write for Tx<Uart, Data, PAIR>
+impl<Uart, Data, Pair> core::fmt::Write for Tx<Uart, Data, Pair>
 where
     Uart: Instance,
     Data: UartData,

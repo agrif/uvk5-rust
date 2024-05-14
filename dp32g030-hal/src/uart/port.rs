@@ -8,6 +8,16 @@ pub struct Port<Uart: Instance, Data = u8> {
     pub tx: Tx<Uart, Data>,
 }
 
+/// An [Rx] or [Tx] with a matching pair from a [Port]. (typestate)
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Paired;
+
+/// An [Rx] or [Tx] without a matching pair. (typestate)
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Lonely;
+
 impl<Uart, Data> Port<Uart, Data>
 where
     Uart: Instance,

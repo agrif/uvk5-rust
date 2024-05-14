@@ -1,22 +1,25 @@
-use super::{Config, Flow, Instance, UartData};
+use super::{Config, Flow, Instance, Lonely, Paired, UartData};
 
 /// The Rx half of a UART.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Rx<Uart: Instance, Data = u8, const PAIR: bool = true> {
+pub struct Rx<Uart: Instance, Data = u8, Pair = Paired> {
     uart: Uart,
     rx: Uart::Rx,
     rts: Flow<Uart::Rts>,
     // this produces data
-    _marker: core::marker::PhantomData<Data>,
+    _marker: core::marker::PhantomData<(Data, Pair)>,
 }
 
-impl<Uart, Data> Rx<Uart, Data, false>
+/// A UART configured for only [Rx].
+pub type RxOnly<Uart, Data = u8> = Rx<Uart, Data, Lonely>;
+
+impl<Uart, Data> RxOnly<Uart, Data>
 where
     Uart: Instance,
     Data: UartData,
 {
-    /// Create a lonely Rx from a configurator.
+    /// Create an [RxOnly] from a configurator.
     #[inline(always)]
     pub fn new(config: Config<Uart, Data>, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
         // safety: we have configured the uart
@@ -26,7 +29,7 @@ where
         }
     }
 
-    /// Recover a configurator from a lonely Rx.
+    /// Recover a configurator from an [RxOnly].
     #[inline(always)]
     pub fn free(self) -> (Config<Uart, Data>, Uart::Rx, Flow<Uart::Rts>) {
         let (uart, rx, rts) = self.teardown();
@@ -47,7 +50,7 @@ where
     }
 }
 
-impl<Uart, Data, const PAIR: bool> Rx<Uart, Data, PAIR>
+impl<Uart, Data, Pair> Rx<Uart, Data, Pair>
 where
     Uart: Instance,
     Data: UartData,
