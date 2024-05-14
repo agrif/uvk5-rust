@@ -9,6 +9,11 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 default-target = "thumbv6m-none-eabi"
 targets = []
 
+[[bin]]
+name = "k5firmware"
+test = false
+bench = false
+
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
