@@ -8,3 +8,7 @@ mod instance;
 pub use instance::*;
 mod port;
 pub use port::*;
+mod rx;
+pub use rx::*;
+mod tx;
+pub use tx::*;
