@@ -96,16 +96,43 @@ where
         (self.uart, self.tx, self.cts)
     }
 
+    /// Is the transmitter busy?
+    #[inline(always)]
+    pub fn is_busy(&self) -> bool {
+        self.uart.if_().read().txbusy().is_busy()
+    }
+
     /// Is the FIFO full?
     #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.uart.if_().read().txfifo_full().is_full()
     }
 
+    /// Is the FIFO half full?
+    #[inline(always)]
+    pub fn is_half_full(&self) -> bool {
+        self.uart.if_().read().txfifo_hfull().is_half_full()
+    }
+
     /// Is the FIFO empty?
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.uart.if_().read().txfifo_empty().is_empty()
+    }
+
+    /// Get the FIFO level, 0 is empty and 8 is full.
+    #[inline(always)]
+    pub fn level(&self) -> u8 {
+        match self.uart.if_().read().tf_level().bits() {
+            0 => {
+                if self.is_full() {
+                    8
+                } else {
+                    0
+                }
+            }
+            l => l,
+        }
     }
 
     /// Write a single byte to the UART.
@@ -152,7 +179,7 @@ where
     /// Flush the Tx FIFO.
     #[inline(always)]
     pub fn flush(&mut self) -> block::Result<(), Infallible> {
-        if !self.is_empty() {
+        if self.is_busy() {
             Err(block::Error::WouldBlock)
         } else {
             Ok(())
