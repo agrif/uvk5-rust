@@ -5,13 +5,14 @@ use crate::pac;
 
 use super::{Instance, Port, Rx, Tx};
 
-/// Wrap a UART register into a configurator.
+/// Wrap a UART register into a configurator. Returns [None] if baud
+/// rate is not achievable.
 #[inline(always)]
-pub fn new<Uart>(uart: Uart, gate: Gate<Uart>) -> Config<Uart, u8, false>
+pub fn new<Uart>(uart: Uart, gate: Gate<Uart>, clocks: &Clocks, baud: Hertz) -> Option<Config<Uart>>
 where
     Uart: Instance,
 {
-    Config::new(uart, gate)
+    Config::new(uart, gate, clocks, baud)
 }
 
 /// UART configuration error.
@@ -32,7 +33,7 @@ impl core::fmt::Display for Error {
 /// A UART configurator.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Config<Uart: Instance, Data, const BAUD: bool> {
+pub struct Config<Uart: Instance, Data = u8> {
     pub(super) uart: Uart,
     // this consumes and produces Data, so it goes on both sides
     pub(super) _marker: core::marker::PhantomData<fn(Data) -> Data>,
@@ -82,13 +83,14 @@ pub enum Flow<Pin> {
     ActiveHigh(Pin),
 }
 
-impl<Uart> Config<Uart, u8, false>
+impl<Uart> Config<Uart, u8>
 where
     Uart: Instance,
 {
-    /// Wrap a UART register into a Port.
+    /// Wrap a UART register into a configurator. Returns [None] if baud
+    /// rate is not achievable.
     #[inline(always)]
-    pub fn new(uart: Uart, mut gate: Gate<Uart>) -> Self {
+    pub fn new(uart: Uart, mut gate: Gate<Uart>, clocks: &Clocks, baud: Hertz) -> Option<Self> {
         // safety: we now own this uart, we can reset what we want
         uart.ctrl().reset();
         uart.baud().reset();
@@ -99,14 +101,17 @@ where
         uart.rxto().reset();
 
         gate.enable();
-        Self {
+        let config = Self {
             uart,
             _marker: Default::default(),
-        }
+        };
+
+        // must set baud here, otherwise it's 0 which is meaningless
+        config.baud(clocks, baud)
     }
 }
 
-impl<Uart, Data, const BAUD: bool> Config<Uart, Data, BAUD>
+impl<Uart, Data> Config<Uart, Data>
 where
     Uart: Instance,
     Data: UartData,
@@ -187,7 +192,7 @@ where
 
     /// Set nine-bit mode.
     #[inline(always)]
-    pub fn ninebit(self) -> Config<Uart, u16, BAUD> {
+    pub fn ninebit(self) -> Config<Uart, u16> {
         // safety: we are sole owner of uart
         unsafe {
             self.uart.ctrl().set_bits(|w| w.ninebit().enabled());
@@ -200,7 +205,7 @@ where
 
     /// Set eight-bit mode.
     #[inline(always)]
-    pub fn eightbit(self) -> Config<Uart, u8, BAUD> {
+    pub fn eightbit(self) -> Config<Uart, u8> {
         // safety: we are sole owner of uart
         unsafe {
             self.uart.ctrl().clear_bits(|w| w.ninebit().disabled());
@@ -219,7 +224,7 @@ where
 
     /// Set the baud rate. Returns none if `baud` is not achievable.
     #[inline(always)]
-    pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Option<Config<Uart, Data, true>> {
+    pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Option<Self> {
         let counter = clocks.sys_clk().checked_add(baud / 2)? / baud;
         if counter > u16::MAX as u32 {
             return None;
@@ -235,13 +240,7 @@ where
             _marker: Default::default(),
         })
     }
-}
 
-impl<Uart, Data> Config<Uart, Data, true>
-where
-    Uart: Instance,
-    Data: UartData,
-{
     /// Get the baud rate.
     #[inline(always)]
     pub fn get_baud(&self, clocks: &Clocks) -> Hertz {

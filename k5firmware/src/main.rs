@@ -27,8 +27,7 @@ fn main() -> ! {
     let ptt = pins_c.c5.erase().into_pull_up_input();
 
     // uart1 tx is A7, uart1 rx is A8
-    let mut uart = hal::uart::new(p.UART1, power.gates.uart1)
-        .baud(&clocks, 38_400.Hz())
+    let mut uart = hal::uart::new(p.UART1, power.gates.uart1, &clocks, 38_400.Hz())
         .unwrap()
         .port(pins_a.a8.into(), pins_a.a7.into())
         .tx;

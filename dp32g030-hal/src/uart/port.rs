@@ -42,7 +42,7 @@ where
     /// Create a Port from the configured UART.
     #[inline(always)]
     pub fn new(
-        config: Config<Uart, Data, true>,
+        config: Config<Uart, Data>,
         rx: Uart::Rx,
         tx: Uart::Tx,
         rts: Flow<Uart::Rts>,
@@ -65,7 +65,7 @@ where
     pub fn free(
         self,
     ) -> (
-        Config<Uart, Data, true>,
+        Config<Uart, Data>,
         Uart::Rx,
         Uart::Tx,
         Flow<Uart::Rts>,
@@ -99,7 +99,7 @@ where
 {
     /// Create a lonely Rx from a configurator.
     #[inline(always)]
-    pub fn new(config: Config<Uart, Data, true>, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
+    pub fn new(config: Config<Uart, Data>, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
         // safety: we have configured the uart
         unsafe {
             config.uart.ctrl().set_bits(|w| w.uarten().enabled());
@@ -109,7 +109,7 @@ where
 
     /// Recover a configurator from a lonely Rx.
     #[inline(always)]
-    pub fn free(self) -> (Config<Uart, Data, true>, Uart::Rx, Flow<Uart::Rts>) {
+    pub fn free(self) -> (Config<Uart, Data>, Uart::Rx, Flow<Uart::Rts>) {
         let (uart, rx, rts) = self.teardown();
 
         // safety: we have closed this lonely half
@@ -178,7 +178,7 @@ where
 {
     /// Create a lonely Rx from a configurator.
     #[inline(always)]
-    pub fn new(config: Config<Uart, Data, true>, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Self {
+    pub fn new(config: Config<Uart, Data>, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Self {
         // safety: we have configured the uart
         unsafe {
             config.uart.ctrl().set_bits(|w| w.uarten().enabled());
@@ -188,7 +188,7 @@ where
 
     /// Recover a configurator from a lonely Rx.
     #[inline(always)]
-    pub fn free(self) -> (Config<Uart, Data, true>, Uart::Tx, Flow<Uart::Cts>) {
+    pub fn free(self) -> (Config<Uart, Data>, Uart::Tx, Flow<Uart::Cts>) {
         let (uart, tx, cts) = self.teardown();
 
         // safety: we have closed this lonely half
