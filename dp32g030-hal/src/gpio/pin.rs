@@ -265,7 +265,7 @@ where
 
     /// Convert pin into a new mode, in the given initial state.
     #[inline(always)]
-    fn into_mode_in_state<M>(mut self, state: PinState) -> Pin<P, N, Output<M>>
+    pub fn into_mode_in_state<M>(mut self, state: PinState) -> Pin<P, N, Output<M>>
     where
         Output<M>: PinMode,
     {
@@ -279,7 +279,7 @@ where
     /// the original mode was also an output mode. It is otherwise
     /// undefined.
     #[inline(always)]
-    fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Pin<P, N, M>) -> R) -> R
+    pub fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Pin<P, N, M>) -> R) -> R
     where
         M: PinMode,
     {
@@ -299,7 +299,7 @@ where
     /// Temporarily configure this pin in a new mode, in the given
     /// initial state.
     #[inline(always)]
-    fn with_mode_in_state<M, R>(
+    pub fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
         f: impl FnOnce(&mut Pin<P, N, Output<M>>) -> R,
