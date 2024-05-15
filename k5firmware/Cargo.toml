@@ -15,10 +15,12 @@ test = false
 bench = false
 
 [dependencies]
+bitbang-hal = "0.3"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 critical-section = "1"
 dp32g030-hal = { path = "../dp32g030-hal" }
+eeprom24x = "0.6"
 panic-halt = "0.2"
 
 [profile.release]
