@@ -1,7 +1,7 @@
 use crate::pac;
 
 use super::{
-    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, Pin, PinMode, PinPort,
+    Alternate, ErasedPin, Floating, Input, IntoMode, OpenDrain, Output, Pin, PinInfo, PinMode,
     PinState, PullDown, PullUp, PushPull, WithMode,
 };
 
@@ -324,10 +324,12 @@ where
     }
 }
 
-impl<const P: char, Mode> PinPort for PartiallyErasedPin<P, Mode>
+impl<const P: char, Mode> PinInfo for PartiallyErasedPin<P, Mode>
 where
     Mode: PinMode,
 {
+    type Mode = Mode;
+
     #[inline(always)]
     fn pin(&self) -> u8 {
         PartiallyErasedPin::pin(self)

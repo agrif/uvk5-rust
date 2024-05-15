@@ -1,8 +1,8 @@
 use crate::pac;
 
 use super::{
-    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin, PinMode,
-    PinPort, PinState, PullDown, PullUp, PushPull, WithMode,
+    Alternate, Floating, Input, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin, PinInfo,
+    PinMode, PinState, PullDown, PullUp, PushPull, WithMode,
 };
 
 /// An erased pin with dynamic port and pin number.
@@ -355,10 +355,12 @@ where
     }
 }
 
-impl<Mode> PinPort for ErasedPin<Mode>
+impl<Mode> PinInfo for ErasedPin<Mode>
 where
     Mode: PinMode,
 {
+    type Mode = Mode;
+
     #[inline(always)]
     fn pin(&self) -> u8 {
         ErasedPin::pin(self)

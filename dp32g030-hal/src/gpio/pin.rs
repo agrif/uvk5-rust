@@ -51,8 +51,11 @@ impl PinState {
     }
 }
 
-/// Generic access to pin and port.
-pub trait PinPort {
+/// Generic access to pin, port, and mode.
+pub trait PinInfo {
+    /// The typestate mode of this pin.
+    type Mode: PinMode;
+
     /// Get the pin number of this pin.
     fn pin(&self) -> u8;
 
@@ -450,10 +453,12 @@ where
     }
 }
 
-impl<const P: char, const N: u8, Mode> PinPort for Pin<P, N, Mode>
+impl<const P: char, const N: u8, Mode> PinInfo for Pin<P, N, Mode>
 where
     Mode: PinMode,
 {
+    type Mode = Mode;
+
     #[inline(always)]
     fn pin(&self) -> u8 {
         Pin::pin(self)
