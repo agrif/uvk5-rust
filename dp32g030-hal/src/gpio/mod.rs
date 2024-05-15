@@ -10,6 +10,9 @@ pub use erased::*;
 mod hal02;
 mod hal1;
 
+mod inout;
+pub use inout::*;
+
 mod mode;
 pub use mode::*;
 

@@ -1,7 +1,10 @@
 use core::convert::Infallible;
 use embedded_hal_02::digital::v2 as hal02;
 
-use super::{ErasedPin, Input, Output, PartiallyErasedPin, Pin, PinMode, PinState};
+use super::{
+    ErasedPin, Input, InputOutputPin, IntoMode, Output, PartiallyErasedPin, Pin, PinInfo, PinMode,
+    PinState,
+};
 
 impl From<hal02::PinState> for PinState {
     #[inline(always)]
@@ -303,5 +306,132 @@ where
     fn toggle(&mut self) -> Result<(), Self::Error> {
         ErasedPin::toggle(self);
         Ok(())
+    }
+}
+
+impl<Input, Output, I, O, const STATE: bool>
+    hal02::IoPin<InputOutputPin<Input, Output, STATE>, InputOutputPin<Input, Output, STATE>>
+    for InputOutputPin<Input, Output, STATE>
+where
+    Input: PinInfo<Mode = super::Input<I>>,
+    Output: PinInfo<Mode = super::Output<O>>,
+    Input: IntoMode<As<Output::Mode> = Output>,
+    Output: IntoMode<As<Input::Mode> = Input>,
+    Output: IntoMode<As<Output::Mode> = Output>,
+    super::Input<I>: PinMode,
+    super::Output<O>: PinMode,
+    Input: hal02::InputPin<Error = Infallible>,
+    Output: hal02::OutputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn into_input_pin(self) -> Result<Self, Self::Error> {
+        self.with_input(|_p| ());
+        Ok(self)
+    }
+
+    #[inline(always)]
+    fn into_output_pin(self, state: hal02::PinState) -> Result<Self, Self::Error> {
+        self.with_output_in_state(state.into(), |_p| ());
+        Ok(self)
+    }
+}
+
+impl<Input, Output, I, O, const STATE: bool> hal02::InputPin
+    for InputOutputPin<Input, Output, STATE>
+where
+    Input: PinInfo<Mode = super::Input<I>>,
+    Output: PinInfo<Mode = super::Output<O>>,
+    Input: IntoMode<As<Output::Mode> = Output>,
+    Output: IntoMode<As<Input::Mode> = Input>,
+    Output: IntoMode<As<Output::Mode> = Output>,
+    super::Input<I>: PinMode,
+    super::Output<O>: PinMode,
+    Input: hal02::InputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        self.with_input(|p| p.is_high())
+    }
+
+    #[inline(always)]
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        self.with_input(|p| p.is_low())
+    }
+}
+
+impl<Input, Output, I, O, const STATE: bool> hal02::OutputPin
+    for InputOutputPin<Input, Output, STATE>
+where
+    Input: PinInfo<Mode = super::Input<I>>,
+    Output: PinInfo<Mode = super::Output<O>>,
+    Input: IntoMode<As<Output::Mode> = Output>,
+    Output: IntoMode<As<Input::Mode> = Input>,
+    Output: IntoMode<As<Output::Mode> = Output>,
+    super::Input<I>: PinMode,
+    super::Output<O>: PinMode,
+    Output: hal02::OutputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        self.with_output(|p| p.set_low())
+    }
+
+    #[inline(always)]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        self.with_output(|p| p.set_high())
+    }
+
+    #[inline(always)]
+    fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
+        self.with_output(|p| p.set_state(state))
+    }
+}
+
+impl<Input, Output, I, O, const STATE: bool> hal02::StatefulOutputPin
+    for InputOutputPin<Input, Output, STATE>
+where
+    Input: PinInfo<Mode = super::Input<I>>,
+    Output: PinInfo<Mode = super::Output<O>>,
+    Input: IntoMode<As<Output::Mode> = Output>,
+    Output: IntoMode<As<Input::Mode> = Input>,
+    Output: IntoMode<As<Output::Mode> = Output>,
+    super::Input<I>: PinMode,
+    super::Output<O>: PinMode,
+    Output: hal02::StatefulOutputPin<Error = Infallible>,
+{
+    #[inline(always)]
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        self.with_output(|p| p.is_set_high())
+    }
+
+    #[inline(always)]
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        self.with_output(|p| p.is_set_low())
+    }
+}
+
+impl<Input, Output, I, O, const STATE: bool> hal02::ToggleableOutputPin
+    for InputOutputPin<Input, Output, STATE>
+where
+    Input: PinInfo<Mode = super::Input<I>>,
+    Output: PinInfo<Mode = super::Output<O>>,
+    Input: IntoMode<As<Output::Mode> = Output>,
+    Output: IntoMode<As<Input::Mode> = Input>,
+    Output: IntoMode<As<Output::Mode> = Output>,
+    super::Input<I>: PinMode,
+    super::Output<O>: PinMode,
+    Output: hal02::ToggleableOutputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    #[inline(always)]
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        self.with_output(|p| p.toggle())
     }
 }
