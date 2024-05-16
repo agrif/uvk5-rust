@@ -11,6 +11,88 @@ use hal::time::Hertz;
 
 hal::version!(env!("CARGO_PKG_VERSION"));
 
+struct NoPin;
+
+impl embedded_hal_02::digital::v2::InputPin for NoPin {
+    type Error = core::convert::Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+}
+
+struct DisplaySpec;
+
+impl st7565::DisplaySpecs<128, 64, 8> for DisplaySpec {
+    // original firmware initialization sequence:
+
+    // 0xE2: Reset
+
+    // delay 120 ms
+
+    // 0xA2: LCD Bias Set 0 (BIAS_MODE_1 = false)
+    // 0xC0: Common Mode Output Select Normal (ROW_FLIP = false)
+    // 0xA1: ADC Select Reverse (COLUMN_FLIP = true)
+    // 0xA6: Display Normal (INVERTED = false)
+    // 0xA4: Display All Points Off
+    // 0x24: Voltage Internal Resistor Ratio set to 0x4
+    // 0x81: Electronic Volume Mode Set Byte 1
+    // 0x1F: Electronic Volume Mode Set Byte 2, set to 0x1f
+    // 0x2B: 0b0010 0b1011 booster off, regulator on, follower on
+
+    // delay 1 ms
+
+    // 0x2E: 0b0010 0b1110 booster on, regulator on, follower off
+
+    // delay 1 ms
+
+    // 0x2F: 0b0010 0b1111 booster on, regulator on, follower on
+    // 0x2F: **
+    // 0x2F: **
+
+    // delay 40 ms
+
+    // 0x40: Display Line Start Set 0
+    // 0xAF: Display ON
+
+    // end of sequence
+
+    // 0xC0 | (flip_rows << 3), send 0xC0 means false
+    const FLIP_ROWS: bool = false;
+
+    // 0xA0 | flip_columns, send 0xA1 means true
+    const FLIP_COLUMNS: bool = true;
+
+    // 0xA6 | inverted, send 0xA6 means false
+    const INVERTED: bool = false;
+
+    // 0xA2 | bias_mode_1, send 0xA2 means false
+    const BIAS_MODE_1: bool = false;
+
+    // 0x28 | (booster << 2) | (regulator << 1) | follower
+    // send 0x2f means booster, regulator, follower all 1
+    const POWER_CONTROL: st7565::types::PowerControlMode = st7565::types::PowerControlMode {
+        booster_circuit: true,
+        voltage_regulator_circuit: true,
+        voltage_follower_circuit: true,
+    };
+
+    // 0x20 | (resistor_ratio & 0b111), send 0x24 means 0x4
+    const VOLTAGE_REGULATOR_RESISTOR_RATIO: u8 = 0x4;
+
+    // 0x81 (volume & 0b0011_1111), send 0x81 0x1f means 0x1f
+    const ELECTRONIC_VOLUME: u8 = 0x1f;
+
+    // 0xF8 booster_ratio, send .. nothing. hm.
+    // this appears to be an internal command??
+    // go with the most 0 one
+    const BOOSTER_RATIO: st7565::types::BoosterRatio = st7565::types::BoosterRatio::StepUp2x3x4x;
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let p = hal::pac::Peripherals::take().unwrap();
@@ -51,10 +133,15 @@ fn main() -> ! {
     let mut backlight = pins_b.b6.into_push_pull_output();
 
     // PB7 ST7565 ??? P10
+    let lcd_cs = pins_b.b7.into_push_pull_output();
     // PB8 ST7565 clk
+    let lcd_clk = pins_b.b8.into_push_pull_output();
     // PB9 ST7565 a0
+    let lcd_a0 = pins_b.b9.into_push_pull_output();
     // PB10 ST7565 si
+    let lcd_mosi = pins_b.b10.into_push_pull_output();
     // PB11 ST7565 res / swdio / tp14
+    let mut lcd_res = pins_b.b11.into_push_pull_output();
 
     // PB14 BK4819 gpio2 / swclk / tp13
     // PB15 BK1080 rf on
@@ -75,22 +162,79 @@ fn main() -> ! {
         .port(uart_rx, uart_tx);
 
     // get a timer going at 100kHz for delays and i2c
-    let timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
+    let timer100k = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
         .frequency::<{ Hertz::kHz(100).to_Hz() }>(&clocks)
         .unwrap()
         .split(&clocks);
 
-    // bitbang eeprom i2c at 100kHz
-    let mut i2c_timer = timer.low.counter();
+    // get a timer going at 1MHz for SPI
+    // I *think* SPI can run at 8MHz or higher, but this is bit banged
+    // so lets go slow
+    let timer1m = hal::timer::new(p.TIMER_BASE1, power.gates.timer_base1)
+        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&clocks)
+        .unwrap()
+        .split(&clocks);
+
+    // bitbang eeprom i2c at 50kHz (half the timer frequency)
+    let mut i2c_timer = timer100k.low.counter();
     i2c_timer.start(Hertz::kHz(100).into_duration()).unwrap();
     let i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
     let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // delay timer
-    let mut delay = timer.high.counter();
+    let mut delay = timer100k.high.counter();
 
-    // turn on flashlight
-    flashlight.set_high();
+    // bitbang spi at 500kHz (half the timer frequency)
+    let mut spi_timer = timer1m.low.counter();
+    spi_timer.start(Hertz::MHz(1).into_duration()).unwrap();
+    let spi = bitbang_hal::spi::SPI::new(
+        bitbang_hal::spi::MODE_3,
+        NoPin,
+        lcd_mosi,
+        lcd_clk,
+        spi_timer,
+    );
+
+    // LCD setup
+    let lcd_interface = display_interface_spi::SPIInterface::new(spi, lcd_a0, lcd_cs);
+    let mut page_buffer = st7565::GraphicsPageBuffer::new();
+    let mut lcd =
+        st7565::ST7565::new(lcd_interface, DisplaySpec).into_graphics_mode(&mut page_buffer);
+    lcd.reset(&mut lcd_res, &mut delay).unwrap();
+    lcd.flush().unwrap();
+    lcd.set_display_on(true).unwrap();
+
+    // draw a thing
+    use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
+    use embedded_graphics::pixelcolor::BinaryColor;
+    use embedded_graphics::prelude::*;
+    use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
+    use embedded_graphics::text::{Alignment, Text};
+
+    let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
+    let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 2);
+    let font = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+    Circle::new(Point::new(50, 30), 20)
+        .into_styled(thin_stroke)
+        .draw(&mut lcd)
+        .unwrap();
+    Rectangle::new(Point::new(80, 30), Size::new(20, 16))
+        .into_styled(thick_stroke)
+        .draw(&mut lcd)
+        .unwrap();
+    Text::with_alignment(
+        "Hello, UV-K5!",
+        lcd.bounding_box().center() + Point::new(0, -20),
+        font,
+        Alignment::Center,
+    )
+    .draw(&mut lcd)
+    .unwrap();
+
+    lcd.flush().unwrap();
+
+    // turn off flashlight
+    flashlight.set_low();
 
     // turn on backlight
     backlight.set_high();
