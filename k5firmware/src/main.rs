@@ -5,6 +5,8 @@ use dp32g030_hal as hal;
 use panic_halt as _;
 
 use hal::prelude::*;
+
+use hal::gpio::InputOutputPin;
 use hal::time::Hertz;
 
 hal::version!(env!("CARGO_PKG_VERSION"));
@@ -18,43 +20,80 @@ fn main() -> ! {
 
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
     let pins_a = ports.port_a.enable(power.gates.gpio_a);
+    let pins_b = ports.port_b.enable(power.gates.gpio_b);
     let pins_c = ports.port_c.enable(power.gates.gpio_c);
 
-    // flashlight is GPIO C3
-    let mut light = pins_c.c3.into_push_pull_output();
+    // PA3 keypad column 1
+    // PA4 keypad column 2
+    // PA5 keypad column 3
+    // PA6 keypad column 4
 
-    // ptt button is GPIO C5
+    // PA7 uart1 tx
+    let uart_tx = pins_a.a7.into();
+    // PA8 uart1 rx
+    let uart_rx = pins_a.a8.into();
+
+    // PA9 battery voltage
+
+    // PA10 keypad row 1 / eeprom scl
+    let eeprom_scl = pins_a.a10.into_open_drain_output();
+    // PA11 keypad row 2 / eeprom sda
+    let eeprom_sda = InputOutputPin::new_from_output(pins_a.a11.into_open_drain_output(), |p| {
+        p.into_floating_input()
+    })
+    .default_high();
+    // PA12 keypad row 3 / voice 0
+    // PA13 keypad row 4 / voice 1
+
+    // PA14 battery current
+
+    // PB6 backlight
+    let mut backlight = pins_b.b6.into_push_pull_output();
+
+    // PB7 ST7565 ??? P10
+    // PB8 ST7565 clk
+    // PB9 ST7565 a0
+    // PB10 ST7565 si
+    // PB11 ST7565 res / swdio / tp14
+
+    // PB14 BK4819 gpio2 / swclk / tp13
+    // PB15 BK1080 rf on
+
+    // PC0 BK4819 scn
+    // PC1 BK4819 scl
+    // PC2 BK4819 sda
+
+    // PC3 flashlight
+    let mut flashlight = pins_c.c3.into_push_pull_output();
+    // PC4 speaker amp on
+    // PC5 ptt
     let ptt = pins_c.c5.into_pull_up_input();
 
-    // uart1 tx is A7, uart1 rx is A8
+    // initialize uart
     let mut uart = hal::uart::new(p.UART1, power.gates.uart1, &clocks, 38_400.Hz())
         .unwrap()
-        .port(pins_a.a8.into(), pins_a.a7.into());
+        .port(uart_rx, uart_tx);
 
-    // get a timer going at 100kHz
+    // get a timer going at 100kHz for delays and i2c
     let timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
         .frequency::<{ Hertz::kHz(100).to_Hz() }>(&clocks)
         .unwrap()
         .split(&clocks);
 
-    // bitbang i2c at 100kHz, scl is A10, sda is A11
-    let scl = pins_a.a10.into_open_drain_output();
-    let sda = pins_a.a11.into_open_drain_output();
-    let sda = hal::gpio::InputOutputPin::new_from_output(sda, |p| p.into_floating_input())
-        .set_default_state::<true>();
-
+    // bitbang eeprom i2c at 100kHz
     let mut i2c_timer = timer.low.counter();
     i2c_timer.start(Hertz::kHz(100).into_duration()).unwrap();
-
-    // create our i2c bus and eeprom
-    let i2c = bitbang_hal::i2c::I2cBB::new(scl, sda, i2c_timer);
+    let i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
     let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // delay timer
     let mut delay = timer.high.counter();
 
     // turn on flashlight
-    light.set_high();
+    flashlight.set_high();
+
+    // turn on backlight
+    backlight.set_high();
 
     // set the timer to complete every 500ms
     delay.start(500.millis()).unwrap();
@@ -65,9 +104,9 @@ fn main() -> ! {
 
     loop {
         // ptt pressed means ptt low
-        // ptt pressed means toggle light
+        // ptt pressed means toggle flashlight
         if ptt.is_low() {
-            light.toggle();
+            flashlight.toggle();
         }
 
         // handle serial until the timer expires
