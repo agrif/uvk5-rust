@@ -133,10 +133,20 @@ where
 
     /// Change the default state of the output pin.
     #[inline(always)]
-    pub fn set_default_state<const NEWSTATE: bool>(
-        self,
-    ) -> InputOutputPin<Input, Output, NEWSTATE> {
+    pub fn default_state<const NEWSTATE: bool>(self) -> InputOutputPin<Input, Output, NEWSTATE> {
         InputOutputPin { pin: self.pin }
+    }
+
+    /// Change the default state of the output pin to low.
+    #[inline(always)]
+    pub fn default_low(self) -> InputOutputPin<Input, Output, false> {
+        self.default_state()
+    }
+
+    /// Change the default state of the output pin to high.
+    #[inline(always)]
+    pub fn default_high(self) -> InputOutputPin<Input, Output, true> {
+        self.default_state()
     }
 
     /// Get a reference to this pin as an input.
