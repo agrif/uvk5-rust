@@ -22,6 +22,9 @@ trait TimingInstanceSealed<const HZ: u32, const FORCED: bool> {
     /// Start the count, waiting at least duration.
     fn start(&mut self, duration: TimerDuration<HZ>) -> Result<(), Error>;
 
+    /// The largest duration [Self::start()] can accept.
+    fn max(&self) -> Result<TimerDuration<HZ>, Error>;
+
     /// Cancel the count.
     fn cancel(&mut self) -> Result<(), Error>;
 
@@ -108,6 +111,21 @@ where
     }
 
     #[inline(always)]
+    fn max(&self) -> Result<TimerDuration<C_HZ>, Error> {
+        static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
+
+        // careful: input_clk is assumed to be exactly T_HZ unless FORCED
+        let input_clk = if FORCED { self.input_clk.to_Hz() } else { T_HZ };
+
+        // we should use floor((u16::MAX + 1) * C_HZ / input_clk)
+        // this ensures max_ticks * input_clk / C_HZ <= u16::MAX + 1
+        let max_ticks = (u16::MAX as u32 + 1)
+            .mul_div_floor(C_HZ, input_clk)
+            .ok_or(Error::OutOfRange)?;
+        Ok(TimerDuration::from_ticks(max_ticks))
+    }
+
+    #[inline(always)]
     fn cancel(&mut self) -> Result<(), Error> {
         if self.timer.get_enabled(HighLow::IS_HIGH) {
             // unsafe: we are the owners of this half of the timer
@@ -172,6 +190,16 @@ impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
         self.timer.enable_counter();
 
         Ok(())
+    }
+
+    #[inline(always)]
+    fn max(&self) -> Result<TimerDuration<C_HZ>, Error> {
+        // we should use floor((MAX + 1) * C_HZ / input_clk)
+        // this ensures max_ticks * input_clk / C_HZ <= MAX + 1
+        let max_ticks = 0x01000000
+            .mul_div_floor(C_HZ, self.input_clk.to_Hz())
+            .ok_or(Error::OutOfRange)?;
+        Ok(TimerDuration::from_ticks(max_ticks))
     }
 
     #[inline(always)]
@@ -256,6 +284,12 @@ where
         self.start_rate(TimerRate::Hz(HZ))
     }
 
+    /// Return the maximum duration that [Self::start()] accepts.
+    #[inline(always)]
+    pub fn max(&self) -> Result<TimerDuration<HZ>, Error> {
+        self.timer.max()
+    }
+
     /// Cancel the count.
     #[inline(always)]
     pub fn cancel(&mut self) -> Result<(), Error> {
@@ -269,9 +303,23 @@ where
     }
 
     /// Blocking wait for a duration.
-    #[inline(always)]
-    pub fn delay(&mut self, duration: TimerDuration<HZ>) -> Result<(), Error> {
-        self.timer.start(duration)?;
-        block::block!(self.timer.wait())
+    #[inline]
+    pub fn delay(&mut self, mut duration: TimerDuration<HZ>) -> Result<(), Error> {
+        match self.start(duration) {
+            Ok(()) => {
+                block::block!(self.wait())
+            }
+            Err(Error::OutOfRange) => {
+                let max = self.max()?;
+                while duration > max {
+                    self.start(max)?;
+                    block::block!(self.wait())?;
+                    duration -= max;
+                }
+                self.start(duration)?;
+                block::block!(self.wait())
+            }
+            res => res,
+        }
     }
 }
