@@ -7,12 +7,15 @@ use crate::time::{TimerDuration, TimerInstant, TimerRate};
 
 use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, System, Timer, TimerHalf};
 
-/// Timers that can be used in [Counter].
+/// Timers that can be used in [TimingMode].
 #[allow(private_bounds)]
-pub trait Count<const HZ: u32, const DYN: bool>: CountSealed<HZ, DYN> {}
+pub trait TimingInstance<const HZ: u32, const FORCED: bool>:
+    TimingInstanceSealed<HZ, FORCED>
+{
+}
 
-/// Timers that can be used in [Counter].
-trait CountSealed<const HZ: u32, const DYN: bool> {
+/// Timers that can be used in [TimingMode].
+trait TimingInstanceSealed<const HZ: u32, const FORCED: bool> {
     /// What is the current count? At minimum this time has passed.
     fn now(&mut self) -> TimerInstant<HZ>;
 
@@ -26,22 +29,22 @@ trait CountSealed<const HZ: u32, const DYN: bool> {
     fn wait(&mut self) -> block::Result<(), Error>;
 }
 
-/// Helper for making sure either DYN is set, or T_HZ matches C_HZ
+/// Helper for making sure either FORCED is set, or T_HZ matches C_HZ
 #[allow(path_statements)]
-const fn static_assert_dyn_or_hz_same<const T_HZ: u32, const C_HZ: u32, const DYN: bool>() {
+const fn static_assert_forced_or_hz_same<const T_HZ: u32, const C_HZ: u32, const FORCED: bool>() {
     // this should be a simple static_assert!
     // but rust does not like that
-    struct Assert<const T_HZ: u32, const C_HZ: u32, const DYN: bool>;
+    struct Assert<const T_HZ: u32, const C_HZ: u32, const FORCED: bool>;
 
-    impl<const T_HZ: u32, const C_HZ: u32, const DYN: bool> Assert<T_HZ, C_HZ, DYN> {
-        const DYN_OR_HZ_SAME: () = assert!(DYN || T_HZ == C_HZ);
+    impl<const T_HZ: u32, const C_HZ: u32, const FORCED: bool> Assert<T_HZ, C_HZ, FORCED> {
+        const FORCED_OR_HZ_SAME: () = assert!(FORCED || T_HZ == C_HZ);
     }
 
     #[allow(clippy::no_effect)]
-    Assert::<T_HZ, C_HZ, DYN>::DYN_OR_HZ_SAME; // This error means a timer is not DYN but has un-matching HZ
+    Assert::<T_HZ, C_HZ, FORCED>::FORCED_OR_HZ_SAME; // This error means a timer is not FORCED but has un-matching HZ
 }
 
-impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> Count<C_HZ, DYN>
+impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const FORCED: bool> TimingInstance<C_HZ, FORCED>
     for Timer<T, HighLow, T_HZ>
 where
     T: BaseInstance,
@@ -49,18 +52,18 @@ where
 {
 }
 
-impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> CountSealed<C_HZ, DYN>
-    for Timer<T, HighLow, T_HZ>
+impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const FORCED: bool>
+    TimingInstanceSealed<C_HZ, FORCED> for Timer<T, HighLow, T_HZ>
 where
     T: BaseInstance,
     HighLow: TimerHalf,
 {
     #[inline(always)]
     fn now(&mut self) -> TimerInstant<C_HZ> {
-        static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
+        static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
 
         let clocks = self.timer.get_count(HighLow::IS_HIGH) as u32;
-        if DYN {
+        if FORCED {
             // use input_clk
             let ticks = clocks
                 .mul_div_floor(C_HZ, self.input_clk.to_Hz())
@@ -76,9 +79,9 @@ where
 
     #[inline(always)]
     fn start(&mut self, duration: TimerDuration<C_HZ>) -> Result<(), Error> {
-        static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
+        static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
 
-        let clocks = if DYN {
+        let clocks = if FORCED {
             // use input_clk
             duration
                 .ticks()
@@ -135,9 +138,9 @@ where
     }
 }
 
-impl<const C_HZ: u32> Count<C_HZ, true> for System {}
+impl<const C_HZ: u32> TimingInstance<C_HZ, true> for System {}
 
-impl<const C_HZ: u32> CountSealed<C_HZ, true> for System {
+impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
     #[inline(always)]
     fn now(&mut self) -> TimerInstant<C_HZ> {
         // get_current should always be <= get_reload
@@ -196,25 +199,25 @@ impl<const C_HZ: u32> CountSealed<C_HZ, true> for System {
     }
 }
 
-/// A counter that can count up a duration.
+/// A timer in TimingMode, that can wait out durations.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Counter<Timer, const HZ: u32, const DYN: bool = false> {
+pub struct TimingMode<Timer, const HZ: u32, const FORCED: bool = false> {
     timer: Timer,
 }
 
-/// A dynamic counter with nanosecond precision.
-pub type CounterNs<Timer> = Counter<Timer, 1_000_000_000, true>;
+/// A forced [TimingMode] with nanosecond precision.
+pub type TimingModeNs<Timer> = TimingMode<Timer, 1_000_000_000, true>;
 
-/// A dynamic counter with microsecond precision.
-pub type CounterUs<Timer> = Counter<Timer, 1_000_000, true>;
+/// A forced [TimingMode] with microsecond precision.
+pub type TimingModeUs<Timer> = TimingMode<Timer, 1_000_000, true>;
 
-/// A dynamic counter with millisecond precision.
-pub type CounterMs<Timer> = Counter<Timer, 1_000, true>;
+/// A forced [TimingMode] with millisecond precision.
+pub type TimingModeMs<Timer> = TimingMode<Timer, 1_000, true>;
 
-impl<Timer, const HZ: u32, const DYN: bool> Counter<Timer, HZ, DYN>
+impl<Timer, const HZ: u32, const FORCED: bool> TimingMode<Timer, HZ, FORCED>
 where
-    Timer: Count<HZ, DYN>,
+    Timer: TimingInstance<HZ, FORCED>,
 {
     /// Create a new Counter.
     #[inline(always)]
@@ -244,7 +247,13 @@ where
     /// Start the count, rolling over at the given rate.
     #[inline(always)]
     pub fn start_rate(&mut self, rate: TimerRate<HZ>) -> Result<(), Error> {
-        self.timer.start(rate.into_duration())
+        self.start(rate.into_duration())
+    }
+
+    /// Start the count, rolling over at the native timer frequency.
+    #[inline(always)]
+    pub fn start_native(&mut self) -> Result<(), Error> {
+        self.start_rate(TimerRate::Hz(HZ))
     }
 
     /// Cancel the count.

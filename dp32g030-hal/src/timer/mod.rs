@@ -8,15 +8,15 @@ use crate::time::Hertz;
 mod config;
 pub use config::*;
 
-mod counter;
-pub use counter::*;
-
 mod fugit;
 mod hal02;
 mod hal1;
 
 mod peripherals;
 pub use peripherals::*;
+
+mod timing;
+pub use timing::*;
 
 /// A very simple timer error.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -113,49 +113,46 @@ impl defmt::Format for System {
     }
 }
 
-macro_rules! counter_methods {
+macro_rules! timing_methods {
     () => {
-        /// Create a dynamic [Counter] from this timer, with specific precision.
+        /// Use this timer in [TimingMode], with specific forced precision.
         ///
         /// This discards any statically-known frequency of the base
         /// timer, and instead calculates ticks from the dynamic
         /// `sys_clk` value. This *might* be more accurate, at the cost
         /// of runtime and code size.
         #[inline(always)]
-        pub fn counter_hz<const C_HZ: u32>(self) -> Counter<Self, C_HZ, true> {
-            Counter::new(self)
+        pub fn timing_hz<const C_HZ: u32>(self) -> TimingMode<Self, C_HZ, true> {
+            TimingMode::new(self)
         }
 
-        /// Create a dynamic [Counter] with nanosecond precision
-        /// with this timer.
+        /// Use this timer in [TimingMode] with forced nanosecond precision.
         #[inline(always)]
-        pub fn counter_ns(self) -> CounterNs<Self> {
-            self.counter_hz()
+        pub fn timing_ns(self) -> TimingModeNs<Self> {
+            self.timing_hz()
         }
 
-        /// Create a dynamic [Counter] with microsecond precision
-        /// with this timer.
+        /// Use this timer in [TimingMode] with forced microsecond precision.
         #[inline(always)]
-        pub fn counter_us(self) -> CounterUs<Self> {
-            self.counter_hz()
+        pub fn timing_us(self) -> TimingModeUs<Self> {
+            self.timing_hz()
         }
 
-        /// Create a dynamic [Counter] with millisecond precision
-        /// with this timer.
+        /// Use this timer in [TimingMode] with forced millisecond precision.
         #[inline(always)]
-        pub fn counter_ms(self) -> CounterMs<Self> {
-            self.counter_hz()
+        pub fn timing_ms(self) -> TimingModeMs<Self> {
+            self.timing_hz()
         }
     };
 
     (native) => {
-        /// Create a Counter from this timer, using the native precision.
+        /// Use this timer in [TimingMode] with native precision.
         #[inline(always)]
-        pub fn counter(self) -> Counter<Self, HZ> {
-            Counter::new(self)
+        pub fn timing(self) -> TimingMode<Self, HZ> {
+            TimingMode::new(self)
         }
 
-        counter_methods!();
+        timing_methods!();
     };
 }
 
@@ -164,7 +161,7 @@ where
     T: BaseInstance,
     LowHigh: TimerHalf,
 {
-    counter_methods!(native);
+    timing_methods!(native);
 }
 
 /// Create the system timer from the [pac::SYST] register.
@@ -190,5 +187,5 @@ impl System {
         unsafe { pac::CorePeripherals::steal().SYST }
     }
 
-    counter_methods!();
+    timing_methods!();
 }

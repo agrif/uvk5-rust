@@ -2,11 +2,11 @@ use embedded_hal_1::delay as hal1;
 
 use crate::time::DurationExtU32;
 
-use super::{Count, Counter};
+use super::{TimingInstance, TimingMode};
 
-impl<Timer, const HZ: u32, const DYN: bool> hal1::DelayNs for Counter<Timer, HZ, DYN>
+impl<Timer, const HZ: u32, const FORCED: bool> hal1::DelayNs for TimingMode<Timer, HZ, FORCED>
 where
-    Timer: Count<HZ, DYN>,
+    Timer: TimingInstance<HZ, FORCED>,
 {
     #[inline(always)]
     fn delay_ns(&mut self, ns: u32) {

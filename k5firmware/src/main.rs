@@ -176,16 +176,16 @@ fn main() -> ! {
         .split(&clocks);
 
     // bitbang eeprom i2c at 50kHz (half the timer frequency)
-    let mut i2c_timer = timer100k.low.counter();
+    let mut i2c_timer = timer100k.low.timing();
     i2c_timer.start_rate(100.kHz()).unwrap();
     let i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
     let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // delay timer
-    let mut delay = timer100k.high.counter();
+    let mut delay = timer100k.high.timing();
 
     // bitbang spi at 500kHz (half the timer frequency)
-    let mut spi_timer = timer1m.low.counter();
+    let mut spi_timer = timer1m.low.timing();
     spi_timer.start_rate(1.MHz()).unwrap();
     let spi = bitbang_hal::spi::SPI::new(
         bitbang_hal::spi::MODE_3,

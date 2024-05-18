@@ -27,7 +27,7 @@ fn main() -> ! {
         .unwrap()
         .split(&clocks)
         .low
-        .counter();
+        .timing();
 
     // it's blinkin' time
     loop {
