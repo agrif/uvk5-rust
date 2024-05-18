@@ -50,19 +50,42 @@ const fn static_assert_timer_hz_not_zero<const HZ: u32>() {
     Assert::<HZ>::HZ_NOT_ZERO; // This error means a timer has HZ = 0
 }
 
-/// The low half of a timer.
-#[derive(Debug)]
+/// The low half of a timer. (type marker)
+#[derive(Debug, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Low<Timer, const HZ: u32> {
-    timer: Timer,
-    input_clk: Hertz,
+pub struct Low;
+
+/// The high half of a timer. (type marker)
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct High;
+
+/// A marker trait for the [Low] / [High] marker types.
+#[allow(private_bounds)]
+pub trait TimerHalf: TimerHalfSealed {
+    const IS_HIGH: bool;
 }
 
-/// The high half of a timer.
+trait TimerHalfSealed {}
+
+impl TimerHalf for Low {
+    const IS_HIGH: bool = false;
+}
+
+impl TimerHalfSealed for Low {}
+
+impl TimerHalf for High {
+    const IS_HIGH: bool = true;
+}
+
+impl TimerHalfSealed for High {}
+
+/// One half of a configured timer.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct High<Timer, const HZ: u32> {
-    timer: Timer,
+pub struct Timer<T, LowHigh, const HZ: u32> {
+    timer: T,
+    _half: LowHigh,
     input_clk: Hertz,
 }
 
@@ -136,16 +159,10 @@ macro_rules! counter_methods {
     };
 }
 
-impl<Timer, const HZ: u32> Low<Timer, HZ>
+impl<T, LowHigh, const HZ: u32> Timer<T, LowHigh, HZ>
 where
-    Timer: Base,
-{
-    counter_methods!(native);
-}
-
-impl<Timer, const HZ: u32> High<Timer, HZ>
-where
-    Timer: Base,
+    T: Base,
+    LowHigh: TimerHalf,
 {
     counter_methods!(native);
 }

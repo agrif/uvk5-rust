@@ -5,7 +5,7 @@ use crate::pac;
 use crate::block;
 use crate::time::{TimerDuration, TimerInstant};
 
-use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low, System};
+use super::{static_assert_timer_hz_not_zero, Base, Error, System, Timer, TimerHalf};
 
 /// Timers that can be used in [Counter].
 #[allow(private_bounds)]
@@ -41,104 +41,99 @@ const fn static_assert_dyn_or_hz_same<const T_HZ: u32, const C_HZ: u32, const DY
     Assert::<T_HZ, C_HZ, DYN>::DYN_OR_HZ_SAME; // This error means a timer is not DYN but has un-matching HZ
 }
 
-macro_rules! impl_count {
-    ($highlow:ident, $highbool:expr) => {
-        impl<Timer, const T_HZ: u32, const C_HZ: u32, const DYN: bool> Count<C_HZ, DYN>
-            for $highlow<Timer, T_HZ>
-        where
-            Timer: Base,
-        {
-        }
-
-        impl<Timer, const T_HZ: u32, const C_HZ: u32, const DYN: bool> CountSealed<C_HZ, DYN>
-            for $highlow<Timer, T_HZ>
-        where
-            Timer: Base,
-        {
-            #[inline(always)]
-            fn now(&mut self) -> TimerInstant<C_HZ> {
-                static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
-
-                let clocks = self.timer.get_count($highbool) as u32;
-                if DYN {
-                    // use input_clk
-                    let ticks = clocks
-                        .mul_div_floor(C_HZ, self.input_clk.to_Hz())
-                        // 0 is a poor choice on failure, but it has to do
-                        // panicing here would be... odd
-                        .unwrap_or(0);
-                    TimerInstant::from_ticks(ticks)
-                } else {
-                    // T_HZ == C_HZ
-                    TimerInstant::from_ticks(clocks)
-                }
-            }
-
-            #[inline(always)]
-            fn start(&mut self, duration: TimerDuration<C_HZ>) -> Result<(), Error> {
-                static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
-
-                let clocks = if DYN {
-                    // use input_clk
-                    duration
-                        .ticks()
-                        .mul_div_ceil(self.input_clk.to_Hz(), C_HZ)
-                        .ok_or(Error::OutOfRange)?
-                } else {
-                    // T_HZ == C_HZ
-                    duration.ticks()
-                };
-
-                let clocks = clocks
-                    .saturating_sub(1)
-                    .try_into()
-                    .map_err(|_| Error::OutOfRange)?;
-
-                // unsafe: we are the owners of this half of the timer
-                unsafe {
-                    self.timer.set_enabled($highbool, false);
-                    self.timer.clear_flag($highbool);
-                    self.timer.set_load($highbool, clocks);
-                    self.timer.set_enabled($highbool, true);
-                }
-                Ok(())
-            }
-
-            #[inline(always)]
-            fn cancel(&mut self) -> Result<(), Error> {
-                if self.timer.get_enabled($highbool) {
-                    // unsafe: we are the owners of this half of the timer
-                    unsafe {
-                        self.timer.set_enabled($highbool, false);
-                    }
-                    Ok(())
-                } else {
-                    Err(Error::NotStarted)
-                }
-            }
-
-            #[inline(always)]
-            fn wait(&mut self) -> block::Result<(), Error> {
-                if self.timer.get_enabled($highbool) {
-                    if self.timer.get_flag($highbool) {
-                        // safety: we are the owners of this half of the timer
-                        unsafe {
-                            self.timer.clear_flag($highbool);
-                        }
-                        Ok(())
-                    } else {
-                        Err(block::Error::WouldBlock)
-                    }
-                } else {
-                    Err(block::Error::Other(Error::NotStarted))
-                }
-            }
-        }
-    };
+impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> Count<C_HZ, DYN>
+    for Timer<T, HighLow, T_HZ>
+where
+    T: Base,
+    HighLow: TimerHalf,
+{
 }
 
-impl_count!(Low, false);
-impl_count!(High, true);
+impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> CountSealed<C_HZ, DYN>
+    for Timer<T, HighLow, T_HZ>
+where
+    T: Base,
+    HighLow: TimerHalf,
+{
+    #[inline(always)]
+    fn now(&mut self) -> TimerInstant<C_HZ> {
+        static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
+
+        let clocks = self.timer.get_count(HighLow::IS_HIGH) as u32;
+        if DYN {
+            // use input_clk
+            let ticks = clocks
+                .mul_div_floor(C_HZ, self.input_clk.to_Hz())
+                // 0 is a poor choice on failure, but it has to do
+                // panicing here would be... odd
+                .unwrap_or(0);
+            TimerInstant::from_ticks(ticks)
+        } else {
+            // T_HZ == C_HZ
+            TimerInstant::from_ticks(clocks)
+        }
+    }
+
+    #[inline(always)]
+    fn start(&mut self, duration: TimerDuration<C_HZ>) -> Result<(), Error> {
+        static_assert_dyn_or_hz_same::<T_HZ, C_HZ, DYN>();
+
+        let clocks = if DYN {
+            // use input_clk
+            duration
+                .ticks()
+                .mul_div_ceil(self.input_clk.to_Hz(), C_HZ)
+                .ok_or(Error::OutOfRange)?
+        } else {
+            // T_HZ == C_HZ
+            duration.ticks()
+        };
+
+        let clocks = clocks
+            .saturating_sub(1)
+            .try_into()
+            .map_err(|_| Error::OutOfRange)?;
+
+        // unsafe: we are the owners of this half of the timer
+        unsafe {
+            self.timer.set_enabled(HighLow::IS_HIGH, false);
+            self.timer.clear_flag(HighLow::IS_HIGH);
+            self.timer.set_load(HighLow::IS_HIGH, clocks);
+            self.timer.set_enabled(HighLow::IS_HIGH, true);
+        }
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn cancel(&mut self) -> Result<(), Error> {
+        if self.timer.get_enabled(HighLow::IS_HIGH) {
+            // unsafe: we are the owners of this half of the timer
+            unsafe {
+                self.timer.set_enabled(HighLow::IS_HIGH, false);
+            }
+            Ok(())
+        } else {
+            Err(Error::NotStarted)
+        }
+    }
+
+    #[inline(always)]
+    fn wait(&mut self) -> block::Result<(), Error> {
+        if self.timer.get_enabled(HighLow::IS_HIGH) {
+            if self.timer.get_flag(HighLow::IS_HIGH) {
+                // safety: we are the owners of this half of the timer
+                unsafe {
+                    self.timer.clear_flag(HighLow::IS_HIGH);
+                }
+                Ok(())
+            } else {
+                Err(block::Error::WouldBlock)
+            }
+        } else {
+            Err(block::Error::Other(Error::NotStarted))
+        }
+    }
+}
 
 impl<const C_HZ: u32> Count<C_HZ, true> for System {}
 

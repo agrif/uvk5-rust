@@ -1,13 +1,13 @@
 use crate::power::{Clocks, Gate};
 use crate::time::Hertz;
 
-use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low};
+use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low, Timer};
 
 /// Wrap a timer register into a configurator.
 #[inline(always)]
-pub fn new<Timer>(timer: Timer, gate: Gate<Timer>) -> Config<Timer, 0>
+pub fn new<T>(timer: T, gate: Gate<T>) -> Config<T, 0>
 where
-    Timer: Base,
+    T: Base,
 {
     Config::new(timer, gate)
 }
@@ -15,25 +15,25 @@ where
 /// Allows you to configure a timer peripheral.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Config<Timer, const HZ: u32> {
-    timer: Timer,
+pub struct Config<T, const HZ: u32> {
+    timer: T,
 }
 
 /// The two timers in each peripheral, [Low] and [High].
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct LowHigh<Timer, const HZ: u32> {
-    pub low: Low<Timer, HZ>,
-    pub high: High<Timer, HZ>,
+pub struct LowHigh<T, const HZ: u32> {
+    pub low: Timer<T, Low, HZ>,
+    pub high: Timer<T, High, HZ>,
 }
 
-impl<Timer> Config<Timer, 0>
+impl<T> Config<T, 0>
 where
-    Timer: Base,
+    T: Base,
 {
     /// Wrap a timer register into a configurator.
     #[inline(always)]
-    pub fn new(mut timer: Timer, mut gate: Gate<Timer>) -> Self {
+    pub fn new(mut timer: T, mut gate: Gate<T>) -> Self {
         // safety: we own timer exclusively, which gives us control here
         unsafe {
             timer.reset();
@@ -43,13 +43,13 @@ where
     }
 }
 
-impl<Timer, const HZ: u32> Config<Timer, HZ>
+impl<T, const HZ: u32> Config<T, HZ>
 where
-    Timer: Base,
+    T: Base,
 {
     /// Recover the raw itmer register from this configurator.
     #[inline(always)]
-    pub fn free(self) -> (Timer, Gate<Timer>) {
+    pub fn free(self) -> (T, Gate<T>) {
         // safety: we own self, which gives us control of this gate
         let mut gate = unsafe { Gate::steal() };
         gate.disable();
@@ -66,7 +66,7 @@ where
     ///
     /// Use [Self::frequency()] instead for a safer interface.
     #[inline(always)]
-    pub unsafe fn divider<const C_HZ: u32>(mut self, div: u16) -> Config<Timer, C_HZ> {
+    pub unsafe fn divider<const C_HZ: u32>(mut self, div: u16) -> Config<T, C_HZ> {
         // safety: we own self, which gives us control here
         self.timer.set_div(div);
         Config { timer: self.timer }
@@ -77,7 +77,7 @@ where
     ///
     /// If the frequency is too or high to be matched, returns [Err].
     #[inline(always)]
-    pub fn frequency<const C_HZ: u32>(self, clocks: &Clocks) -> Result<Config<Timer, C_HZ>, Error> {
+    pub fn frequency<const C_HZ: u32>(self, clocks: &Clocks) -> Result<Config<T, C_HZ>, Error> {
         let div = clocks
             .sys_clk()
             .to_Hz()
@@ -108,21 +108,21 @@ where
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Self::frequency()] to configure HZ.
     #[inline(always)]
-    pub fn split(self, clocks: &Clocks) -> LowHigh<Timer, HZ> {
+    pub fn split(self, clocks: &Clocks) -> LowHigh<T, HZ> {
         LowHigh::new(self, clocks)
     }
 }
 
-impl<Timer, const HZ: u32> LowHigh<Timer, HZ>
+impl<T, const HZ: u32> LowHigh<T, HZ>
 where
-    Timer: Base,
+    T: Base,
 {
     /// Split the configured timer into [Low] and [High] parts.
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Config::frequency()] to configure HZ.
     #[inline(always)]
-    pub fn new(config: Config<Timer, HZ>, clocks: &Clocks) -> Self {
+    pub fn new(config: Config<T, HZ>, clocks: &Clocks) -> Self {
         static_assert_timer_hz_not_zero::<HZ>();
 
         let input_clk = config.input_clk(clocks);
@@ -130,17 +130,22 @@ where
         let timer = unsafe { config.timer.steal() };
 
         Self {
-            low: Low {
+            low: Timer {
                 timer: config.timer,
+                _half: Default::default(),
                 input_clk,
             },
-            high: High { timer, input_clk },
+            high: Timer {
+                timer,
+                _half: Default::default(),
+                input_clk,
+            },
         }
     }
 
     /// Recombine the two parts into a timer configurator.
     #[inline(always)]
-    pub fn free(self) -> Config<Timer, HZ> {
+    pub fn free(self) -> Config<T, HZ> {
         // arbitrarily return low timer and drop high
         Config {
             timer: self.low.timer,
