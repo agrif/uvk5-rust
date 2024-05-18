@@ -177,7 +177,7 @@ fn main() -> ! {
 
     // bitbang eeprom i2c at 50kHz (half the timer frequency)
     let mut i2c_timer = timer100k.low.counter();
-    i2c_timer.start(Hertz::kHz(100).into_duration()).unwrap();
+    i2c_timer.start_rate(100.kHz()).unwrap();
     let i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
     let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
@@ -186,7 +186,7 @@ fn main() -> ! {
 
     // bitbang spi at 500kHz (half the timer frequency)
     let mut spi_timer = timer1m.low.counter();
-    spi_timer.start(Hertz::MHz(1).into_duration()).unwrap();
+    spi_timer.start_rate(1.MHz()).unwrap();
     let spi = bitbang_hal::spi::SPI::new(
         bitbang_hal::spi::MODE_3,
         NoPin,

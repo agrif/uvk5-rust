@@ -3,7 +3,7 @@ use muldiv::MulDiv;
 use crate::pac;
 
 use crate::block;
-use crate::time::{TimerDuration, TimerInstant};
+use crate::time::{TimerDuration, TimerInstant, TimerRate};
 
 use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, System, Timer, TimerHalf};
 
@@ -235,10 +235,16 @@ where
         self.timer.now()
     }
 
-    /// Start the count.
+    /// Start the count, lasting for the given duration.
     #[inline(always)]
     pub fn start(&mut self, duration: TimerDuration<HZ>) -> Result<(), Error> {
         self.timer.start(duration)
+    }
+
+    /// Start the count, rolling over at the given rate.
+    #[inline(always)]
+    pub fn start_rate(&mut self, rate: TimerRate<HZ>) -> Result<(), Error> {
+        self.timer.start(rate.into_duration())
     }
 
     /// Cancel the count.
