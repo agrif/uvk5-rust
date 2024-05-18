@@ -1,13 +1,13 @@
 use crate::power::{Clocks, Gate};
 use crate::time::Hertz;
 
-use super::{static_assert_timer_hz_not_zero, Base, Error, High, Low, Timer};
+use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, High, Low, Timer};
 
 /// Wrap a timer register into a configurator.
 #[inline(always)]
 pub fn new<T>(timer: T, gate: Gate<T>) -> Config<T, 0>
 where
-    T: Base,
+    T: BaseInstance,
 {
     Config::new(timer, gate)
 }
@@ -22,14 +22,14 @@ pub struct Config<T, const HZ: u32> {
 /// The two timers in each peripheral, [Low] and [High].
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct LowHigh<T, const HZ: u32> {
+pub struct Pair<T, const HZ: u32> {
     pub low: Timer<T, Low, HZ>,
     pub high: Timer<T, High, HZ>,
 }
 
 impl<T> Config<T, 0>
 where
-    T: Base,
+    T: BaseInstance,
 {
     /// Wrap a timer register into a configurator.
     #[inline(always)]
@@ -45,7 +45,7 @@ where
 
 impl<T, const HZ: u32> Config<T, HZ>
 where
-    T: Base,
+    T: BaseInstance,
 {
     /// Recover the raw itmer register from this configurator.
     #[inline(always)]
@@ -108,14 +108,14 @@ where
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Self::frequency()] to configure HZ.
     #[inline(always)]
-    pub fn split(self, clocks: &Clocks) -> LowHigh<T, HZ> {
-        LowHigh::new(self, clocks)
+    pub fn split(self, clocks: &Clocks) -> Pair<T, HZ> {
+        Pair::new(self, clocks)
     }
 }
 
-impl<T, const HZ: u32> LowHigh<T, HZ>
+impl<T, const HZ: u32> Pair<T, HZ>
 where
-    T: Base,
+    T: BaseInstance,
 {
     /// Split the configured timer into [Low] and [High] parts.
     ///

@@ -4,10 +4,10 @@ use crate::power::Device;
 
 /// A trait for base timers.
 #[allow(private_bounds)]
-pub trait Base: BaseSealed + Device {}
+pub trait BaseInstance: BaseInstanceSealed + Device {}
 
 /// A trait for base timers.
-pub(super) trait BaseSealed {
+pub(super) trait BaseInstanceSealed {
     /// Reset the timer peripheral.
     ///
     /// # Safety
@@ -63,9 +63,9 @@ pub(super) trait BaseSealed {
 
 macro_rules! impl_base {
     ($timer:path) => {
-        impl Base for $timer {}
+        impl BaseInstance for $timer {}
 
-        impl BaseSealed for $timer {
+        impl BaseInstanceSealed for $timer {
             #[inline(always)]
             unsafe fn reset(&mut self) {
                 self.en().reset();

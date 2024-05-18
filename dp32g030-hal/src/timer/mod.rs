@@ -161,7 +161,7 @@ macro_rules! counter_methods {
 
 impl<T, LowHigh, const HZ: u32> Timer<T, LowHigh, HZ>
 where
-    T: Base,
+    T: BaseInstance,
     LowHigh: TimerHalf,
 {
     counter_methods!(native);

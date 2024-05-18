@@ -5,7 +5,7 @@ use crate::pac;
 use crate::block;
 use crate::time::{TimerDuration, TimerInstant};
 
-use super::{static_assert_timer_hz_not_zero, Base, Error, System, Timer, TimerHalf};
+use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, System, Timer, TimerHalf};
 
 /// Timers that can be used in [Counter].
 #[allow(private_bounds)]
@@ -44,7 +44,7 @@ const fn static_assert_dyn_or_hz_same<const T_HZ: u32, const C_HZ: u32, const DY
 impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> Count<C_HZ, DYN>
     for Timer<T, HighLow, T_HZ>
 where
-    T: Base,
+    T: BaseInstance,
     HighLow: TimerHalf,
 {
 }
@@ -52,7 +52,7 @@ where
 impl<T, HighLow, const T_HZ: u32, const C_HZ: u32, const DYN: bool> CountSealed<C_HZ, DYN>
     for Timer<T, HighLow, T_HZ>
 where
-    T: Base,
+    T: BaseInstance,
     HighLow: TimerHalf,
 {
     #[inline(always)]
