@@ -12,7 +12,6 @@ pub use fugit::NanosDurationU32 as NanosDuration;
 pub use fugit::SecsDurationU32 as SecsDuration;
 pub use fugit::TimerDurationU32 as TimerDuration;
 pub use fugit::TimerInstantU32 as TimerInstant;
-pub use fugit::TimerRateU32 as TimerRate;
 
 pub use fugit::ExtU32 as DurationExtU32;
 pub use fugit::ExtU32Ceil as DurationExtU32Ceil;

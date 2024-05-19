@@ -3,7 +3,7 @@ use muldiv::MulDiv;
 use crate::pac;
 
 use crate::block;
-use crate::time::{TimerDuration, TimerInstant, TimerRate};
+use crate::time::{Hertz, TimerDuration, TimerInstant};
 
 use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, System, Timer, TimerHalf};
 
@@ -274,14 +274,14 @@ where
 
     /// Start the count, rolling over at the given rate.
     #[inline(always)]
-    pub fn start_rate(&mut self, rate: TimerRate<HZ>) -> Result<(), Error> {
+    pub fn start_frequency(&mut self, rate: Hertz) -> Result<(), Error> {
         self.start(rate.into_duration())
     }
 
     /// Start the count, rolling over at the native timer frequency.
     #[inline(always)]
     pub fn start_native(&mut self) -> Result<(), Error> {
-        self.start_rate(TimerRate::Hz(HZ))
+        self.start_frequency(Hertz::Hz(HZ))
     }
 
     /// Return the maximum duration that [Self::start()] accepts.
