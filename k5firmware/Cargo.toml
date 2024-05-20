@@ -25,7 +25,7 @@ eeprom24x = "0.6"
 embedded-graphics = "0.8"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7" }
 panic-halt = "0.2"
-st7565 = "0.3"
+st7565 = "0.4"
 
 [profile.release]
 codegen-units = 1

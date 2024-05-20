@@ -29,7 +29,7 @@ impl embedded_hal_02::digital::v2::InputPin for NoPin {
 
 struct DisplaySpec;
 
-impl st7565::DisplaySpecs<132, 64, 8> for DisplaySpec {
+impl st7565::DisplaySpecs<128, 64, 8> for DisplaySpec {
     // 0xC0
     const FLIP_ROWS: bool = false;
 
@@ -59,6 +59,9 @@ impl st7565::DisplaySpecs<132, 64, 8> for DisplaySpec {
     // it's not present in original firmware
     // go with the most 0 one
     const BOOSTER_RATIO: st7565::types::BoosterRatio = st7565::types::BoosterRatio::StepUp2x3x4x;
+
+    // we lose four pixels to the left side of the screen
+    const COLUMN_OFFSET: u8 = 4;
 }
 
 #[cortex_m_rt::entry]
@@ -248,10 +251,6 @@ fn main() -> ! {
         let height = height as i32 - 1;
         let right = left + width;
         let bottom = top + height;
-
-        // why are the first 4 columns hidden
-        let left = left + 4;
-        let width = width - 4;
 
         snake %= 2 * width + 2 * height;
 

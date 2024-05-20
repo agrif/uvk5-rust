@@ -339,9 +339,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "st7565"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b16b2e3a26f3109ca61f32c714fc1f600b658c0f2aedd5e1f91ebd7ae7b276f"
+checksum = "a8eb8fad7d2fd2187133e1e60495f3c82c6a75b3e5909635ee4aeaf5c5251ee6"
 dependencies = [
  "display-interface",
  "embedded-graphics-core",
