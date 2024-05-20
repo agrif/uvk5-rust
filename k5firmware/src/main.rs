@@ -297,11 +297,27 @@ fn main() -> ! {
                 let line = core::str::from_utf8(&line_buf[..line_size]);
                 line_size = 0;
 
-                // read the given address
-                if let Some(addr) = line.ok().and_then(|s| u32::from_str_radix(s, 16).ok()) {
-                    let mut eeprom_data = [0; 16];
-                    eeprom.read_data(addr, &mut eeprom_data[..]).unwrap();
-                    writeln!(uart.tx, "eeprom data: {:x?}", eeprom_data).unwrap();
+                let Some(line) = line.ok() else {
+                    continue;
+                };
+
+                let cmd = line
+                    .split_once(|c: char| c.is_whitespace())
+                    .unwrap_or((line, ""));
+
+                match cmd {
+                    ("hello", _) => {
+                        writeln!(uart.tx, "Hello!").unwrap();
+                    }
+                    ("read", addr) => {
+                        let Ok(addr) = u32::from_str_radix(addr, 16) else {
+                            continue;
+                        };
+                        let mut eeprom_data = [0; 16];
+                        eeprom.read_data(addr, &mut eeprom_data[..]).unwrap();
+                        writeln!(uart.tx, "eeprom data: {:x?}", eeprom_data).unwrap();
+                    }
+                    _ => {}
                 }
                 continue;
             }
