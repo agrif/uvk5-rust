@@ -137,6 +137,7 @@ fn main() -> ! {
         .frequency::<{ Hertz::kHz(200).to_Hz() }>(&clocks)
         .unwrap()
         .split(&clocks);
+    let mut delay = timer200k.high.timing();
 
     // get a timer going at 1MHz for SPI
     // I *think* SPI can run at 8MHz or higher, but this is bit banged
@@ -146,12 +147,11 @@ fn main() -> ! {
         .unwrap()
         .split(&clocks);
 
-    // get a timer going at 1kHz for delays
+    // get a timer going at 1kHz for blinks and frames
     let timer1k = hal::timer::new(p.TIMER_BASE2, power.gates.timer_base2)
         .frequency::<{ Hertz::kHz(1).to_Hz() }>(&clocks)
         .unwrap()
         .split(&clocks);
-    let mut delay = timer1k.low.timing();
 
     // bitbang eeprom i2c at 100kHz (half the timer frequency)
     let mut i2c_timer = timer200k.low.timing();
@@ -229,7 +229,7 @@ fn main() -> ! {
     // turn on backlight
     backlight.set_high();
 
-    let mut led_blink = delay;
+    let mut led_blink = timer1k.low.timing();
     led_blink.start_frequency(2.Hz()).unwrap();
 
     let mut update_display = timer1k.high.timing();
