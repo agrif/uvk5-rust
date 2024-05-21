@@ -190,42 +190,18 @@ fn main() -> ! {
     let mut lcd =
         st7565::ST7565::new(lcd_interface, DisplaySpec).into_graphics_mode(&mut page_buffer);
     lcd.reset(&mut lcd_res, &mut delay).unwrap();
-    let mut lcd = {
-        // set line to 0, this isn't exposed in a way we can access
-        // lcd.set_line_offset(0).unwrap();
-        let (lcd, di) = lcd.release_display_interface();
-        let (mut spi, mut dc, mut cs) = di.release();
-        use embedded_hal_02::blocking::spi::Write;
-
-        cs.set_low();
-        dc.set_low();
-        spi.write(&[0b01000000]).unwrap();
-        cs.set_high();
-
-        let di = display_interface_spi::SPIInterface::new(spi, dc, cs);
-        lcd.attach_display_interface(di)
-    };
     lcd.flush().unwrap();
     lcd.set_display_on(true).unwrap();
 
     // draw a thing
-    use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
+    use embedded_graphics::mono_font::{ascii::FONT_4X6, ascii::FONT_6X10, MonoTextStyle};
     use embedded_graphics::pixelcolor::BinaryColor;
     use embedded_graphics::prelude::*;
-    use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
+    use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
     use embedded_graphics::text::{Alignment, Text};
 
-    let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-    let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 2);
     let font = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-    Circle::new(Point::new(50, 30), 20)
-        .into_styled(thin_stroke)
-        .draw(&mut lcd)
-        .unwrap();
-    Rectangle::new(Point::new(80, 30), Size::new(20, 16))
-        .into_styled(thick_stroke)
-        .draw(&mut lcd)
-        .unwrap();
+    let fontsmall = MonoTextStyle::new(&FONT_4X6, BinaryColor::On);
     Text::with_alignment(
         "Hello, UV-K5!",
         lcd.bounding_box().center() + Point::new(0, -20),
@@ -264,6 +240,9 @@ fn main() -> ! {
     // a snaking dot that moves across the screen
     let mut snake = 0;
     const SNAKE_LEN: i32 = 50;
+
+    // last status text
+    let mut last_text: Option<Rectangle> = None;
 
     // calculate a Point based on a snake value
     fn snake_point(border: Rectangle, mut snake: i32) -> Point {
@@ -325,20 +304,26 @@ fn main() -> ! {
         if let Ok(()) = update_display.wait() {
             let text = alloc::format!(
                 "freq {:?} rssi {:04x?}",
-                freq,
+                875 + 2 * freq,
                 fm.read(bk1080::REG_RSSI).unwrap(),
             );
+
             let text = Text::with_alignment(
                 &text,
                 lcd.bounding_box().center() + Point::new(0, 20),
-                font,
+                fontsmall,
                 Alignment::Center,
             );
-            text.bounding_box()
-                .into_styled(PrimitiveStyle::with_fill(BinaryColor::Off))
-                .draw(&mut lcd)
-                .unwrap();
+
+            if let Some(last_text) = last_text.take() {
+                last_text
+                    .into_styled(PrimitiveStyle::with_fill(BinaryColor::Off))
+                    .draw(&mut lcd)
+                    .unwrap();
+            }
+
             text.draw(&mut lcd).unwrap();
+            last_text = Some(text.bounding_box());
 
             snake += 1;
             Pixel(snake_point(lcd.bounding_box(), snake), BinaryColor::On)
