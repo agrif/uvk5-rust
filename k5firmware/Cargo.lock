@@ -3,6 +3,16 @@
 version = 3
 
 [[package]]
+name = "alloc-cortex-m"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "483c3bd0f9a7bb982b72988f5f173d29687c432d8013c1d3232635e6c0f0a60c"
+dependencies = [
+ "cortex-m",
+ "linked_list_allocator",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -25,12 +35,12 @@ dependencies = [
 
 [[package]]
 name = "bitbang-hal"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "470e1522d257e4c76245980d27d5d279442cb18955cc6341249b904074033f4a"
+checksum = "8a6e78d48a099db1643b06824ea903b72c39b38ebc0e98ba5a6693d35f360a28"
 dependencies = [
  "embedded-hal 0.2.7",
- "nb 0.1.3",
+ "nb 1.1.0",
 ]
 
 [[package]]
@@ -44,6 +54,12 @@ name = "byte-slice-cast"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0a5e3906bcbf133e33c1d4d95afc664ad37fbdb9f6568d8043e7ea8c27d93d3"
+
+[[package]]
+name = "bytemuck"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78834c15cb5d5efe3452d58b1e8ba890dd62d21907f867f383358198e56ebca5"
 
 [[package]]
 name = "byteorder"
@@ -228,7 +244,9 @@ checksum = "1d758ba1b47b00caf47f24925c0074ecb20d6dfcffe7f6d53395c0465674841a"
 name = "k5firmware"
 version = "0.1.0"
 dependencies = [
+ "alloc-cortex-m",
  "bitbang-hal",
+ "bytemuck",
  "cortex-m",
  "cortex-m-rt",
  "critical-section",
@@ -240,6 +258,12 @@ dependencies = [
  "panic-halt",
  "st7565",
 ]
+
+[[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
 
 [[package]]
 name = "micromath"

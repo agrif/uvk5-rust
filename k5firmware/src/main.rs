@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
 use core::fmt::Write;
 
 use dp32g030_hal as hal;
@@ -11,7 +12,13 @@ use hal::prelude::*;
 use hal::gpio::InputOutputPin;
 use hal::time::Hertz;
 
+pub mod bk1080;
+
 hal::version!(env!("CARGO_PKG_VERSION"));
+
+#[global_allocator]
+static ALLOCATOR: alloc_cortex_m::CortexMHeap = alloc_cortex_m::CortexMHeap::empty();
+const HEAP_SIZE: usize = 1024;
 
 struct NoPin;
 
@@ -66,6 +73,8 @@ impl st7565::DisplaySpecs<128, 64, 8> for DisplaySpec {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
+    unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
+
     let p = hal::pac::Peripherals::take().unwrap();
     let power = hal::power::new(p.SYSCON, p.PMU);
 
@@ -77,7 +86,9 @@ fn main() -> ! {
     let pins_c = ports.port_c.enable(power.gates.gpio_c);
 
     // PA3 keypad column 1
+    let col1 = pins_a.a3.into_pull_up_input();
     // PA4 keypad column 2
+    let col2 = pins_a.a4.into_pull_up_input();
     // PA5 keypad column 3
     // PA6 keypad column 4
 
@@ -116,6 +127,7 @@ fn main() -> ! {
 
     // PB14 BK4819 gpio2 / swclk / tp13
     // PB15 BK1080 rf on
+    let mut fm_enable = pins_b.b15.into_push_pull_output();
 
     // PC0 BK4819 scn
     // PC1 BK4819 scl
@@ -124,6 +136,7 @@ fn main() -> ! {
     // PC3 flashlight
     let mut flashlight = pins_c.c3.into_push_pull_output();
     // PC4 speaker amp on
+    let mut speaker_enable = pins_c.c4.into_push_pull_output();
     // PC5 ptt
     let ptt = pins_c.c5.into_pull_up_input();
 
@@ -156,8 +169,9 @@ fn main() -> ! {
     // bitbang eeprom i2c at 100kHz (half the timer frequency)
     let mut i2c_timer = timer200k.low.timing();
     i2c_timer.start_native().unwrap();
-    let i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
-    let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
+    let mut i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
+    let mut fm = bk1080::Bk1080::new(&mut i2c).unwrap();
+    //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // bitbang spi at 500kHz (half the timer frequency)
     let mut spi_timer = timer1m.low.timing();
@@ -229,6 +243,14 @@ fn main() -> ! {
     // turn on backlight
     backlight.set_high();
 
+    // turn on radio
+    fm_enable.set_low(); // active low
+    fm.enable().unwrap();
+    speaker_enable.set_high();
+
+    let mut freq = 0;
+    //fm.tune(freq).unwrap();
+
     let mut led_blink = timer1k.low.timing();
     led_blink.start_frequency(2.Hz()).unwrap();
 
@@ -268,16 +290,56 @@ fn main() -> ! {
         }
     }
 
+    // turn a string into a pin state
+    fn pin_state(name: &str) -> Option<hal::gpio::PinState> {
+        use hal::gpio::PinState::*;
+        match name {
+            "low" => Some(Low),
+            "high" => Some(High),
+            _ => None,
+        }
+    }
+
     loop {
         if let Ok(()) = led_blink.wait() {
             // ptt pressed means ptt low
             // ptt pressed means toggle flashlight
             if ptt.is_low() {
                 flashlight.toggle();
+                fm_enable.toggle();
+            }
+
+            // button 1 is pressed
+            if col1.is_low() {
+                freq += 1;
+                fm.tune(freq).unwrap();
+            }
+
+            // button 2 is pressed
+            if col2.is_low() {
+                freq -= 1;
+                fm.tune(freq).unwrap();
             }
         }
 
         if let Ok(()) = update_display.wait() {
+            let text = alloc::format!(
+                "freq {:?} rssi {:04x?}",
+                freq,
+                fm.read(bk1080::REG_RSSI).unwrap(),
+            );
+            let text = Text::with_alignment(
+                &text,
+                lcd.bounding_box().center() + Point::new(0, 20),
+                font,
+                Alignment::Center,
+            );
+            text.bounding_box()
+                .into_styled(PrimitiveStyle::with_fill(BinaryColor::Off))
+                .draw(&mut lcd)
+                .unwrap();
+            text.draw(&mut lcd).unwrap();
+
             snake += 1;
             Pixel(snake_point(lcd.bounding_box(), snake), BinaryColor::On)
                 .draw(&mut lcd)
@@ -309,12 +371,43 @@ fn main() -> ! {
                     ("hello", _) => {
                         writeln!(uart.tx, "Hello!").unwrap();
                     }
+                    ("speaker", state) => {
+                        let Some(state) = pin_state(state) else {
+                            continue;
+                        };
+                        speaker_enable.set_state(state);
+                    }
+                    ("fm", "enable") => {
+                        fm_enable.set_low();
+                    }
+                    ("fm", "disable") => {
+                        fm_enable.set_high();
+                    }
+                    ("fm", "init") => {
+                        writeln!(uart.tx, "init: {:x?}", fm.enable()).unwrap();
+                    }
+                    ("tune", val) => {
+                        let Ok(val) = val.parse::<u16>() else {
+                            continue;
+                        };
+                        writeln!(uart.tx, "tune: {:x?}", fm.tune(val)).unwrap();
+                    }
+                    ("fm", "") => {
+                        let all = fm.update(..);
+                        if let Ok(all) = all {
+                            for (a, v) in all.iter().enumerate() {
+                                writeln!(uart.tx, "fm {:02x}: {:x?}", a, v).unwrap();
+                            }
+                        } else {
+                            writeln!(uart.tx, "fm {:?}", all).unwrap();
+                        }
+                    }
                     ("read", addr) => {
                         let Ok(addr) = u32::from_str_radix(addr, 16) else {
                             continue;
                         };
                         let mut eeprom_data = [0; 16];
-                        eeprom.read_data(addr, &mut eeprom_data[..]).unwrap();
+                        //eeprom.read_data(addr, &mut eeprom_data[..]).unwrap();
                         writeln!(uart.tx, "eeprom data: {:x?}", eeprom_data).unwrap();
                     }
                     _ => {}
