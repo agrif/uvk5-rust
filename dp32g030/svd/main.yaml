@@ -25,6 +25,7 @@ _include:
   - interrupts.yaml
   - pmu.yaml
   - portcon.yaml
+  - spi.yaml
   - syscon.yaml
   - timerbase.yaml
   - uart.yaml

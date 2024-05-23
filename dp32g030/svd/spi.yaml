@@ -1,0 +1,235 @@
+# section 5.17, page 273
+
+_derive:
+  SPI1: SPI0
+
+SPI0:
+  _modify:
+    # fix up some names, descriptions, and access
+    SPI0_CR:
+      name: "CR"
+      description: "SPI control register"
+    SPI0_WDR:
+      name: "WDR"
+      access: write-only
+    SPI0_RDR:
+      name: "RDR"
+      access: read-only
+    SPI0_IE:
+      name: "IE"
+    SPI0_IF:
+      name: "IF"
+    SPI0_FIFOST:
+      name: "FIFOST"
+      access: read-only
+
+  CR:
+    _add:
+      TF_CLR:
+        description: "Transmit FIFO clear bit."
+        bitRange: "[16:16]"
+      RF_CLR:
+        description: "Receive FIFO clear bit."
+        bitRange: "[15:15]"
+      TXDMAEN:
+        description: "Transmit DMA enable bit."
+        bitRange: "[14:14]"
+      RXDMAEN:
+        description: "Receive DMA enable bit."
+        bitRange: "[13:13]"
+      MSR_SSN:
+        description: "SSN output in master mode."
+        bitRange: "[12:12]"
+      CPHA_DATA_HOLD_S:
+        description: "When CPHA is 1 in slave mode, the data retention timeout in bits."
+        bitRange: "[11:8]"
+      LSB:
+        description: "Serial bit order."
+        bitRange: "[7:7]"
+      MSTR:
+        description: "Master/slave mode selection."
+        bitRange: "[6:6]"
+      CPOL:
+        description: "Clock polarity selection."
+        bitRange: "[5:5]"
+      CPHA:
+        description: "Clock phase selection."
+        bitRange: "[4:4]"
+      SPE:
+        description: "SPI enable."
+        bitRange: "[3:3]"
+      SPR:
+        description: "SPI baud rate selection."
+        bitRange: "[2:0]"
+
+    TF_CLR:
+      CLEAR: [1, "Clear the transmit FIFO."]
+    RF_CLR:
+      CLEAR: [1, "Clear the receive FIFO."]
+    TXDMAEN:
+      DISABLED: [0, "CPU operates the SPI transmit register."]
+      ENABLED: [1, "DMA operates the SPI transmit register."]
+    RXDMAEN:
+      DISABLED: [0, "CPU operates the SPI receive register."]
+      ENABLED: [1, "DMA operates the SPI receive register."]
+    MSR_SSN:
+      LOW: [0, "SSN output low."]
+      HIGH: [1, "SSN output high."]
+    CPHA_DATA_HOLD_S: [0b0000, 0b1111]
+    LSB:
+      MSB: [0, "Most significant bit first."]
+      LSB: [1, "Least significant bit first."]
+    MSTR:
+      SLAVE: [0, "SPI is configured in slave mode."]
+      MASTER: [1, "SPI is configured in master mode."]
+    CPOL:
+      CPOL0: [0, "Clock is idle low, active high."]
+      CPOL1: [1, "Clock is active low, idle high."]
+    CPHA:
+      CPHA0: [0, "Sample data on the first edge of the clock."]
+      CPHA1: [1, "Sample data on the second edge of the clock."]
+    SPE:
+      DISABLED: [0, "SPI system is disabled."]
+      ENABLED: [1, "SPI system is enabled."]
+    SPR:
+      DIV4: [0b000, "System clock divided by 4."]
+      DIV8: [0b001, "System clock divided by 8."]
+      DIV16: [0b010, "System clock divided by 16."]
+      DIV32: [0b011, "System clock divided by 32."]
+      DIV64: [0b100, "System clock divided by 64."]
+      DIV128: [0b101, "System clock divided by 128."]
+      DIV256: [0b110, "System clock divided by 256."]
+      DIV512: [0b111, "System clock divided by 512."]
+
+  WDR:
+    _add:
+      DATA:
+        description: "Write data register."
+        bitRange: "[7:0]"
+        access: write-only
+
+    DATA: [0x00, 0xff]
+
+  RDR:
+    _add:
+      DATA:
+        description: "Read data register."
+        bitRange: "[7:0]"
+        access: read-only
+        readAction: modify
+
+  IE:
+    _add:
+      TXFIFO_HFULL:
+        description: "Transmit FIFO half full interrupt enable."
+        bitRange: "[4:4]"
+      TXFIFO_EMPTY:
+        description: "Transmit FIFO empty interrupt enable."
+        bitRange: "[3:3]"
+      RXFIFO_HFULL:
+        description: "Receive FIFO half full interrupt enable."
+        bitRange: "[2:2]"
+      RXFIFO_FULL:
+        description: "Receive FIFO full interrupt enable."
+        bitRange: "[1:1]"
+      RXFIFO_OVF:
+        description: "Receive FIFO overflow interrupt enable."
+        bitRange: "[0:0]"
+
+    TXFIFO_HFULL:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    TXFIFO_EMPTY:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXFIFO_HFULL:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXFIFO_FULL:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+    RXFIFO_OVF:
+      DISABLED: [0, "The interrupt is disabled."]
+      ENABLED: [1, "The interrupt is enabled."]
+
+  IF:
+    _add:
+      TXFIFO_HFULL:
+        description: "Transmit FIFO half full interrupt enable."
+        bitRange: "[4:4]"
+        modifiedWriteValues: oneToClear
+      TXFIFO_EMPTY:
+        description: "Transmit FIFO empty interrupt enable."
+        bitRange: "[3:3]"
+        modifiedWriteValues: oneToClear
+      RXFIFO_HFULL:
+        description: "Receive FIFO half full interrupt enable."
+        bitRange: "[2:2]"
+        modifiedWriteValues: oneToClear
+      RXFIFO_FULL:
+        description: "Receive FIFO full interrupt enable."
+        bitRange: "[1:1]"
+        modifiedWriteValues: oneToClear
+      RXFIFO_OVF:
+        description: "Receive FIFO overflow interrupt enable."
+        bitRange: "[0:0]"
+        modifiedWriteValues: oneToClear
+
+    TXFIFO_HFULL:
+      SET: [1, "Transmit FIFO is half full."]
+    TXFIFO_EMPTY:
+      SET: [1, "Transmit FIFO is empty."]
+    RXFIFO_HFULL:
+      SET: [1, "Receive FIFO is half full."]
+    RXFIFO_FULL:
+      SET: [1, "Receive FIFO is full."]
+    RXFIFO_OVF:
+      SET: [1, "Receive FIFO overflowed."]
+
+  FIFOST:
+    _add:
+      TF_LEVEL:
+        description: "Transmit FIFO water level."
+        bitRange: "[11:9]"
+      RF_LEVEL:
+        description: "Receive FIFO water level."
+        bitRange: "[8:6]"
+      TFHF:
+        description: "Transmit FIFO half full."
+        bitRange: "[5:5]"
+      TFF:
+        description: "Transmit FIFO full."
+        bitRange: "[4:4]"
+      TFE:
+        description: "Transmit FIFO empty."
+        bitRange: "[3:3]"
+      RFHF:
+        description: "Receive FIFO half full."
+        bitRange: "[2:2]"
+      RFF:
+        description: "Receive FIFO full."
+        bitRange: "[1:1]"
+      RFE:
+        description: "Receive FIFO empty."
+        bitRange: "[0:0]"
+
+    TF_LEVEL: [0b000, 0b111]
+    RF_LEVEL: [0b000, 0b111]
+    TFHF:
+      HALF_FULL: [1, "The transmit FIFO is half full."]
+      NOT_HALF_FULL: [0, "The transmit FIFO is not half full."]
+    TFF:
+      FULL: [1, "The transmit FIFO is full."]
+      NOT_FULL: [0, "The transmit FIFO is not full."]
+    TFE:
+      EMPTY: [1, "The transmit FIFO is empty."]
+      NOT_EMPTY: [0, "The transmit FIFO is not empty."]
+    RFHF:
+      HALF_FULL: [1, "The receive FIFO is half full."]
+      NOT_HALF_FULL: [0, "The receive FIFO is not half full."]
+    RFF:
+      FULL: [1, "The receive FIFO is full."]
+      NOT_FULL: [0, "The receive FIFO is not full."]
+    RFE:
+      EMPTY: [1, "The receive FIFO is empty."]
+      NOT_EMPTY: [0, "The receive FIFO is not empty."]
