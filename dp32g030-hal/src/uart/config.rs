@@ -78,6 +78,8 @@ where
         clocks: &Clocks,
         baud: Hertz,
     ) -> Result<Self, Error> {
+        gate.enable();
+
         // safety: we now own this uart, we can reset what we want
         uart.ctrl().reset();
         uart.baud().reset();
@@ -87,7 +89,6 @@ where
         uart.fc().reset();
         uart.rxto().reset();
 
-        gate.enable();
         let config = Self {
             uart,
             _marker: Default::default(),

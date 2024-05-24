@@ -34,11 +34,13 @@ where
     /// Wrap a timer register into a configurator.
     #[inline(always)]
     pub fn new(mut timer: T, mut gate: Gate<T>) -> Self {
+        gate.enable();
+
         // safety: we own timer exclusively, which gives us control here
         unsafe {
             timer.reset();
         }
-        gate.enable();
+
         Self { timer }
     }
 }
