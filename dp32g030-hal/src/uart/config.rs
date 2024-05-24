@@ -5,7 +5,7 @@ use crate::pac;
 
 use super::{Instance, Port, RxOnly, TxOnly, UartData};
 
-/// Wrap a UART register into a configurator. Returns [None] if baud
+/// Wrap a UART register into a configurator. Returns [Err] if baud
 /// rate is not achievable.
 #[inline(always)]
 pub fn new<Uart>(
@@ -45,13 +45,13 @@ pub struct Config<Uart: Instance, Data = u8> {
 }
 
 /// Choices for TX delay.
-type TxDelay = pac::uart0::ctrl::TX_DLY_A;
+pub type TxDelay = pac::uart0::ctrl::TX_DLY_A;
 
 /// Choices for automatic baud rate detection length.
-type AutoBaudLen = pac::uart0::ctrl::ABRDBIT_A;
+pub type AutoBaudLen = pac::uart0::ctrl::ABRDBIT_A;
 
 /// Choices for parity bit.
-type Parity = pac::uart0::ctrl::PARMD_A;
+pub type Parity = pac::uart0::ctrl::PARMD_A;
 
 /// Flow control presence and polarity.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -69,7 +69,7 @@ impl<Uart> Config<Uart, u8>
 where
     Uart: Instance,
 {
-    /// Wrap a UART register into a configurator. Returns [None] if baud
+    /// Wrap a UART register into a configurator. Returns [Err] if baud
     /// rate is not achievable.
     #[inline(always)]
     pub fn new(
@@ -104,7 +104,7 @@ where
     Uart: Instance,
     Data: UartData,
 {
-    /// Recover the UART register from a Port.
+    /// Recover the UART register from a configurator.
     #[inline(always)]
     pub fn free(self) -> (Uart, Gate<Uart>) {
         // safety: we own this peripheral in self, and are dropping self
