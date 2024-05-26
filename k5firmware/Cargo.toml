@@ -20,13 +20,13 @@ bitbang-hal = "0.3.3"
 bytemuck = "1.16"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
-critical-section = "1"
 display-interface-spi = "0.4"
 dp32g030-hal = { path = "../dp32g030-hal" }
 eeprom24x = "0.6"
 embedded-graphics = "0.8"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7" }
 panic-halt = "0.2"
+spin = { version = "0.9", features = ["portable_atomic"] }
 st7565 = "0.5"
 
 [profile.release]
