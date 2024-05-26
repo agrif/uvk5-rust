@@ -117,11 +117,11 @@ fn main() -> ! {
     // PB7 ST7565 ??? P10
     let lcd_cs = pins_b.b7.into_push_pull_output();
     // PB8 ST7565 clk
-    let lcd_clk = pins_b.b8.into_push_pull_output();
+    let lcd_clk = pins_b.b8.into();
     // PB9 ST7565 a0
     let lcd_a0 = pins_b.b9.into_push_pull_output();
     // PB10 ST7565 si
-    let lcd_mosi = pins_b.b10.into_push_pull_output();
+    let lcd_mosi = pins_b.b10.into();
     // PB11 ST7565 res / swdio / tp14
     let mut lcd_res = pins_b.b11.into_push_pull_output();
 
@@ -152,14 +152,6 @@ fn main() -> ! {
         .split(&clocks);
     let mut delay = timer200k.high.timing();
 
-    // get a timer going at 1MHz for SPI
-    // I *think* SPI can run at 8MHz or higher, but this is bit banged
-    // so lets go slow
-    let timer1m = hal::timer::new(p.TIMER_BASE1, power.gates.timer_base1)
-        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&clocks)
-        .unwrap()
-        .split(&clocks);
-
     // get a timer going at 1kHz for blinks and frames
     let timer1k = hal::timer::new(p.TIMER_BASE2, power.gates.timer_base2)
         .frequency::<{ Hertz::kHz(1).to_Hz() }>(&clocks)
@@ -173,16 +165,12 @@ fn main() -> ! {
     let mut fm = bk1080::Bk1080::new(&mut i2c).unwrap();
     //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
-    // bitbang spi at 500kHz (half the timer frequency)
-    let mut spi_timer = timer1m.low.timing();
-    spi_timer.start_native().unwrap();
-    let spi = bitbang_hal::spi::SPI::new(
-        bitbang_hal::spi::MODE_3,
-        NoPin,
-        lcd_mosi,
-        lcd_clk,
-        spi_timer,
-    );
+    // spi for the display
+    let spi = hal::spi::new(p.SPI0, power.gates.spi0)
+        .divider(hal::spi::ClockDivider::Div32)
+        .mode(hal::spi::Mode::MODE_3)
+        .bit_order(hal::spi::BitOrder::Msb)
+        .master_tx(lcd_clk, lcd_mosi);
 
     // LCD setup
     let lcd_interface = display_interface_spi::SPIInterface::new(spi, lcd_a0, lcd_cs);
