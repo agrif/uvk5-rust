@@ -213,7 +213,7 @@ fn main() -> ! {
     speaker_enable.set_high();
 
     let mut freq = 0;
-    //fm.tune(freq).unwrap();
+    fm.tune(freq).unwrap();
 
     let mut led_blink = timer1k.low.timing();
     led_blink.start_frequency(2.Hz()).unwrap();
@@ -293,7 +293,7 @@ fn main() -> ! {
             let text = alloc::format!(
                 "freq {:?} rssi {:04x?}",
                 875 + 2 * freq,
-                fm.read(bk1080::REG_RSSI).unwrap(),
+                0x0000 // fm.read(bk1080::REG_RSSI).unwrap(),
             );
 
             let text = Text::with_alignment(
