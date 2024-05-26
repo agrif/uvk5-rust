@@ -252,9 +252,8 @@ fn go() -> Result<(), StringError> {
 
     // LCD setup
     let lcd_interface = display_interface_spi::SPIInterface::new(spi, lcd_a0, lcd_cs);
-    let mut page_buffer = st7565::GraphicsPageBuffer::new();
-    let mut lcd =
-        st7565::ST7565::new(lcd_interface, DisplaySpec).into_graphics_mode(&mut page_buffer);
+    let page_buffer = cortex_m::singleton!(PAGE_BUFFER: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new()).unwrap();
+    let mut lcd = st7565::ST7565::new(lcd_interface, DisplaySpec).into_graphics_mode(page_buffer);
     lcd.reset(&mut lcd_res, &mut delay)?;
     lcd.flush()?;
     lcd.set_display_on(true)?;
@@ -299,7 +298,7 @@ fn go() -> Result<(), StringError> {
     update_display.start_frequency(30.Hz())?;
 
     // a buffer in which to store our serial data
-    let mut line_buf = [0; 0x100];
+    let line_buf = cortex_m::singleton!(LINE_BUF: [u8; 0x100] = [0; 0x100]).unwrap();
     let mut line_size = 0;
 
     // a snaking dot that moves across the screen
