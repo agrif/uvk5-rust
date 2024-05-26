@@ -49,25 +49,47 @@ macro_rules! pins {
     };
 }
 
-// total guesses on pin modes
-pins!(xtah, "XTAH port", {
-    enum Xi: XtahXi {
-        A3<Input<Floating>>,
+pins!(spi0, "SPI0", {
+    enum Clk: Spi0Clk {
+        A10<Output<PushPull>>,
+        B8<Output<PushPull>>,
     }
 
-    enum Xo: XtahXo {
-        A4<Output<PushPull>>,
+    enum Mosi: Spi0Mosi {
+        A12<Output<PushPull>>,
+        B10<Output<PushPull>>,
+    }
+
+    enum Miso: Spi0Miso {
+        A11<Input<Floating>>,
+        B9<Input<Floating>>,
+    }
+
+    enum Ssn: Spi0Ssn {
+        A9<Output<PushPull>>,
+        B7<Output<PushPull>>,
     }
 });
 
-// also total guesses on pin modes
-pins!(xtal, "XTAL port", {
-    enum Xi: XtalXi {
-        A1<Input<Floating>>,
+pins!(spi1, "SPI1", {
+    enum Clk: Spi1Clk {
+        B3<Output<PushPull>>,
+        C0<Output<PushPull>>,
     }
 
-    enum Xo: XtalXo {
-        A2<Output<PushPull>>,
+    enum Mosi: Spi1Mosi {
+        B5<Output<PushPull>>,
+        C2<Output<PushPull>>,
+    }
+
+    enum Miso: Spi1Miso {
+        B4<Input<Floating>>,
+        C1<Input<Floating>>,
+    }
+
+    enum Ssn: Spi1Ssn {
+        B2<Output<PushPull>>,
+        B15<Output<PushPull>>,
     }
 });
 
@@ -128,5 +150,27 @@ pins!(uart2, "UART2", {
 
     enum Cts: Uart2Cts {
         C0<Input<Floating>>,
+    }
+});
+
+// total guesses on pin modes
+pins!(xtah, "XTAH port", {
+    enum Xi: XtahXi {
+        A3<Input<Floating>>,
+    }
+
+    enum Xo: XtahXo {
+        A4<Output<PushPull>>,
+    }
+});
+
+// also total guesses on pin modes
+pins!(xtal, "XTAL port", {
+    enum Xi: XtalXi {
+        A1<Input<Floating>>,
+    }
+
+    enum Xo: XtalXo {
+        A2<Output<PushPull>>,
     }
 });
