@@ -68,8 +68,28 @@ jobs:
       - run: cargo build --no-default-features --features "${{ matrix.features }}"
         working-directory: dp32g030-hal
 
-  hal-examples:
-    name: HAL examples
+  board:
+    name: Board
+    runs-on: ubuntu-latest
+    needs: generate-pac
+    strategy:
+      matrix:
+        features: ["", "defmt"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-pac.zip
+          path: dp32g030
+
+      - run: cargo build --no-default-features --features "${{ matrix.features }}"
+        working-directory: k5board
+
+  examples:
+    name: Examples
     runs-on: ubuntu-latest
     # silly: don't need firmware pack, just want summary text after it
     needs: [generate-pac, tool-linux, firmware-pack]
@@ -92,18 +112,30 @@ jobs:
 
       - run: cargo build --release --examples
         working-directory: dp32g030-hal
-      - run: cargo metadata | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/examples.txt
+      - run: cargo metadata | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/hal-examples.txt
         working-directory: dp32g030-hal
+
+      - run: cargo build --release --examples
+        working-directory: k5board
+      - run: cargo metadata | jq -r '.packages[] | select(.name == "k5board") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/board-examples.txt
+        working-directory: k5board
 
       - shell: bash
         working-directory: github-work
         run: |
           echo "### Example Summary" >> $GITHUB_STEP_SUMMARY
-          for name in $(cat examples.txt); do
-            echo "#### $name" >> $GITHUB_STEP_SUMMARY
+          for name in $(cat hal-examples.txt); do
+            echo "#### hal-$name" >> $GITHUB_STEP_SUMMARY
             echo "~~~~" >> $GITHUB_STEP_SUMMARY
-            cp "../dp32g030-hal/target/thumbv6m-none-eabi/release/examples/$name" "examples/$name.elf"
-            ./k5tool pack "examples/$name.elf" "examples/$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
+            cp "../dp32g030-hal/target/thumbv6m-none-eabi/release/examples/$name" "examples/hal-$name.elf"
+            ./k5tool pack "examples/hal-$name.elf" "examples/hal-$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
+            echo "~~~~" >> $GITHUB_STEP_SUMMARY
+          done
+          for name in $(cat board-examples.txt); do
+            echo "#### k5-$name" >> $GITHUB_STEP_SUMMARY
+            echo "~~~~" >> $GITHUB_STEP_SUMMARY
+            cp "../k5board/target/thumbv6m-none-eabi/release/examples/$name" "examples/k5-$name.elf"
+            ./k5tool pack "examples/k5-$name.elf" "examples/k5-$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
             echo "~~~~" >> $GITHUB_STEP_SUMMARY
           done
 
