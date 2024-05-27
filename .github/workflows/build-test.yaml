@@ -112,12 +112,14 @@ jobs:
 
       - run: cargo build --release --examples
         working-directory: dp32g030-hal
-      - run: cargo metadata | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/hal-examples.txt
+      - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/hal-examples.txt
+        working-directory: dp32g030-hal
+      - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "dp32g030-hal") | .version' | tee ../github-work/hal-version.txt
         working-directory: dp32g030-hal
 
       - run: cargo build --release --examples
         working-directory: k5board
-      - run: cargo metadata | jq -r '.packages[] | select(.name == "k5board") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/board-examples.txt
+      - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "k5board") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/board-examples.txt
         working-directory: k5board
 
       - shell: bash
@@ -128,7 +130,7 @@ jobs:
             echo "#### hal-$name" >> $GITHUB_STEP_SUMMARY
             echo "~~~~" >> $GITHUB_STEP_SUMMARY
             cp "../dp32g030-hal/target/thumbv6m-none-eabi/release/examples/$name" "examples/hal-$name.elf"
-            ./k5tool pack "examples/hal-$name.elf" "examples/hal-$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
+            ./k5tool pack --version "*$(cat hal-version.txt)$name" "examples/hal-$name.elf" "examples/hal-$name.packed.bin" | tee -a $GITHUB_STEP_SUMMARY
             echo "~~~~" >> $GITHUB_STEP_SUMMARY
           done
           for name in $(cat board-examples.txt); do

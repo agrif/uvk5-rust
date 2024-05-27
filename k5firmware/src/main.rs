@@ -2,19 +2,19 @@
 #![no_main]
 
 extern crate alloc;
-use core::fmt::Write;
-
-use dp32g030_hal as hal;
 use panic_halt as _;
 
-use hal::prelude::*;
+use core::fmt::Write;
+
+use k5board::hal;
+use k5board::prelude::*;
 
 use hal::gpio::InputOutputPin;
 use hal::time::Hertz;
 
 pub mod bk1080;
 
-hal::version!(env!("CARGO_PKG_VERSION"));
+k5board::version!(env!("CARGO_PKG_VERSION"));
 
 #[global_allocator]
 static ALLOCATOR: alloc_cortex_m::CortexMHeap = alloc_cortex_m::CortexMHeap::empty();

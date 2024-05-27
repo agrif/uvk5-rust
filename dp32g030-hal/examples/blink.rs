@@ -7,8 +7,6 @@ use panic_halt as _;
 use hal::prelude::*;
 use hal::time::Hertz;
 
-hal::version!(concat!(env!("CARGO_PKG_VERSION"), "blink"));
-
 #[cortex_m_rt::entry]
 fn main() -> ! {
     // grab peripherals and initialize the clock

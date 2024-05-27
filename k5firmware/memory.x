@@ -6,5 +6,6 @@ MEMORY
     RAM   (xrw) : ORIGIN = 0x20000000, LENGTH = 16K
 }
 
-/* keep this even if it's not used */
+/* keep this even if it's not used
+   flashing tools can extract and use this */
 EXTERN(VERSION);

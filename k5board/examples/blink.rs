@@ -7,7 +7,7 @@ use panic_halt as _;
 use hal::prelude::*;
 use hal::time::Hertz;
 
-hal::version!(concat!(env!("CARGO_PKG_VERSION"), "blink"));
+k5board::version!(concat!(env!("CARGO_PKG_VERSION"), "blink"));
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
