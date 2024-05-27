@@ -1,37 +1,28 @@
 //! Push-to-talk button.
 // FIXME debounce?
 
-use crate::hal::gpio::{Input, PinMode, PullUp, PC5};
-
-pub type Pin<Mode> = PC5<Mode>;
+use crate::hal::gpio::{Input, PullUp, PC5};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+/// The PTT button.
 pub struct Ptt {
-    pin: Pin<Input<PullUp>>,
+    pin: PC5<Input<PullUp>>,
 }
 
 /// Set up the PTT button for use.
-pub fn new<Mode>(pin: Pin<Mode>) -> Ptt
-where
-    Mode: PinMode,
-{
+pub fn new(pin: PC5<Input<PullUp>>) -> Ptt {
     Ptt::new(pin)
 }
 
 impl Ptt {
     /// Set up the PTT button for use.
-    pub fn new<Mode>(pin: Pin<Mode>) -> Self
-    where
-        Mode: PinMode,
-    {
-        Self {
-            pin: pin.into_mode(),
-        }
+    pub fn new(pin: PC5<Input<PullUp>>) -> Self {
+        Self { pin }
     }
 
     /// Free the PTT pin for use elsewhere.
-    pub fn free(self) -> Pin<Input<PullUp>> {
+    pub fn free(self) -> PC5<Input<PullUp>> {
         self.pin
     }
 

@@ -1,36 +1,27 @@
 //! The flashlight, turn it on or off.
 
-use crate::hal::gpio::{Output, PinMode, PushPull, PC3};
+use crate::hal::gpio::{Output, PushPull, PC3};
 
-pub type Pin<Mode> = PC3<Mode>;
-
+/// The flashlight at the top of the radio.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Flashlight {
-    pin: Pin<Output<PushPull>>,
+    pin: PC3<Output<PushPull>>,
 }
 
 /// Set up the flashlight for use.
-pub fn new<Mode>(pin: Pin<Mode>) -> Flashlight
-where
-    Mode: PinMode,
-{
+pub fn new(pin: PC3<Output<PushPull>>) -> Flashlight {
     Flashlight::new(pin)
 }
 
 impl Flashlight {
     /// Set up the flashlight for use.
-    pub fn new<Mode>(pin: Pin<Mode>) -> Self
-    where
-        Mode: PinMode,
-    {
-        Self {
-            pin: pin.into_mode(),
-        }
+    pub fn new(pin: PC3<Output<PushPull>>) -> Self {
+        Self { pin }
     }
 
     /// Free the flaslight pin for use elsewhere.
-    pub fn free(self) -> Pin<Output<PushPull>> {
+    pub fn free(self) -> PC3<Output<PushPull>> {
         self.pin
     }
 

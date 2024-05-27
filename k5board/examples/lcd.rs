@@ -34,7 +34,7 @@ fn main() -> ! {
         .timing();
 
     // set up backlight and lcd
-    let mut backlight = k5board::backlight::new(pins_b.b6);
+    let mut backlight = k5board::backlight::new(pins_b.b6.into_mode());
     let lcd_parts = k5board::lcd::Parts {
         spi: p.SPI0,
         gate: power.gates.spi0,

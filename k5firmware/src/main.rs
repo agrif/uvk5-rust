@@ -164,7 +164,7 @@ fn go() -> Result<(), StringError> {
     // PA14 battery current
 
     // PB6 backlight
-    let mut backlight = k5board::backlight::new(pins_b.b6);
+    let mut backlight = k5board::backlight::new(pins_b.b6.into_mode());
 
     let lcd_parts = k5board::lcd::Parts {
         spi: p.SPI0,
@@ -190,11 +190,11 @@ fn go() -> Result<(), StringError> {
     // PC2 BK4819 sda
 
     // PC3 flashlight
-    let mut flashlight = k5board::flashlight::new(pins_c.c3);
+    let mut flashlight = k5board::flashlight::new(pins_c.c3.into_mode());
     // PC4 speaker amp on
     let mut speaker_enable = pins_c.c4.into_push_pull_output();
     // PC5 ptt
-    let ptt = k5board::ptt::new(pins_c.c5);
+    let ptt = k5board::ptt::new(pins_c.c5.into_mode());
 
     // get a timer going at 200kHz i2c
     let timer200k = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)

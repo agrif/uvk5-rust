@@ -1,37 +1,28 @@
 //! The backlight, turn it on or off.
 // FIXME pwm?
 
-use crate::hal::gpio::{Output, PinMode, PushPull, PB6};
+use crate::hal::gpio::{Output, PushPull, PB6};
 
-pub type Pin<Mode> = PB6<Mode>;
-
+/// The backlight and keypad light.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Backlight {
-    pin: Pin<Output<PushPull>>,
+    pin: PB6<Output<PushPull>>,
 }
 
 /// Set up the backlight for use.
-pub fn new<Mode>(pin: Pin<Mode>) -> Backlight
-where
-    Mode: PinMode,
-{
+pub fn new(pin: PB6<Output<PushPull>>) -> Backlight {
     Backlight::new(pin)
 }
 
 impl Backlight {
     /// Set up the backlight for use.
-    pub fn new<Mode>(pin: Pin<Mode>) -> Self
-    where
-        Mode: PinMode,
-    {
-        Self {
-            pin: pin.into_mode(),
-        }
+    pub fn new(pin: PB6<Output<PushPull>>) -> Self {
+        Self { pin }
     }
 
     /// Free the flaslight pin for use elsewhere.
-    pub fn free(self) -> Pin<Output<PushPull>> {
+    pub fn free(self) -> PB6<Output<PushPull>> {
         self.pin
     }
 
