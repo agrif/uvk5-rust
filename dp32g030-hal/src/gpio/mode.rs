@@ -6,7 +6,6 @@ pub(super) trait PinModeSealed {
     const VALID: ();
 
     /// Call this to statically assert that [Self::VALID] is set.
-    #[inline(always)]
     #[allow(path_statements)]
     fn static_assert_valid() {
         #[allow(clippy::no_effect)]
@@ -95,7 +94,6 @@ pub struct Input<Pull = Floating> {
 }
 
 impl<Pull> Default for Input<Pull> {
-    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -107,7 +105,6 @@ impl<Pull> core::fmt::Debug for Input<Pull>
 where
     Pull: Default + core::fmt::Debug,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Input").field(&Pull::default()).finish()
     }
@@ -118,7 +115,6 @@ impl<Pull> defmt::Format for Input<Pull>
 where
     Pull: Default + defmt::Format,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Input({})", Pull::default())
     }
@@ -194,7 +190,6 @@ pub struct Output<Mode = PushPull> {
 }
 
 impl<Mode> Default for Output<Mode> {
-    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -206,7 +201,6 @@ impl<Mode> core::fmt::Debug for Output<Mode>
 where
     Mode: Default + core::fmt::Debug,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Output").field(&Mode::default()).finish()
     }
@@ -217,7 +211,6 @@ impl<Mode> defmt::Format for Output<Mode>
 where
     Mode: Default + defmt::Format,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Output({})", Mode::default())
     }
@@ -265,7 +258,6 @@ pub struct Alternate<const A: u8, Mode> {
 }
 
 impl<const A: u8, Mode> Default for Alternate<A, Mode> {
-    #[inline(always)]
     fn default() -> Self {
         Self {
             _marker: Default::default(),
@@ -277,7 +269,6 @@ impl<const A: u8, Mode> core::fmt::Debug for Alternate<A, Mode>
 where
     Mode: Default + core::fmt::Debug,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Alternate")
             .field(&A)
@@ -291,7 +282,6 @@ impl<const A: u8, Mode> defmt::Format for Alternate<A, Mode>
 where
     Mode: Default + defmt::Format,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Alternate({}, {})", A, Mode::default())
     }
@@ -325,31 +315,26 @@ where
 macro_rules! into_mode_aliases {
     ($(vis $vis:tt,)? ($($as:tt)*), ($($args:tt)*)) => {
         /// Convert pin into a floating input.
-        #[inline(always)]
         $($vis)? fn into_floating_input(self) -> $($as)*<$($args)* Input<Floating>> {
             self.into_mode()
         }
 
         /// Convert pin into an input with a pull-up resistor.
-        #[inline(always)]
         $($vis)? fn into_pull_up_input(self) -> $($as)*<$($args)* Input<PullUp>> {
             self.into_mode()
         }
 
         /// Convert pin into an input with a pull-down resistor.
-        #[inline(always)]
         $($vis)? fn into_pull_down_input(self) -> $($as)*<$($args)* Input<PullDown>> {
             self.into_mode()
         }
 
         /// Convert pin into a push-pull output, initially low.
-        #[inline(always)]
         $($vis)? fn into_push_pull_output(self) -> $($as)*<$($args)* Output<PushPull>> {
             self.into_mode_in_state(PinState::Low)
         }
 
         /// Convert a pin into a push-pull output in the given state.
-        #[inline(always)]
         $($vis)? fn into_push_pull_output_in_state(
             self,
             state: PinState,
@@ -358,13 +343,11 @@ macro_rules! into_mode_aliases {
         }
 
         /// Convert pin into an open-drain output, initially low.
-        #[inline(always)]
         $($vis)? fn into_open_drain_output(self) -> $($as)*<$($args)* Output<OpenDrain>> {
             self.into_mode_in_state(PinState::Low)
         }
 
         /// Convert pin into an open-drain output, initially low.
-        #[inline(always)]
         $($vis)? fn into_open_drain_output_in_state(
             self,
             state: PinState,
@@ -378,19 +361,16 @@ macro_rules! into_mode_aliases {
 macro_rules! with_mode_aliases {
     ($(vis $vis:tt,)? ($($as:tt)*), ($($args:tt)*)) => {
         /// Temporarily configure pin as a floating input.
-        #[inline(always)]
         $($vis)? fn with_floating_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<Floating>>) -> R) -> R {
             self.with_mode(f)
         }
 
         /// Temporarily configure pin as an input with a pull-up resistor.
-        #[inline(always)]
         $($vis)? fn with_pull_up_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullUp>>) -> R) -> R {
             self.with_mode(f)
         }
 
         /// Temporarily configure pin as an input with a pull-down resistor.
-        #[inline(always)]
         $($vis)? fn with_pull_down_input<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Input<PullDown>>) -> R) -> R {
             self.with_mode(f)
         }
@@ -399,13 +379,11 @@ macro_rules! with_mode_aliases {
         ///
         /// The initial state is retained if the original mode was
         /// also an output mode. It is otherwise undefined.
-        #[inline(always)]
         $($vis)? fn with_push_pull_output<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Output<PushPull>>) -> R) -> R {
             self.with_mode(f)
         }
 
         /// Temporarily configure pin as a push-pull output in the given state.
-        #[inline(always)]
         $($vis)? fn with_push_pull_output_in_state<R>(
             &mut self,
             state: PinState,
@@ -418,14 +396,12 @@ macro_rules! with_mode_aliases {
         ///
         /// The initial state is retained if the original mode was
         /// also an output mode. It is otherwise undefined.
-        #[inline(always)]
         $($vis)? fn with_open_drain_output<R>(&mut self, f: impl FnOnce(&mut $($as)*<$($args)* Output<OpenDrain>>) -> R) -> R {
             self.with_mode(f)
         }
 
         /// Temporarily configure pin as an open-drain output in the
         /// given state.
-        #[inline(always)]
         $($vis)? fn with_open_drain_output_in_state<R>(
             &mut self,
             state: PinState,

@@ -4,7 +4,6 @@ use crate::time::Hertz;
 use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, High, Low, Timer};
 
 /// Wrap a timer register into a configurator.
-#[inline(always)]
 pub fn new<T>(timer: T, gate: Gate<T>) -> Config<T, 0>
 where
     T: BaseInstance,
@@ -32,7 +31,6 @@ where
     T: BaseInstance,
 {
     /// Wrap a timer register into a configurator.
-    #[inline(always)]
     pub fn new(mut timer: T, mut gate: Gate<T>) -> Self {
         gate.enable();
 
@@ -50,7 +48,6 @@ where
     T: BaseInstance,
 {
     /// Recover the raw itmer register from this configurator.
-    #[inline(always)]
     pub fn free(self) -> (T, Gate<T>) {
         // safety: we own self, which gives us control of this gate
         let mut gate = unsafe { Gate::steal() };
@@ -67,7 +64,6 @@ where
     /// reflects the real resulting frequency of this timer.
     ///
     /// Use [Self::frequency()] instead for a safer interface.
-    #[inline(always)]
     pub unsafe fn divider<const C_HZ: u32>(mut self, div: u16) -> Config<T, C_HZ> {
         // safety: we own self, which gives us control here
         self.timer.set_div(div);
@@ -78,7 +74,6 @@ where
     /// match the given frequency.
     ///
     /// If the frequency is too or high to be matched, returns [Err].
-    #[inline(always)]
     pub fn frequency<const C_HZ: u32>(self, clocks: &Clocks) -> Result<Config<T, C_HZ>, Error> {
         let div = clocks
             .sys_clk()
@@ -100,7 +95,6 @@ where
     ///
     /// This may differ from the statically known frequency, as this
     /// uses run-time corrections to the system clock.
-    #[inline(always)]
     pub fn input_clk(&self, clocks: &Clocks) -> Hertz {
         clocks.sys_clk() / (self.timer.get_div() as u32 + 1)
     }
@@ -109,7 +103,6 @@ where
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Self::frequency()] to configure HZ.
-    #[inline(always)]
     pub fn split(self, clocks: &Clocks) -> Pair<T, HZ> {
         Pair::new(self, clocks)
     }
@@ -123,7 +116,6 @@ where
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Config::frequency()] to configure HZ.
-    #[inline(always)]
     pub fn new(config: Config<T, HZ>, clocks: &Clocks) -> Self {
         static_assert_timer_hz_not_zero::<HZ>();
 
@@ -146,7 +138,6 @@ where
     }
 
     /// Recombine the two parts into a timer configurator.
-    #[inline(always)]
     pub fn free(self) -> Config<T, HZ> {
         // arbitrarily return low timer and drop high
         Config {

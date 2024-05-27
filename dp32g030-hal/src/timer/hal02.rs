@@ -12,7 +12,6 @@ where
 {
     type Time = TimerDuration<HZ>;
 
-    #[inline(always)]
     fn start<T>(&mut self, count: T)
     where
         T: Into<Self::Time>,
@@ -20,7 +19,6 @@ where
         TimingMode::start(self, count.into()).unwrap()
     }
 
-    #[inline(always)]
     fn wait(&mut self) -> block::Result<(), void::Void> {
         TimingMode::wait(self).map_err(|e| match e {
             block::Error::WouldBlock => block::Error::WouldBlock,
@@ -36,7 +34,6 @@ where
 {
     type Error = Error;
 
-    #[inline(always)]
     fn cancel(&mut self) -> Result<(), Self::Error> {
         TimingMode::cancel(self)
     }
@@ -52,7 +49,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayUs<u32>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_us(&mut self, us: u32) {
         self.delay(us.micros()).unwrap()
     }
@@ -63,7 +59,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayUs<u16>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_us(&mut self, us: u16) {
         self.delay_us(us as u32)
     }
@@ -74,7 +69,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayUs<u8>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_us(&mut self, us: u8) {
         self.delay_us(us as u32)
     }
@@ -85,7 +79,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayMs<u32>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_ms(&mut self, ms: u32) {
         self.delay(ms.millis()).unwrap()
     }
@@ -96,7 +89,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayMs<u16>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_ms(&mut self, ms: u16) {
         self.delay_ms(ms as u32)
     }
@@ -107,7 +99,6 @@ impl<Timer, const HZ: u32, const FORCED: bool> hal02blocking::DelayMs<u8>
 where
     Timer: TimingInstance<HZ, FORCED>,
 {
-    #[inline(always)]
     fn delay_ms(&mut self, ms: u8) {
         self.delay_ms(ms as u32)
     }

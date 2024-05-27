@@ -17,27 +17,22 @@ impl<Spi, Miso, Mosi> hal1::SpiBus<u8> for Port<Spi, Master, Miso, Mosi, ()>
 where
     Spi: Instance,
 {
-    #[inline(always)]
     fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         Port::read(self, words)
     }
 
-    #[inline(always)]
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         Port::write(self, words)
     }
 
-    #[inline(always)]
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
         Port::transfer(self, read, write)
     }
 
-    #[inline(always)]
     fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         Port::transfer_in_place(self, words)
     }
 
-    #[inline(always)]
     fn flush(&mut self) -> Result<(), Self::Error> {
         block::block!(Port::flush(self))
     }
@@ -47,7 +42,6 @@ impl<Spi, Miso, Mosi> hal1::SpiDevice<u8> for Port<Spi, Master, Miso, Mosi, Spi:
 where
     Spi: Instance,
 {
-    #[inline(always)]
     fn transaction(
         &mut self,
         operations: &mut [hal1::Operation<'_, u8>],
@@ -92,12 +86,10 @@ impl<Spi, Miso, Mosi> hal1nb::FullDuplex<u8> for Port<Spi, Master, Miso, Mosi, (
 where
     Spi: Instance,
 {
-    #[inline(always)]
     fn read(&mut self) -> block::Result<u8, Self::Error> {
         Port::read_one(self)
     }
 
-    #[inline(always)]
     fn write(&mut self, word: u8) -> block::Result<(), Self::Error> {
         Port::write_one(self, word)
     }

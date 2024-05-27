@@ -29,7 +29,6 @@ pub enum Error {
 }
 
 impl core::fmt::Display for Error {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "Timer Error {:?}", self)
     }
@@ -96,7 +95,6 @@ pub struct System {
 }
 
 impl core::fmt::Debug for System {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("System")
             .field("timer", &"SYST")
@@ -107,7 +105,6 @@ impl core::fmt::Debug for System {
 
 #[cfg(feature = "defmt")]
 impl defmt::Format for System {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "System {{ timer: SYST, input_clk: {} }}", self.input_clk)
     }
@@ -121,25 +118,21 @@ macro_rules! timing_methods {
         /// timer, and instead calculates ticks from the dynamic
         /// `sys_clk` value. This *might* be more accurate, at the cost
         /// of runtime and code size.
-        #[inline(always)]
         pub fn timing_hz<const C_HZ: u32>(self) -> TimingMode<Self, C_HZ, true> {
             TimingMode::new(self)
         }
 
         /// Use this timer in [TimingMode] with forced nanosecond precision.
-        #[inline(always)]
         pub fn timing_ns(self) -> TimingModeNs<Self> {
             self.timing_hz()
         }
 
         /// Use this timer in [TimingMode] with forced microsecond precision.
-        #[inline(always)]
         pub fn timing_us(self) -> TimingModeUs<Self> {
             self.timing_hz()
         }
 
         /// Use this timer in [TimingMode] with forced millisecond precision.
-        #[inline(always)]
         pub fn timing_ms(self) -> TimingModeMs<Self> {
             self.timing_hz()
         }
@@ -147,7 +140,6 @@ macro_rules! timing_methods {
 
     (native) => {
         /// Use this timer in [TimingMode] with native precision.
-        #[inline(always)]
         pub fn timing(self) -> TimingMode<Self, HZ> {
             TimingMode::new(self)
         }
@@ -165,14 +157,12 @@ where
 }
 
 /// Create the system timer from the [pac::SYST] register.
-#[inline(always)]
 pub fn new_system(syst: pac::SYST, clocks: &Clocks) -> System {
     System::new(syst, clocks)
 }
 
 impl System {
     /// Create the system timer from the [pac::SYST] register.
-    #[inline(always)]
     pub fn new(syst: pac::SYST, clocks: &Clocks) -> Self {
         Self {
             timer: syst,
@@ -181,7 +171,6 @@ impl System {
     }
 
     /// Recover the [pac::SYST] register from this timer.
-    #[inline(always)]
     pub fn free(self) -> pac::SYST {
         // safety: self owns SYST, and we're dropping self here
         unsafe { pac::CorePeripherals::steal().SYST }

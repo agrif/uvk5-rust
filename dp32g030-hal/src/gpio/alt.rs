@@ -21,7 +21,6 @@ macro_rules! pin {
 
         $(
             impl<Mode> From<$var<Mode>> for $pinname where Mode: PinMode {
-                #[inline(always)]
                 fn from(value: $var<Mode>) -> Self {
                     Self::$var(value.into_mode())
                 }

@@ -34,7 +34,6 @@ impl<Dev> core::fmt::Debug for Gate<Dev>
 where
     Dev: Device,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Gate")
             .field(&Dev::NAME)
@@ -48,7 +47,6 @@ impl<Dev> defmt::Format for Gate<Dev>
 where
     Dev: Device,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Gate(");
         Dev::defmt(f);
@@ -62,7 +60,6 @@ where
 {
     /// # Safety
     /// This reads and writes the bit for Dev in `dev_clk_gate`.
-    #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {
             _marker: Default::default(),
@@ -70,26 +67,22 @@ where
     }
 
     /// Set this device to be on or off.
-    #[inline(always)]
     pub fn set_enabled(&mut self, enabled: bool) {
         // safety: owning self is owning the right to modify this gate
         unsafe { Dev::set_enabled(enabled) }
     }
 
     /// Set this device to be on.
-    #[inline(always)]
     pub fn enable(&mut self) {
         self.set_enabled(true);
     }
 
     /// Set this device to be off.
-    #[inline(always)]
     pub fn disable(&mut self) {
         self.set_enabled(false);
     }
 
     /// Is this device enabled?
-    #[inline(always)]
     pub fn is_enabled(&self) -> bool {
         Dev::is_enabled()
     }
@@ -108,7 +101,6 @@ macro_rules! dev_gate_impl {
         impl Gates {
             /// # Safety
             /// This peripheral reads and writes `SYSCON.dev_clk_gate()`.
-            #[inline(always)]
             pub(crate) unsafe fn steal() -> Self {
                 Self {
                     $($name: Gate::steal()),*
@@ -126,7 +118,6 @@ macro_rules! dev_gate_impl {
         impl DeviceSealed for pac::$dev {
             const NAME: &'static str = stringify!($dev);
 
-            #[inline(always)]
             unsafe fn set_enabled(enabled: bool) {
                 // safety: we only access our bit in dev_clk_gate, atomically
                 let syscon = pac::SYSCON::steal();
@@ -137,7 +128,6 @@ macro_rules! dev_gate_impl {
                 }
             }
 
-            #[inline(always)]
             fn is_enabled() -> bool {
                 // safety: we only read our bit in dev_clk_gate
                 unsafe {
@@ -146,7 +136,6 @@ macro_rules! dev_gate_impl {
             }
 
             #[cfg(feature = "defmt")]
-            #[inline(always)]
             fn defmt(f: defmt::Formatter) {
                 defmt::write!(f, "{}", stringify!($dev));
             }

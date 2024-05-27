@@ -5,7 +5,6 @@ use crate::pac;
 use super::{Instance, MasterPort, MasterRx, MasterTx};
 
 /// Wrap an SPI peripheral into a configurator.
-#[inline(always)]
 pub fn new<Spi>(spi: Spi, gate: Gate<Spi>) -> Config<Spi>
 where
     Spi: Instance,
@@ -71,7 +70,6 @@ where
     Spi: Instance,
 {
     /// Wrap an SPI register into a configurator.
-    #[inline(always)]
     pub fn new(spi: Spi, mut gate: Gate<Spi>) -> Self {
         gate.enable();
 
@@ -84,7 +82,6 @@ where
     }
 
     /// Recover the SPI register from a configurator.
-    #[inline(always)]
     pub fn free(self) -> (Spi, Gate<Spi>) {
         // safety: we own this peripheral in self, and are dropping self
         unsafe {
@@ -95,7 +92,6 @@ where
     }
 
     /// Set the clock divider.
-    #[inline(always)]
     pub fn divider(self, div: ClockDivider) -> Self {
         // safety: we are sole owner of this spi, writing valid bits
         unsafe {
@@ -106,13 +102,11 @@ where
     }
 
     /// Get the clock divider.
-    #[inline(always)]
     pub fn get_divider(&self) -> ClockDivider {
         self.spi.cr().read().spr().variant()
     }
 
     /// Set the clock phase.
-    #[inline(always)]
     pub fn phase(self, phase: Phase) -> Self {
         // safety: we are sole owner of this spi, writing valid bits
         unsafe {
@@ -126,13 +120,11 @@ where
     }
 
     /// Get the clock phase.
-    #[inline(always)]
     pub fn get_phase(&self) -> Phase {
         self.spi.cr().read().cpha().variant()
     }
 
     /// Set the clock polarity.
-    #[inline(always)]
     pub fn polarity(self, polarity: Polarity) -> Self {
         // safety: we are sole owner of this spi, writing valid bits
         unsafe {
@@ -146,19 +138,16 @@ where
     }
 
     /// Get the clock polarity.
-    #[inline(always)]
     pub fn get_polarity(&self) -> Polarity {
         self.spi.cr().read().cpol().variant()
     }
 
     /// Set the mode.
-    #[inline(always)]
     pub fn mode(self, mode: Mode) -> Self {
         self.phase(mode.phase).polarity(mode.polarity)
     }
 
     /// Get the mode.
-    #[inline(always)]
     pub fn get_mode(&self) -> Mode {
         Mode {
             phase: self.get_phase(),
@@ -167,7 +156,6 @@ where
     }
 
     /// Set the bit order.
-    #[inline(always)]
     pub fn bit_order(self, bit_order: BitOrder) -> Self {
         // safety: we are sole owner of this spi, writing valid bits
         unsafe {
@@ -181,12 +169,10 @@ where
     }
 
     /// Get the bit order.
-    #[inline(always)]
     pub fn get_bit_order(&self) -> BitOrder {
         self.spi.cr().read().lsb().variant()
     }
 
-    #[inline(always)]
     fn master_mode(self) -> Self {
         // safety: we are the sole owner of this spi, writing valid bits
         unsafe {
@@ -196,14 +182,12 @@ where
     }
 
     /// Get the configured [MasterPort] using the provided pins.
-    #[inline(always)]
     pub fn master(self, clk: Spi::Clk, miso: Spi::Miso, mosi: Spi::Mosi) -> MasterPort<Spi> {
         MasterPort::new_master(self.master_mode(), clk, miso, mosi)
     }
 
     /// Get the configured [MasterPort] using the provided pins, with
     /// slave select.
-    #[inline(always)]
     pub fn master_ssn(
         self,
         clk: Spi::Clk,
@@ -215,14 +199,12 @@ where
     }
 
     /// Get the configured [MasterRx] using the provided pins.
-    #[inline(always)]
     pub fn master_rx(self, clk: Spi::Clk, miso: Spi::Miso) -> MasterRx<Spi> {
         MasterRx::new_master_rx(self.master_mode(), clk, miso)
     }
 
     /// Get the configured [MasterRx] using the provided pins, with
     /// slave select.
-    #[inline(always)]
     pub fn master_rx_ssn(
         self,
         clk: Spi::Clk,
@@ -233,14 +215,12 @@ where
     }
 
     /// Get the configured [MasterTx] using the provided pins.
-    #[inline(always)]
     pub fn master_tx(self, clk: Spi::Clk, mosi: Spi::Mosi) -> MasterTx<Spi> {
         MasterTx::new_master_tx(self.master_mode(), clk, mosi)
     }
 
     /// Get the configured [MasterTx] using the provided pins, with
     /// slave select.
-    #[inline(always)]
     pub fn master_tx_ssn(
         self,
         clk: Spi::Clk,

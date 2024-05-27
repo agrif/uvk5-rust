@@ -23,7 +23,6 @@ mod pin;
 pub use pin::*;
 
 /// Wrap the GPIO registers into ports.
-#[inline(always)]
 pub fn new(portcon: pac::PORTCON, a: pac::GPIOA, b: pac::GPIOB, c: pac::GPIOC) -> Ports {
     Ports::new(portcon, a, b, c)
 }
@@ -40,7 +39,6 @@ pub struct Ports {
 impl Ports {
     /// # Safety
     /// This accesses PORTCON and all GPIO registers.
-    #[inline(always)]
     unsafe fn steal() -> Self {
         Self {
             port_a: port_a::Port::steal(),
@@ -50,14 +48,12 @@ impl Ports {
     }
 
     /// Wrap the GPIO registers into ports.
-    #[inline(always)]
     pub fn new(_portcon: pac::PORTCON, _a: pac::GPIOA, _b: pac::GPIOB, _c: pac::GPIOC) -> Self {
         // safety: we own the unique tokens that let us control these registers
         unsafe { Self::steal() }
     }
 
     /// Recover the raw GPIO registers from the wrapped ports.
-    #[inline(always)]
     pub fn free(self) -> (pac::PORTCON, pac::GPIOA, pac::GPIOB, pac::GPIOC) {
         // safety: we have all of the pins, and destroy them here, so these
         // registers are safe to use again
@@ -92,7 +88,6 @@ macro_rules! port_mod {
                 impl Pins {
                     // safety: must be the only thing to write to this
                     // port in SYSCON and GPIO
-                    #[inline(always)]
                     unsafe fn steal() -> Self {
                         Self {
                             $([<$p $N>]: Pin::steal()),+
@@ -100,7 +95,6 @@ macro_rules! port_mod {
                     }
 
                     /// Enable this port and get access to its pins.
-                    #[inline(always)]
                     pub fn enable(_port: Port, mut gate: Gate<$reg>) -> Self {
                         gate.enable();
 
@@ -111,7 +105,6 @@ macro_rules! port_mod {
                     }
 
                     /// Disable this port and regain its original components.
-                    #[inline(always)]
                     pub fn disable(self) -> (Port, Gate<$reg>) {
                         // safety: we have all the pins here together,
                         // we join them back up and turn off the gate
@@ -129,7 +122,6 @@ macro_rules! port_mod {
                 }
 
                 impl core::fmt::Debug for Port {
-                    #[allow(clippy::missing_inline_in_public_items)]
                     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                         f.debug_tuple("Port").field(&stringify!($reg)).finish()
                     }
@@ -137,7 +129,6 @@ macro_rules! port_mod {
 
                 #[cfg(feature = "defmt")]
                 impl defmt::Format for Port {
-                    #[allow(clippy::missing_inline_in_public_items)]
                     fn format(&self, f: defmt::Formatter) {
                         defmt::write!(f, "Port({})", stringify!($reg));
                     }
@@ -146,13 +137,11 @@ macro_rules! port_mod {
                 impl Port {
                     // safety: this provides access to the pins for this
                     // GPIO in PORTCON and its own register
-                    #[inline(always)]
                     pub(super) unsafe fn steal() -> Self {
                         Self { _private: () }
                     }
 
                     /// Enable this port and get access to its pins.
-                    #[inline(always)]
                     pub fn enable(self, gate: Gate<$reg>) -> Pins {
                         Pins::enable(self, gate)
                     }
@@ -170,7 +159,6 @@ macro_rules! port_mod {
 
             $(
                 // re-export the PA0 etc. aliases
-                #[doc(inline)]
                 pub use [<port_ $p>]::[<P $bigp $N>];
             )*
         }

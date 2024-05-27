@@ -7,7 +7,6 @@ use super::{Instance, Port, RxOnly, TxOnly, UartData};
 
 /// Wrap a UART register into a configurator. Returns [Err] if baud
 /// rate is not achievable.
-#[inline(always)]
 pub fn new<Uart>(
     uart: Uart,
     gate: Gate<Uart>,
@@ -29,7 +28,6 @@ pub enum Error {
 }
 
 impl core::fmt::Display for Error {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "UART Error {:?}", self)
     }
@@ -71,7 +69,6 @@ where
 {
     /// Wrap a UART register into a configurator. Returns [Err] if baud
     /// rate is not achievable.
-    #[inline(always)]
     pub fn new(
         uart: Uart,
         mut gate: Gate<Uart>,
@@ -105,7 +102,6 @@ where
     Data: UartData,
 {
     /// Recover the UART register from a configurator.
-    #[inline(always)]
     pub fn free(self) -> (Uart, Gate<Uart>) {
         // safety: we own this peripheral in self, and are dropping self
         unsafe {
@@ -116,7 +112,6 @@ where
     }
 
     /// Set delay in bits between stop and start bits.
-    #[inline(always)]
     pub fn tx_delay(self, delay: TxDelay) -> Self {
         // safety: we are sole owner of uart
         unsafe {
@@ -127,13 +122,11 @@ where
     }
 
     /// Get the delay in bits between stop and start bits.
-    #[inline(always)]
     pub fn get_tx_delay(&self) -> TxDelay {
         self.uart.ctrl().read().tx_dly().variant()
     }
 
     /// Set the automatic baud rate detection length.
-    #[inline(always)]
     pub fn auto_baud_len(self, len: AutoBaudLen) -> Self {
         // safety: we are sole owner of uart
         unsafe {
@@ -144,13 +137,11 @@ where
     }
 
     /// Get the automatic baud rate detection length.
-    #[inline(always)]
     pub fn get_auto_baud_len(&self) -> AutoBaudLen {
         self.uart.ctrl().read().abrdbit().variant()
     }
 
     /// Set parity mode. [None] means no parity bit.
-    #[inline(always)]
     pub fn parity(self, parity: Option<Parity>) -> Self {
         // safety: we are sole owner of uart
         unsafe {
@@ -169,7 +160,6 @@ where
     }
 
     /// Get parity mode. [None] means no parity bit.
-    #[inline(always)]
     pub fn get_parity(&self) -> Option<Parity> {
         if self.uart.ctrl().read().paren().is_enabled() {
             Some(self.uart.ctrl().read().parmd().variant())
@@ -179,7 +169,6 @@ where
     }
 
     /// Set nine-bit mode.
-    #[inline(always)]
     pub fn ninebit(self) -> Config<Uart, u16> {
         // safety: we are sole owner of uart
         unsafe {
@@ -192,7 +181,6 @@ where
     }
 
     /// Set eight-bit mode.
-    #[inline(always)]
     pub fn eightbit(self) -> Config<Uart, u8> {
         // safety: we are sole owner of uart
         unsafe {
@@ -205,13 +193,11 @@ where
     }
 
     /// Is this a nine-bit UART?
-    #[inline(always)]
     pub fn is_ninebit(&self) -> bool {
         Data::NINEBIT
     }
 
     /// Set the baud rate. Returns none if `baud` is not achievable.
-    #[inline(always)]
     pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Result<Self, Error> {
         let counter = clocks
             .sys_clk()
@@ -234,19 +220,16 @@ where
     }
 
     /// Get the baud rate.
-    #[inline(always)]
     pub fn get_baud(&self, clocks: &Clocks) -> Hertz {
         clocks.sys_clk() / self.uart.baud().read().baud().bits() as u32
     }
 
     /// Get the configured [Port] using the provided pins.
-    #[inline(always)]
     pub fn port(self, rx: Uart::Rx, tx: Uart::Tx) -> Port<Uart, Data> {
         self.port_flow(rx, tx, Flow::None, Flow::None)
     }
 
     /// Get the configured [Port] using the provided pins and flow control.
-    #[inline(always)]
     pub fn port_flow(
         self,
         rx: Uart::Rx,
@@ -258,25 +241,21 @@ where
     }
 
     /// Get the configured [RxOnly] using the provided pins.
-    #[inline(always)]
     pub fn rx(self, rx: Uart::Rx) -> RxOnly<Uart, Data> {
         self.rx_flow(rx, Flow::None)
     }
 
     /// Get the configured [RxOnly] using the provided pins and flow control.
-    #[inline(always)]
     pub fn rx_flow(self, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> RxOnly<Uart, Data> {
         RxOnly::new(self, rx, rts)
     }
 
     /// Get the configured [TxOnly] using the provided pins.
-    #[inline(always)]
     pub fn tx(self, tx: Uart::Tx) -> TxOnly<Uart, Data> {
         self.tx_flow(tx, Flow::None)
     }
 
     /// Get the configured [TxOnly] using the provided pins and flow control.
-    #[inline(always)]
     pub fn tx_flow(self, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> TxOnly<Uart, Data> {
         TxOnly::new(self, tx, cts)
     }

@@ -15,7 +15,6 @@ pub enum PinState {
 }
 
 impl From<bool> for PinState {
-    #[inline(always)]
     fn from(value: bool) -> Self {
         if value {
             Self::High
@@ -28,7 +27,6 @@ impl From<bool> for PinState {
 impl core::ops::Not for PinState {
     type Output = Self;
 
-    #[inline(always)]
     fn not(self) -> Self {
         match self {
             Self::High => Self::Low,
@@ -39,13 +37,11 @@ impl core::ops::Not for PinState {
 
 impl PinState {
     /// Is the pin high?
-    #[inline(always)]
     pub fn is_high(&self) -> bool {
         *self == Self::High
     }
 
     /// Is the pin low?
-    #[inline(always)]
     pub fn is_low(&self) -> bool {
         *self == Self::Low
     }
@@ -72,7 +68,6 @@ impl<const P: char, const N: u8, Mode> core::fmt::Debug for Pin<P, N, Mode>
 where
     Mode: PinMode,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("Pin")
             .field(&P)
@@ -87,7 +82,6 @@ impl<const P: char, const N: u8, Mode> defmt::Format for Pin<P, N, Mode>
 where
     Mode: PinMode + defmt::Format,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "Pin({}, {}, {})", P, N, Mode::default())
     }
@@ -207,7 +201,6 @@ where
     /// # Safety
     /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO. You should also be sure Mode matches the pin's mode.
-    #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Pin {
             _marker: Default::default(),
@@ -215,31 +208,26 @@ where
     }
 
     /// Get the pin number of this pin.
-    #[inline(always)]
     pub fn pin(&self) -> u8 {
         N
     }
 
     /// Get the port of this pin.
-    #[inline(always)]
     pub fn port(&self) -> char {
         P
     }
 
     /// Erase the pin number and port from the type.
-    #[inline(always)]
     pub fn erase(self) -> ErasedPin<Mode> {
         ErasedPin::erase(self)
     }
 
     /// Erase the pin number from the type.
-    #[inline(always)]
     pub fn erase_number(self) -> PartiallyErasedPin<P, Mode> {
         PartiallyErasedPin::erase(self)
     }
 
     /// Convert pin into a new mode.
-    #[inline(always)]
     pub fn into_mode<M>(self) -> Pin<P, N, M>
     where
         M: PinMode,
@@ -264,7 +252,6 @@ where
     }
 
     /// Convert pin into a new mode, in the given initial state.
-    #[inline(always)]
     pub fn into_mode_in_state<M>(mut self, state: PinState) -> Pin<P, N, Output<M>>
     where
         Output<M>: PinMode,
@@ -278,7 +265,6 @@ where
     /// If this is an output mode, the initial state is retained if
     /// the original mode was also an output mode. It is otherwise
     /// undefined.
-    #[inline(always)]
     pub fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Pin<P, N, M>) -> R) -> R
     where
         M: PinMode,
@@ -298,7 +284,6 @@ where
 
     /// Temporarily configure this pin in a new mode, in the given
     /// initial state.
-    #[inline(always)]
     pub fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
@@ -312,7 +297,6 @@ where
     }
 
     // internal helper to read data register
-    #[inline(always)]
     fn read_data(&self) -> PinState {
         // safety: we control these registers, and can read them
         unsafe {
@@ -330,7 +314,6 @@ where
     }
 
     // internal helper to write data register
-    #[inline(always)]
     pub(super) fn write_data(&mut self, state: PinState) {
         // safety: we control these registers and can write them
         unsafe {
@@ -366,7 +349,6 @@ where
     super::mode::with_mode_aliases!(vis pub, (Pin), (P, N,));
 
     /// Convert pin into an alternate mode but otherwise preserve state.
-    #[inline(always)]
     pub fn into_alternate<const A: u8>(self) -> Pin<P, N, Alternate<A, Mode::Inner>>
     where
         Alternate<A, Mode::Inner>: PinMode,
@@ -376,7 +358,6 @@ where
 
     /// Convert pin in alternate mode into a regular GPIO pin, but
     /// otherwise preserve state.
-    #[inline(always)]
     pub fn into_gpio(self) -> Pin<P, N, Mode::Inner> {
         self.into_mode()
     }
@@ -387,19 +368,16 @@ where
     Input<Pull>: PinMode,
 {
     /// Read the input pin.
-    #[inline(always)]
     pub fn read(&self) -> PinState {
         self.read_data()
     }
 
     /// Is the input pin high?
-    #[inline(always)]
     pub fn is_high(&self) -> bool {
         self.read().is_high()
     }
 
     /// Is the input pin low?
-    #[inline(always)]
     pub fn is_low(&self) -> bool {
         self.read().is_low()
     }
@@ -410,43 +388,36 @@ where
     Output<Mode>: PinMode,
 {
     /// Get the current output drive state.
-    #[inline(always)]
     pub fn get_state(&self) -> PinState {
         self.read_data()
     }
 
     /// Is the output set high?
-    #[inline(always)]
     pub fn is_set_high(&self) -> bool {
         self.get_state().is_high()
     }
 
     /// Is the output set low?
-    #[inline(always)]
     pub fn is_set_low(&self) -> bool {
         self.get_state().is_low()
     }
 
     /// Set the current output drive state.
-    #[inline(always)]
     pub fn set_state(&mut self, state: PinState) {
         self.write_data(state);
     }
 
     /// Set the current output high.
-    #[inline(always)]
     pub fn set_high(&mut self) {
         self.set_state(PinState::High);
     }
 
     /// Set the current output low.
-    #[inline(always)]
     pub fn set_low(&mut self) {
         self.set_state(PinState::Low);
     }
 
     /// Toggle the output.
-    #[inline(always)]
     pub fn toggle(&mut self) {
         // FIXME this could be done with atomic xor
         self.set_state(!self.get_state());
@@ -459,12 +430,10 @@ where
 {
     type Mode = Mode;
 
-    #[inline(always)]
     fn pin(&self) -> u8 {
         Pin::pin(self)
     }
 
-    #[inline(always)]
     fn port(&self) -> char {
         Pin::port(self)
     }
@@ -476,7 +445,6 @@ where
 {
     type As<M> = Pin<P, N, M>;
 
-    #[inline(always)]
     fn into_mode<M>(self) -> Self::As<M>
     where
         M: PinMode,
@@ -484,7 +452,6 @@ where
         Pin::into_mode(self)
     }
 
-    #[inline(always)]
     fn into_mode_in_state<M>(self, state: PinState) -> Self::As<Output<M>>
     where
         Output<M>: PinMode,
@@ -499,7 +466,6 @@ where
 {
     type With<M> = Pin<P, N, M>;
 
-    #[inline(always)]
     fn with_mode<M, R>(&mut self, f: impl FnOnce(&mut Self::With<M>) -> R) -> R
     where
         M: PinMode,
@@ -507,7 +473,6 @@ where
         Pin::with_mode(self, f)
     }
 
-    #[inline(always)]
     fn with_mode_in_state<M, R>(
         &mut self,
         state: PinState,
@@ -526,7 +491,6 @@ where
 {
     type Error = PartiallyErasedPin<P, Mode>;
 
-    #[inline(always)]
     fn try_from(value: PartiallyErasedPin<P, Mode>) -> Result<Self, Self::Error> {
         value.restore()
     }
@@ -538,7 +502,6 @@ where
 {
     type Error = ErasedPin<Mode>;
 
-    #[inline(always)]
     fn try_from(value: ErasedPin<Mode>) -> Result<Self, Self::Error> {
         value.restore()
     }

@@ -11,7 +11,6 @@ pub struct XtalPort {
 }
 
 impl core::fmt::Debug for XtalPort {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("XtalPort").finish()
     }
@@ -19,7 +18,6 @@ impl core::fmt::Debug for XtalPort {
 
 #[cfg(feature = "defmt")]
 impl defmt::Format for XtalPort {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "XtalPort");
     }
@@ -33,7 +31,6 @@ pub struct XtahPort {
 }
 
 impl core::fmt::Debug for XtahPort {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_tuple("XtahPort").finish()
     }
@@ -41,7 +38,6 @@ impl core::fmt::Debug for XtahPort {
 
 #[cfg(feature = "defmt")]
 impl defmt::Format for XtahPort {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "XtahPort");
     }
@@ -59,7 +55,6 @@ struct SourceFreqs {
 /// Choices for ADC sample clock, dividing the system clock.
 pub type SaradcSel = pac::syscon::clk_sel::SARADC_SMPL_CLK_SEL_W_A;
 
-#[inline(always)]
 fn saradc_div(d: SaradcSel) -> u32 {
     // cheating a bit to avoid a match
     // 0 -> 1, 1 -> 2, 2 -> 4, 3 -> 8
@@ -77,7 +72,6 @@ pub enum RtcSel {
 }
 
 impl RtcSel {
-    #[inline(always)]
     fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             // unwrap: we have an XtalPort token
@@ -86,7 +80,6 @@ impl RtcSel {
         }
     }
 
-    #[inline(always)]
     fn xtal(&self) -> bool {
         match self {
             Self::Xtal(_) => true,
@@ -108,7 +101,6 @@ pub enum SysSel {
 }
 
 impl SysSel {
-    #[inline(always)]
     fn rchf(&self) -> Option<bool> {
         match self {
             Self::Rchf24 => Some(false),
@@ -117,7 +109,6 @@ impl SysSel {
         }
     }
 
-    #[inline(always)]
     fn xtah(&self) -> bool {
         match self {
             Self::Rchf24 => false,
@@ -126,7 +117,6 @@ impl SysSel {
         }
     }
 
-    #[inline(always)]
     fn xtal(&self) -> bool {
         match self {
             Self::Rchf24 => false,
@@ -135,7 +125,6 @@ impl SysSel {
         }
     }
 
-    #[inline(always)]
     fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
@@ -148,7 +137,6 @@ impl SysSel {
 /// Choices for clock divider amount.
 pub type DivSel = pac::syscon::clk_sel::DIV_CLK_SEL_A;
 
-#[inline(always)]
 fn div_div(d: DivSel) -> u32 {
     // cheating a bit to avoid a match
     // 0 -> 1, 1 -> 2, 2 -> 4, 3 -> 8
@@ -174,7 +162,6 @@ pub enum SrcSel {
 }
 
 impl SrcSel {
-    #[inline(always)]
     fn rchf(&self) -> Option<bool> {
         match self {
             Self::Rchf24 => Some(false),
@@ -186,7 +173,6 @@ impl SrcSel {
         }
     }
 
-    #[inline(always)]
     fn xtah(&self) -> bool {
         match self {
             Self::Rchf24 => false,
@@ -198,7 +184,6 @@ impl SrcSel {
         }
     }
 
-    #[inline(always)]
     fn xtal(&self) -> bool {
         match self {
             Self::Rchf24 => false,
@@ -210,7 +195,6 @@ impl SrcSel {
         }
     }
 
-    #[inline(always)]
     fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
@@ -229,7 +213,6 @@ impl SrcSel {
 /// PLL numerator.
 pub type PllN = pac::syscon::pll_ctrl::PLL_N_A;
 
-#[inline(always)]
 fn pll_n(n: PllN) -> u32 {
     // cheating, to avoid a huge match table
     // 0 -> 2, 1 -> 4, 2 -> 6, etc.
@@ -239,7 +222,6 @@ fn pll_n(n: PllN) -> u32 {
 /// PLL denominator.
 pub type PllM = pac::syscon::pll_ctrl::PLL_M_A;
 
-#[inline(always)]
 fn pll_m(m: PllM) -> u32 {
     // cheating, to avoid a huge match table
     // 0 -> 1, 1 -> 2, 2 -> 3, etc.
@@ -259,7 +241,6 @@ pub enum PllSel {
 }
 
 impl PllSel {
-    #[inline(always)]
     fn rchf(&self) -> Option<bool> {
         match self {
             Self::Rchf24 => Some(false),
@@ -268,7 +249,6 @@ impl PllSel {
         }
     }
 
-    #[inline(always)]
     fn xtah(&self) -> bool {
         match self {
             Self::Rchf24 => false,
@@ -277,7 +257,6 @@ impl PllSel {
         }
     }
 
-    #[inline(always)]
     fn freq(&self, freqs: &SourceFreqs) -> Hertz {
         match self {
             Self::Rchf24 => freqs.rchf_high / 2,
@@ -312,25 +291,21 @@ pub struct Clocks {
 
 impl Clocks {
     /// Get the system clock, in Hz.
-    #[inline(always)]
     pub fn sys_clk(&self) -> Hertz {
         self.sys_clk
     }
 
     /// Get the ADC sample clock, in Hz.
-    #[inline(always)]
     pub fn saradc_sample_clk(&self) -> Hertz {
         self.saradc_sample_clk
     }
 
     /// Get the RTC clock, in Hz.
-    #[inline(always)]
     pub fn rtc_clk(&self) -> Hertz {
         self.rtc_clk
     }
 
     /// Get the IWDT clock, in Hz.
-    #[inline(always)]
     pub fn iwdt_clk(&self) -> Hertz {
         self.iwdt_clk
     }
@@ -341,7 +316,6 @@ impl ClockConfig {
     /// This peripheral reads and writes:
     ///  * `SYSCON`: `clk_sel`, `div_clk_gate`, `rc_freq_delta`, `pll_ctrl`, `pll_st`
     ///  * `PMU`: `src_cfg`
-    #[inline(always)]
     pub(crate) unsafe fn steal() -> Self {
         Self {
             xtal: None,
@@ -354,7 +328,6 @@ impl ClockConfig {
     }
 
     /// Set the ADC sample divisor applied to the system clock.
-    #[inline(always)]
     pub fn saradc_sample(self, saradc_sample: SaradcSel) -> Self {
         Self {
             saradc_sample,
@@ -363,99 +336,83 @@ impl ClockConfig {
     }
 
     /// Set the RTC clock source.
-    #[inline(always)]
     pub fn rtc(self, rtc: RtcSel) -> Self {
         Self { rtc, ..self }
     }
 
     /// Set the RTC clock to internal.
-    #[inline(always)]
     pub fn rtc_internal(self) -> Self {
         self.rtc(RtcSel::Rclf)
     }
 
     /// Set the RTC clock to external.
-    #[inline(always)]
     pub fn rtc_external(self, xtal: XtalPort) -> Self {
         self.rtc(RtcSel::Xtal(xtal))
     }
 
     /// Set the system clock source.
-    #[inline(always)]
     pub fn sys(self, sys: SysSel) -> Self {
         Self { sys, ..self }
     }
 
     /// Set the system clock to be the 24MHz internal clock.
-    #[inline(always)]
     pub fn sys_internal_24mhz(self) -> Self {
         self.sys(SysSel::Rchf24)
     }
 
     /// Set the system clock to be the 48MHz internal clock.
-    #[inline(always)]
     pub fn sys_internal_48mhz(self) -> Self {
         self.sys(SysSel::Rchf48)
     }
 
     /// Set the system clock to be the 24MHz internal clock with divider.
-    #[inline(always)]
     pub fn sys_internal_24mhz_div(self, div: DivSel) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Rchf24))
     }
 
     /// Set the system clock to be the 48MHz internal clock with divider.
-    #[inline(always)]
     pub fn sys_internal_48mhz_div(self, div: DivSel) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Rchf48))
     }
 
     /// Set the system clock to be the external XTAH clock with divider.
-    #[inline(always)]
     pub fn sys_external_div(self, xtah: XtahPort, div: DivSel) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Xtah(xtah)))
     }
 
     /// Set the system clock to be the 24MHz internal clock with divider and PLL.
-    #[inline(always)]
     pub fn sys_internal_24mhz_pll(self, div: DivSel, n: PllN, m: PllM) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Pll(PllSel::Rchf24, n, m)))
     }
 
     /// Set the system clock to be the 48MHz internal clock with divider and PLL.
-    #[inline(always)]
     pub fn sys_internal_48mhz_pll(self, div: DivSel, n: PllN, m: PllM) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Pll(PllSel::Rchf48, n, m)))
     }
 
     /// Set the system clock to be the external XTAH clock with divider and PLL.
-    #[inline(always)]
     pub fn sys_external_pll(self, xtah: XtahPort, div: DivSel, n: PllN, m: PllM) -> Self {
         self.sys(SysSel::Div(div, SrcSel::Pll(PllSel::Xtah(xtah), n, m)))
     }
 
     /// Use the XTAL port at 32.768kHz.
-    #[inline(always)]
     pub fn xtal(&mut self, xi: xtal::Xi, xo: xtal::Xo) -> XtalPort {
         self.xtal_with(xi, xo, 32_786.Hz())
     }
 
     /// Use the XTAL port with a custom frequency.
-    #[inline(always)]
     pub fn xtal_with(&mut self, _xi: xtal::Xi, _xo: xtal::Xo, xtal: Hertz) -> XtalPort {
         self.xtal = Some(xtal);
         XtalPort { _private: () }
     }
 
     /// Use the XTAH port with the given frequency.
-    #[inline(always)]
     pub fn xtah(&mut self, _xi: xtah::Xi, _xo: xtah::Xo, xtah: Hertz) -> XtahPort {
         self.xtah = Some(xtah);
         XtahPort { _private: () }
     }
 
     /// Freeze the clock configuration and return the clock frequencies.
-    #[inline(always)]
     pub fn freeze(self) -> Clocks {
         // This is mission-critical code written by using a machine-translated
         // PDF as reference.

@@ -66,7 +66,6 @@ macro_rules! impl_base {
         impl BaseInstance for $timer {}
 
         impl BaseInstanceSealed for $timer {
-            #[inline(always)]
             unsafe fn reset(&mut self) {
                 self.en().reset();
                 self.div().reset();
@@ -76,23 +75,19 @@ macro_rules! impl_base {
                 self.low_load().reset();
             }
 
-            #[inline(always)]
             unsafe fn set_div(&mut self, div: u16) {
                 self.div().clear_bits(|w| w.div().bits(0));
                 self.div().set_bits(|w| w.div().bits(div));
             }
 
-            #[inline(always)]
             fn get_div(&self) -> u16 {
                 self.div().read().div().bits()
             }
 
-            #[inline(always)]
             unsafe fn steal(&self) -> Self {
                 Self::steal()
             }
 
-            #[inline(always)]
             unsafe fn set_enabled(&mut self, high: bool, enable: bool) {
                 if high {
                     if enable {
@@ -109,7 +104,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             fn get_enabled(&self, high: bool) -> bool {
                 if high {
                     self.en().read().high_en().is_enabled()
@@ -118,7 +112,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             fn get_flag(&self, high: bool) -> bool {
                 if high {
                     self.if_().read().high_if().is_set()
@@ -127,7 +120,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             unsafe fn clear_flag(&mut self, high: bool) {
                 // write 1 to clear
                 if high {
@@ -137,7 +129,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             fn get_load(&self, high: bool) -> u16 {
                 if high {
                     self.high_load().read().high_load().bits()
@@ -146,7 +137,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             unsafe fn set_load(&mut self, high: bool, load: u16) {
                 if high {
                     self.high_load().write(|w| w.high_load().bits(load))
@@ -155,7 +145,6 @@ macro_rules! impl_base {
                 }
             }
 
-            #[inline(always)]
             fn get_count(&self, high: bool) -> u16 {
                 if high {
                     self.high_cnt().read().high_cnt().bits()

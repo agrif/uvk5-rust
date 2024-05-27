@@ -61,7 +61,6 @@ where
     T: BaseInstance,
     HighLow: TimerHalf,
 {
-    #[inline(always)]
     fn now(&mut self) -> TimerInstant<C_HZ> {
         static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
 
@@ -80,7 +79,6 @@ where
         }
     }
 
-    #[inline(always)]
     fn start(&mut self, duration: TimerDuration<C_HZ>) -> Result<(), Error> {
         static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
 
@@ -110,7 +108,6 @@ where
         Ok(())
     }
 
-    #[inline(always)]
     fn max(&self) -> Result<TimerDuration<C_HZ>, Error> {
         static_assert_forced_or_hz_same::<T_HZ, C_HZ, FORCED>();
 
@@ -125,7 +122,6 @@ where
         Ok(TimerDuration::from_ticks(max_ticks))
     }
 
-    #[inline(always)]
     fn cancel(&mut self) -> Result<(), Error> {
         if self.timer.get_enabled(HighLow::IS_HIGH) {
             // unsafe: we are the owners of this half of the timer
@@ -138,7 +134,6 @@ where
         }
     }
 
-    #[inline(always)]
     fn wait(&mut self) -> block::Result<(), Error> {
         if self.timer.get_enabled(HighLow::IS_HIGH) {
             if self.timer.get_flag(HighLow::IS_HIGH) {
@@ -159,7 +154,6 @@ where
 impl<const C_HZ: u32> TimingInstance<C_HZ, true> for System {}
 
 impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
-    #[inline(always)]
     fn now(&mut self) -> TimerInstant<C_HZ> {
         // get_current should always be <= get_reload
         let clocks = pac::SYST::get_reload() - pac::SYST::get_current();
@@ -171,7 +165,6 @@ impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
         TimerInstant::from_ticks(ticks)
     }
 
-    #[inline(always)]
     fn start(&mut self, duration: TimerDuration<C_HZ>) -> Result<(), Error> {
         let clocks = duration
             .ticks()
@@ -192,7 +185,6 @@ impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
         Ok(())
     }
 
-    #[inline(always)]
     fn max(&self) -> Result<TimerDuration<C_HZ>, Error> {
         // we should use floor((MAX + 1) * C_HZ / input_clk)
         // this ensures max_ticks * input_clk / C_HZ <= MAX + 1
@@ -202,7 +194,6 @@ impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
         Ok(TimerDuration::from_ticks(max_ticks))
     }
 
-    #[inline(always)]
     fn cancel(&mut self) -> Result<(), Error> {
         if self.timer.is_counter_enabled() {
             self.timer.disable_counter();
@@ -212,7 +203,6 @@ impl<const C_HZ: u32> TimingInstanceSealed<C_HZ, true> for System {
         }
     }
 
-    #[inline(always)]
     fn wait(&mut self) -> block::Result<(), Error> {
         let has_wrapped = self.timer.has_wrapped();
         if self.timer.is_counter_enabled() {
@@ -248,68 +238,57 @@ where
     Timer: TimingInstance<HZ, FORCED>,
 {
     /// Create a new Counter.
-    #[inline(always)]
     pub fn new(timer: Timer) -> Self {
         static_assert_timer_hz_not_zero::<HZ>();
         Self { timer }
     }
 
     /// Free the Counter and return the underlying timer.
-    #[inline(always)]
     pub fn free(self) -> Timer {
         self.timer
     }
 
     /// What is the current count?
-    #[inline(always)]
     pub fn now(&mut self) -> TimerInstant<HZ> {
         self.timer.now()
     }
 
     /// Start the count, lasting for the given duration.
-    #[inline(always)]
     pub fn start(&mut self, duration: TimerDuration<HZ>) -> Result<(), Error> {
         self.timer.start(duration)
     }
 
     /// Start the count, rolling over at the given rate.
-    #[inline(always)]
     pub fn start_frequency(&mut self, rate: Hertz) -> Result<(), Error> {
         self.start(rate.into_duration())
     }
 
     /// Start the count, rolling over at the native timer frequency.
-    #[inline(always)]
     pub fn start_native(&mut self) -> Result<(), Error> {
         self.start_frequency(Hertz::Hz(HZ))
     }
 
     /// Start the count, rolling over as infrequently as possible.
-    #[inline(always)]
     pub fn start_max(&mut self) -> Result<(), Error> {
         self.start(self.max()?)
     }
 
     /// Return the maximum duration that [Self::start()] accepts.
-    #[inline(always)]
     pub fn max(&self) -> Result<TimerDuration<HZ>, Error> {
         self.timer.max()
     }
 
     /// Cancel the count.
-    #[inline(always)]
     pub fn cancel(&mut self) -> Result<(), Error> {
         self.timer.cancel()
     }
 
     /// Wait for the count to end.
-    #[inline(always)]
     pub fn wait(&mut self) -> block::Result<(), Error> {
         self.timer.wait()
     }
 
     /// Blocking wait for a duration.
-    #[inline]
     pub fn delay(&mut self, mut duration: TimerDuration<HZ>) -> Result<(), Error> {
         match self.start(duration) {
             Ok(()) => {

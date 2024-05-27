@@ -24,7 +24,6 @@ where
     Data: UartData,
 {
     /// Create a [TxOnly] from a configurator.
-    #[inline(always)]
     pub fn new(config: Config<Uart, Data>, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Self {
         // safety: we have configured the uart
         unsafe {
@@ -34,7 +33,6 @@ where
     }
 
     /// Recover a configurator from a [TxOnly].
-    #[inline(always)]
     pub fn free(self) -> (Config<Uart, Data>, Uart::Tx, Flow<Uart::Cts>) {
         let (uart, tx, cts) = self.teardown();
 
@@ -61,7 +59,6 @@ where
 {
     /// # Safety
     /// This half of the port must not be in use anywhere else.
-    #[inline(always)]
     pub(super) unsafe fn setup(uart: Uart, tx: Uart::Tx, cts: Flow<Uart::Cts>) -> Self {
         match cts {
             Flow::None => uart.fc().clear_bits(|w| w.ctsen().disabled()),
@@ -88,7 +85,6 @@ where
         tx
     }
 
-    #[inline(always)]
     pub(super) fn teardown(self) -> (Uart, Uart::Tx, Flow<Uart::Cts>) {
         // safety: we're consuming self, so turn this off
         unsafe {
@@ -99,7 +95,6 @@ where
     }
 
     /// Clear the FIFO.
-    #[inline(always)]
     pub fn clear(&mut self) {
         // safety: we control this half, so we can clear the fifo
         unsafe {
@@ -108,31 +103,26 @@ where
     }
 
     /// Is the transmitter busy?
-    #[inline(always)]
     pub fn is_busy(&self) -> bool {
         self.uart.if_().read().txbusy().is_busy()
     }
 
     /// Is the FIFO full?
-    #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.uart.if_().read().txfifo_full().is_full()
     }
 
     /// Is the FIFO half full?
-    #[inline(always)]
     pub fn is_half_full(&self) -> bool {
         self.uart.if_().read().txfifo_hfull().is_half_full()
     }
 
     /// Is the FIFO empty?
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.uart.if_().read().txfifo_empty().is_empty()
     }
 
     /// Get the FIFO level, 0 is empty and 8 is full.
-    #[inline(always)]
     pub fn level(&self) -> u8 {
         match self.uart.if_().read().tf_level().bits() {
             0 => {
@@ -147,7 +137,6 @@ where
     }
 
     /// Write a single byte to the UART.
-    #[inline(always)]
     pub fn write_one(&mut self, data: u8) -> block::Result<(), Infallible> {
         if self.is_full() {
             Err(block::Error::WouldBlock)
@@ -158,7 +147,6 @@ where
     }
 
     /// Write at least one byte to the UART.
-    #[inline]
     pub fn write(&mut self, data: &[u8]) -> block::Result<usize, Infallible> {
         for (i, b) in data.iter().enumerate() {
             match self.write_one(*b) {
@@ -178,7 +166,6 @@ where
     }
 
     /// Write all bytes to the UART, blocking as needed.
-    #[inline]
     pub fn write_all(&mut self, data: &[u8]) -> Result<(), Infallible> {
         for b in data {
             block::block!(self.write_one(*b))?;
@@ -188,7 +175,6 @@ where
     }
 
     /// Flush the Tx FIFO.
-    #[inline(always)]
     pub fn flush(&mut self) -> block::Result<(), Infallible> {
         if self.is_busy() {
             Err(block::Error::WouldBlock)
@@ -203,7 +189,6 @@ where
     Uart: Instance,
     Data: UartData,
 {
-    #[inline(always)]
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.write_all(s.as_bytes()).unwrap_or_else(|e| match e {});
         Ok(())

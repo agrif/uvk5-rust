@@ -39,7 +39,6 @@ where
     Spi: Instance,
 {
     /// Create a port in master mode from the configured SPI.
-    #[inline(always)]
     pub fn new_master(
         config: Config<Spi>,
         clk: Spi::Clk,
@@ -63,7 +62,6 @@ where
     Spi: Instance,
 {
     /// Create a port in master mode from the configured SPI, with slave select.
-    #[inline(always)]
     pub fn new_master_ssn(
         config: Config<Spi>,
         clk: Spi::Clk,
@@ -88,7 +86,6 @@ where
     Spi: Instance,
 {
     /// Create a port in read-only master mode from the configured SPI.
-    #[inline(always)]
     pub fn new_master_rx(config: Config<Spi>, clk: Spi::Clk, miso: Spi::Miso) -> Self {
         Self {
             spi: config.spi,
@@ -108,7 +105,6 @@ where
 {
     /// Create a port in read-only master mode from the configured
     /// SPI, with slave select.
-    #[inline(always)]
     pub fn new_master_rx_ssn(
         config: Config<Spi>,
         clk: Spi::Clk,
@@ -132,7 +128,6 @@ where
     Spi: Instance,
 {
     /// Create a port in write-only master mode from the configured SPI.
-    #[inline(always)]
     pub fn new_master_tx(config: Config<Spi>, clk: Spi::Clk, mosi: Spi::Mosi) -> Self {
         Self {
             spi: config.spi,
@@ -152,7 +147,6 @@ where
 {
     /// Create a port in read-only master mode from the configured
     /// SPI, with slave select.
-    #[inline(always)]
     pub fn new_master_tx_ssn(
         config: Config<Spi>,
         clk: Spi::Clk,
@@ -176,7 +170,6 @@ where
     Spi: Instance,
 {
     /// Recover the port into a configurator.
-    #[inline(always)]
     pub fn free(self) -> (Config<Spi>, Spi::Clk, Miso, Mosi, Ssn) {
         // safety: we have closed both halves of the spi
         unsafe {
@@ -197,7 +190,6 @@ impl<Spi, Mode, Miso, Mosi, Ssn> Port<Spi, Mode, Miso, Mosi, Ssn>
 where
     Spi: Instance,
 {
-    #[inline(always)]
     fn setup(mut self) -> Self {
         // safety: we have configured the spi
         unsafe {
@@ -210,14 +202,12 @@ where
     }
 
     /// Clear both FIFOs.
-    #[inline(always)]
     pub fn clear(&mut self) {
         self.clear_tx();
         self.clear_rx();
     }
 
     /// Clear the RX FIFO.
-    #[inline(always)]
     pub fn clear_rx(&mut self) {
         // safety: we control this half, so we can clear the fifo
         unsafe {
@@ -226,25 +216,21 @@ where
     }
 
     /// Is the RX FIFO full?
-    #[inline(always)]
     pub fn is_rx_full(&self) -> bool {
         self.spi.fifost().read().rff().bit()
     }
 
     /// Is the RX FIFO half full?
-    #[inline(always)]
     pub fn is_rx_half_full(&self) -> bool {
         self.spi.fifost().read().rfhf().bit()
     }
 
     /// Is the RX FIFO empty?
-    #[inline(always)]
     pub fn is_rx_empty(&self) -> bool {
         self.spi.fifost().read().rfe().bit()
     }
 
     /// Get the RX FIFO level, 0 is empty and 8 is full.
-    #[inline(always)]
     pub fn rx_level(&self) -> u8 {
         match self.spi.fifost().read().rf_level().bits() {
             0 => {
@@ -259,7 +245,6 @@ where
     }
 
     /// Clear the TX FIFO.
-    #[inline(always)]
     pub fn clear_tx(&mut self) {
         // safety: we control this half, so we can clear the fifo
         unsafe {
@@ -268,25 +253,21 @@ where
     }
 
     /// Is the TX FIFO full?
-    #[inline(always)]
     pub fn is_tx_full(&self) -> bool {
         self.spi.fifost().read().tff().bit()
     }
 
     /// Is the TX FIFO half full?
-    #[inline(always)]
     pub fn is_tx_half_full(&self) -> bool {
         self.spi.fifost().read().tfhf().bit()
     }
 
     /// Is the TX FIFO empty?
-    #[inline(always)]
     pub fn is_tx_empty(&self) -> bool {
         self.spi.fifost().read().tfe().bit()
     }
 
     /// Get the TX FIFO level, 0 is empty and 8 is full.
-    #[inline(always)]
     pub fn tx_level(&self) -> u8 {
         match self.spi.fifost().read().tf_level().bits() {
             0 => {
@@ -308,7 +289,6 @@ where
     /// Read a single byte from SPI.
     ///
     /// To work, this must be preceeded by a [write_one()].
-    #[inline(always)]
     pub fn read_one(&mut self) -> block::Result<u8, Infallible> {
         if self.is_rx_empty() {
             Err(block::Error::WouldBlock)
@@ -318,7 +298,6 @@ where
     }
 
     /// Write a single byte to SPI.
-    #[inline(always)]
     pub fn write_one(&mut self, value: u8) -> block::Result<(), Infallible> {
         if self.is_tx_full() {
             Err(block::Error::WouldBlock)
@@ -329,7 +308,6 @@ where
     }
 
     /// Flush all pending writes and clear the FIFOs.
-    #[inline(always)]
     pub fn flush(&mut self) -> block::Result<(), Infallible> {
         if !self.is_tx_empty() {
             Err(block::Error::WouldBlock)
@@ -344,7 +322,6 @@ where
     /// If read is shorter than write, discard all incoming bytes
     /// after that point. If write is shorter than read, write 0x00
     /// after the end of write.
-    #[inline]
     pub fn transfer_iter<'a>(
         &'a mut self,
         mut read: impl Iterator<Item = &'a mut u8>
@@ -420,7 +397,6 @@ where
     }
 
     /// Write and read to SPI simultaneously, overwriting the buffer.
-    #[inline]
     pub fn transfer_in_place(&mut self, buffer: &mut [u8]) -> Result<(), Infallible> {
         block::block!(self.flush())?;
 
@@ -453,13 +429,11 @@ where
     }
 
     /// Read a buffer from SPI, sending 0x00.
-    #[inline]
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<(), Infallible> {
         self.transfer_iter(buffer.iter_mut(), core::iter::empty())
     }
 
     /// Write a buffer to SPI, discarding read values.
-    #[inline]
     pub fn write(&mut self, buffer: &[u8]) -> Result<(), Infallible> {
         self.transfer_iter(core::iter::empty(), buffer.iter().copied())
     }
@@ -469,7 +443,6 @@ where
     /// If read is shorter than write, discard all incoming bytes
     /// after that point. If write is shorter than read, write 0x00
     /// after the end of write.
-    #[inline]
     pub fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Infallible> {
         self.transfer_iter(read.iter_mut(), write.iter().copied())
     }
@@ -480,7 +453,6 @@ where
     Spi: Instance,
 {
     /// Set the slave select line active (low).
-    #[inline(always)]
     pub fn slave_select_active(&mut self) {
         unsafe {
             self.spi.cr().clear_bits(|w| w.msr_ssn().low());
@@ -488,7 +460,6 @@ where
     }
 
     /// Set the slave select line inactive (high).
-    #[inline(always)]
     pub fn slave_select_inactive(&mut self) {
         unsafe {
             self.spi.cr().set_bits(|w| w.msr_ssn().high());

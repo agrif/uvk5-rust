@@ -12,12 +12,10 @@ where
 {
     type Error = Infallible;
 
-    #[inline(always)]
     fn read(&mut self) -> block::Result<u8, Self::Error> {
         Port::read_one(self)
     }
 
-    #[inline(always)]
     fn send(&mut self, word: u8) -> block::Result<(), Self::Error> {
         Port::write_one(self, word)
     }
@@ -29,7 +27,6 @@ where
 {
     type Error = Infallible;
 
-    #[inline(always)]
     fn exec(&mut self, operations: &mut [hal02blocking::Operation<u8>]) -> Result<(), Self::Error> {
         use hal02blocking::Operation;
 
@@ -54,7 +51,6 @@ where
 {
     type Error = Infallible;
 
-    #[inline(always)]
     fn transfer<'w>(&mut self, words: &'w mut [u8]) -> Result<&'w [u8], Self::Error> {
         Port::transfer_in_place(self, words)?;
         Ok(words)
@@ -67,7 +63,6 @@ where
 {
     type Error = Infallible;
 
-    #[inline(always)]
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         Port::write(self, words)
     }
@@ -79,7 +74,6 @@ where
 {
     type Error = Infallible;
 
-    #[inline(always)]
     fn write_iter<WI>(&mut self, words: WI) -> Result<(), Self::Error>
     where
         WI: IntoIterator<Item = u8>,

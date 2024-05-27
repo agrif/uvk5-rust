@@ -20,7 +20,6 @@ where
     Input: core::fmt::Debug,
     Output: core::fmt::Debug,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let pin = self.pin.replace(InOut::None);
         let r = f
@@ -39,7 +38,6 @@ where
     Input: defmt::Format,
     Output: defmt::Format,
 {
-    #[allow(clippy::missing_inline_in_public_items)]
     fn format(&self, f: defmt::Formatter) {
         let pin = self.pin.replace(InOut::None);
         defmt::write!(f, "InputOutputPin({}, {})", pin, STATE);
@@ -62,7 +60,6 @@ where
     ///
     /// This function is not used, except to infer the type of the
     /// output. [IntoMode] is used to change modes.
-    #[inline(always)]
     pub fn new_from_input(pin: Input, _to_output: impl Fn(Input) -> Output) -> Self {
         Self {
             pin: Cell::new(InOut::Input(pin)),
@@ -74,7 +71,6 @@ where
     ///
     /// This function is not used, except to infer the type of the
     /// output. [IntoMode] is used to change modes.
-    #[inline(always)]
     pub fn new_from_output(pin: Output, _to_input: impl Fn(Output) -> Input) -> Self {
         Self {
             pin: Cell::new(InOut::Output(pin)),
@@ -92,7 +88,6 @@ where
     super::Input<I>: PinMode,
     super::Output<O>: PinMode,
 {
-    #[inline(always)]
     fn take_input(&self) -> Input {
         match self.pin.replace(InOut::None) {
             InOut::Input(i) => i,
@@ -101,7 +96,6 @@ where
         }
     }
 
-    #[inline(always)]
     fn take_output(&self, state: Option<PinState>) -> Output {
         match self.pin.replace(InOut::None) {
             InOut::Input(i) => i.into_mode_in_state(state.unwrap_or(STATE.into())),
@@ -114,37 +108,31 @@ where
     }
 
     /// Recover the input pin.
-    #[inline(always)]
     pub fn into_input(self) -> Input {
         self.take_input()
     }
 
     /// Recover the output pin.
-    #[inline(always)]
     pub fn into_output(self) -> Output {
         self.take_output(None)
     }
 
     /// Recover the output pin in the given state.
-    #[inline(always)]
     pub fn into_output_in_state(self, state: PinState) -> Output {
         self.take_output(Some(state))
     }
 
     /// Change the default state of the output pin.
-    #[inline(always)]
     pub fn default_state<const NEWSTATE: bool>(self) -> InputOutputPin<Input, Output, NEWSTATE> {
         InputOutputPin { pin: self.pin }
     }
 
     /// Change the default state of the output pin to low.
-    #[inline(always)]
     pub fn default_low(self) -> InputOutputPin<Input, Output, false> {
         self.default_state()
     }
 
     /// Change the default state of the output pin to high.
-    #[inline(always)]
     pub fn default_high(self) -> InputOutputPin<Input, Output, true> {
         self.default_state()
     }
@@ -152,7 +140,6 @@ where
     /// Get a reference to this pin as an input.
     ///
     /// Panics if any other method is called on [Self] inside `f`.
-    #[inline(always)]
     pub fn with_input<R>(&self, f: impl FnOnce(&mut Input) -> R) -> R {
         let mut i = self.take_input();
         let r = f(&mut i);
@@ -163,7 +150,6 @@ where
     /// Get a reference to this pin as an output.
     ///
     /// Panics if any other method is called on [Self] inside `f`.
-    #[inline(always)]
     pub fn with_output<R>(&self, f: impl FnOnce(&mut Output) -> R) -> R {
         let mut o = self.take_output(None);
         let r = f(&mut o);
@@ -174,7 +160,6 @@ where
     /// Get a reference to this pin as an output in the given state
     ///
     /// Panics if any other method is called on [Self] inside `f`.
-    #[inline(always)]
     pub fn with_output_in_state<R>(&self, state: PinState, f: impl FnOnce(&mut Output) -> R) -> R {
         let mut o = self.take_output(Some(state));
         let r = f(&mut o);

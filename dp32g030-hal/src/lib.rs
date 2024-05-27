@@ -1,9 +1,4 @@
 #![no_std]
-// we really, *really* want to be carefuly about marking functions here
-// as inline. A ton of them are *tiny* and should be inline(always).
-// If a function shouldn't be inlined, explicitly mark it with:
-// #[allow(clippy::missing_inline_in_public_items)]
-#![deny(clippy::missing_inline_in_public_items)]
 
 pub mod prelude;
 

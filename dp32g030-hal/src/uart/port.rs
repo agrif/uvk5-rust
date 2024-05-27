@@ -24,7 +24,6 @@ where
     Data: UartData,
 {
     /// Create a Port from the configured UART.
-    #[inline(always)]
     pub fn new(
         config: Config<Uart, Data>,
         rx: Uart::Rx,
@@ -45,7 +44,6 @@ where
 
     /// Recover the Port into a configurator.
     #[allow(clippy::type_complexity)]
-    #[inline(always)]
     pub fn free(
         self,
     ) -> (

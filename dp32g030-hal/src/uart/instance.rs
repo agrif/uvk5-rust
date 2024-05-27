@@ -43,7 +43,6 @@ impl Instance for pac::UART0 {
 }
 
 impl InstanceSealed for pac::UART0 {
-    #[inline(always)]
     unsafe fn steal(&self) -> Self {
         pac::UART0::steal()
     }
@@ -57,7 +56,6 @@ impl Instance for pac::UART1 {
 }
 
 impl InstanceSealed for pac::UART1 {
-    #[inline(always)]
     unsafe fn steal(&self) -> Self {
         pac::UART1::steal()
     }
@@ -71,7 +69,6 @@ impl Instance for pac::UART2 {
 }
 
 impl InstanceSealed for pac::UART2 {
-    #[inline(always)]
     unsafe fn steal(&self) -> Self {
         pac::UART2::steal()
     }

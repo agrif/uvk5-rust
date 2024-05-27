@@ -7,7 +7,6 @@ use super::{
 };
 
 impl From<hal1::PinState> for PinState {
-    #[inline(always)]
     fn from(value: hal1::PinState) -> Self {
         match value {
             hal1::PinState::Low => Self::Low,
@@ -17,7 +16,6 @@ impl From<hal1::PinState> for PinState {
 }
 
 impl From<PinState> for hal1::PinState {
-    #[inline(always)]
     fn from(value: PinState) -> Self {
         match value {
             PinState::Low => Self::Low,
@@ -37,12 +35,10 @@ impl<const P: char, const N: u8, Pull> hal1::InputPin for Pin<P, N, Input<Pull>>
 where
     Input<Pull>: PinMode,
 {
-    #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_high(self))
     }
 
-    #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_low(self))
     }
@@ -52,19 +48,16 @@ impl<const P: char, const N: u8, Mode> hal1::OutputPin for Pin<P, N, Output<Mode
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         Pin::set_low(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         Pin::set_high(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
         Pin::set_state(self, state.into());
         Ok(())
@@ -75,17 +68,14 @@ impl<const P: char, const N: u8, Mode> hal1::StatefulOutputPin for Pin<P, N, Out
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_high(self))
     }
 
-    #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         Ok(Pin::is_set_low(self))
     }
 
-    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         Pin::toggle(self);
         Ok(())
@@ -103,12 +93,10 @@ impl<const P: char, Pull> hal1::InputPin for PartiallyErasedPin<P, Input<Pull>>
 where
     Input<Pull>: PinMode,
 {
-    #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(PartiallyErasedPin::is_high(self))
     }
 
-    #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(PartiallyErasedPin::is_low(self))
     }
@@ -118,19 +106,16 @@ impl<const P: char, Mode> hal1::OutputPin for PartiallyErasedPin<P, Output<Mode>
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         PartiallyErasedPin::set_low(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         PartiallyErasedPin::set_high(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
         PartiallyErasedPin::set_state(self, state.into());
         Ok(())
@@ -141,17 +126,14 @@ impl<const P: char, Mode> hal1::StatefulOutputPin for PartiallyErasedPin<P, Outp
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         Ok(PartiallyErasedPin::is_set_high(self))
     }
 
-    #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         Ok(PartiallyErasedPin::is_set_low(self))
     }
 
-    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         PartiallyErasedPin::toggle(self);
         Ok(())
@@ -169,12 +151,10 @@ impl<Pull> hal1::InputPin for ErasedPin<Input<Pull>>
 where
     Input<Pull>: PinMode,
 {
-    #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(ErasedPin::is_high(self))
     }
 
-    #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(ErasedPin::is_low(self))
     }
@@ -184,19 +164,16 @@ impl<Mode> hal1::OutputPin for ErasedPin<Output<Mode>>
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         ErasedPin::set_low(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         ErasedPin::set_high(self);
         Ok(())
     }
 
-    #[inline(always)]
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
         ErasedPin::set_state(self, state.into());
         Ok(())
@@ -207,17 +184,14 @@ impl<Mode> hal1::StatefulOutputPin for ErasedPin<Output<Mode>>
 where
     Output<Mode>: PinMode,
 {
-    #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         Ok(ErasedPin::is_set_high(self))
     }
 
-    #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         Ok(ErasedPin::is_set_low(self))
     }
 
-    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         ErasedPin::toggle(self);
         Ok(())
@@ -249,12 +223,10 @@ where
     super::Output<O>: PinMode,
     Input: hal1::InputPin<Error = Infallible>,
 {
-    #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         self.with_input(|p| p.is_high())
     }
 
-    #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         self.with_input(|p| p.is_low())
     }
@@ -272,17 +244,14 @@ where
     super::Output<O>: PinMode,
     Output: hal1::OutputPin<Error = Infallible>,
 {
-    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         self.with_output(|p| p.set_low())
     }
 
-    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         self.with_output(|p| p.set_high())
     }
 
-    #[inline(always)]
     fn set_state(&mut self, state: hal1::PinState) -> Result<(), Self::Error> {
         self.with_output(|p| p.set_state(state))
     }
@@ -300,17 +269,14 @@ where
     super::Output<O>: PinMode,
     Output: hal1::StatefulOutputPin<Error = Infallible>,
 {
-    #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         self.with_output(|p| p.is_set_high())
     }
 
-    #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         self.with_output(|p| p.is_set_low())
     }
 
-    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         self.with_output(|p| p.toggle())
     }

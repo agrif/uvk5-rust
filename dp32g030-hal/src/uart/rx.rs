@@ -24,7 +24,6 @@ where
     Data: UartData,
 {
     /// Create an [RxOnly] from a configurator.
-    #[inline(always)]
     pub fn new(config: Config<Uart, Data>, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
         // safety: we have configured the uart
         unsafe {
@@ -34,7 +33,6 @@ where
     }
 
     /// Recover a configurator from an [RxOnly].
-    #[inline(always)]
     pub fn free(self) -> (Config<Uart, Data>, Uart::Rx, Flow<Uart::Rts>) {
         let (uart, rx, rts) = self.teardown();
 
@@ -61,7 +59,6 @@ where
 {
     /// # Safety
     /// This half of the port must not be in use anywhere else.
-    #[inline(always)]
     pub(super) unsafe fn setup(uart: Uart, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
         match rts {
             Flow::None => uart.fc().clear_bits(|w| w.rtsen().disabled()),
@@ -88,7 +85,6 @@ where
         rx
     }
 
-    #[inline(always)]
     pub(super) fn teardown(self) -> (Uart, Uart::Rx, Flow<Uart::Rts>) {
         // safety: we're consuming self, so turn this off
         unsafe {
@@ -99,7 +95,6 @@ where
     }
 
     /// Clear the FIFO.
-    #[inline(always)]
     pub fn clear(&mut self) {
         // safety: we control this half, so we can clear the fifo
         unsafe {
@@ -108,25 +103,21 @@ where
     }
 
     /// Is the FIFO full?
-    #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.uart.if_().read().rxfifo_full().is_full()
     }
 
     /// Is the FIFO half full?
-    #[inline(always)]
     pub fn is_half_full(&self) -> bool {
         self.uart.if_().read().rxfifo_hfull().is_half_full()
     }
 
     /// Is the FIFO empty?
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.uart.if_().read().rxfifo_empty().is_empty()
     }
 
     /// Get the FIFO level, 0 is empty and 8 is full.
-    #[inline(always)]
     pub fn level(&self) -> u8 {
         match self.uart.if_().read().rf_level().bits() {
             0 => {
@@ -141,7 +132,6 @@ where
     }
 
     /// Read a single byte from the UART.
-    #[inline(always)]
     pub fn read_one(&mut self) -> block::Result<u8, Infallible> {
         if self.is_empty() {
             Err(block::Error::WouldBlock)
@@ -151,7 +141,6 @@ where
     }
 
     /// Read at least one byte from the UART.
-    #[inline]
     pub fn read(&mut self, buf: &mut [u8]) -> block::Result<usize, Infallible> {
         let mut amt = 0;
         while amt < buf.len() {
@@ -175,7 +164,6 @@ where
     }
 
     /// Read bytes from the UART, filling the buffer and blocking if needed.
-    #[inline]
     pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), Infallible> {
         let mut start = 0;
         while start < buf.len() {
