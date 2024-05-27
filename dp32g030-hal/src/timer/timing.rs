@@ -284,6 +284,12 @@ where
         self.start_frequency(Hertz::Hz(HZ))
     }
 
+    /// Start the count, rolling over as infrequently as possible.
+    #[inline(always)]
+    pub fn start_max(&mut self) -> Result<(), Error> {
+        self.start(self.max()?)
+    }
+
     /// Return the maximum duration that [Self::start()] accepts.
     #[inline(always)]
     pub fn max(&self) -> Result<TimerDuration<HZ>, Error> {
