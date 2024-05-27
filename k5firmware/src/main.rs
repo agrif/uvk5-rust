@@ -123,6 +123,16 @@ impl core::ops::Deref for StringError {
     }
 }
 
+fn reset() -> ! {
+    println!("!!! reset !!!");
+    if let Some(txmutex) = UART_TX.get() {
+        if let Some(mut txguard) = txmutex.try_lock() {
+            hal::block::block!(txguard.flush()).unwrap();
+        }
+    }
+    cortex_m::peripheral::SCB::sys_reset();
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     match go() {
@@ -137,13 +147,7 @@ fn main() -> ! {
             if let Some(mutex) = UART_RX.get() {
                 if let Some(mut guard) = mutex.try_lock() {
                     if guard.read_one().is_ok() {
-                        println!("!!! reset !!!");
-                        if let Some(txmutex) = UART_TX.get() {
-                            if let Some(mut txguard) = txmutex.try_lock() {
-                                hal::block::block!(txguard.flush()).unwrap();
-                            }
-                        }
-                        cortex_m::peripheral::SCB::sys_reset();
+                        reset();
                     }
                 }
             }
@@ -416,6 +420,9 @@ fn go() -> Result<(), StringError> {
                 match cmd {
                     ("hello", _) => {
                         println!("Hello!");
+                    }
+                    ("reset", _) => {
+                        reset();
                     }
                     ("speaker", state) => {
                         let Some(state) = pin_state(state) else {
