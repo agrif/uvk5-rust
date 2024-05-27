@@ -4,6 +4,9 @@ use crate::block;
 
 use super::{Config, Instance};
 
+/// How many bytes there are in an SPI FIFO.
+const FIFO_SIZE: u8 = 8;
+
 /// An SPI port, either in master or slave mode.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -354,13 +357,14 @@ where
 
         // handle *all* of read first
         let mut remaining_tx = read.len();
-        let mut remaining_rx = remaining_tx;
-        while remaining_rx > 0 {
+        let mut amount = 0;
+        while amount > 0 || remaining_tx > 0 {
             // push some bytes into the tx fifo if we can
-            while remaining_tx > 0 {
+            while amount < FIFO_SIZE && remaining_tx > 0 {
                 match self.write_one(*write.peek().unwrap_or(&0x00)) {
                     Ok(()) => {
                         remaining_tx -= 1;
+                        amount += 1;
                         write.next();
                     }
                     Err(block::Error::WouldBlock) => break,
@@ -369,13 +373,13 @@ where
             }
 
             // read some bytes from the rx fifo if we can
-            while remaining_rx > 0 {
+            while amount > 0 {
                 match self.read_one() {
                     Ok(val) => {
                         if let Some(dest) = read.next() {
                             *dest = val
                         }
-                        remaining_rx -= 1;
+                        amount -= 1;
                     }
                     Err(block::Error::WouldBlock) => break,
                     Err(block::Error::Other(e)) => Err(e)?,
@@ -384,11 +388,10 @@ where
         }
 
         // there may still be some bytes left in write
-        let mut amount = 0;
         let mut extra = true;
         while extra || amount > 0 {
             // push some bytes into the tx fifo if we can
-            while extra {
+            while extra && amount < FIFO_SIZE {
                 let Some(val) = write.peek() else {
                     extra = false;
                     break;
@@ -425,7 +428,7 @@ where
         let mut rx = 0;
         while rx < buffer.len() {
             // push some bytes into the tx fifo if we can
-            while tx < buffer.len() {
+            while ((tx - rx) as u8) < FIFO_SIZE && tx < buffer.len() {
                 match self.write_one(buffer[tx]) {
                     Ok(()) => tx += 1,
                     Err(block::Error::WouldBlock) => break,
