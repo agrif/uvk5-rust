@@ -256,7 +256,12 @@ name = "k5board"
 version = "0.1.0"
 dependencies = [
  "cortex-m",
+ "display-interface",
+ "display-interface-spi",
  "dp32g030-hal",
+ "embedded-graphics-core",
+ "embedded-hal 0.2.7",
+ "st7565",
 ]
 
 [[package]]
@@ -268,14 +273,12 @@ dependencies = [
  "bytemuck",
  "cortex-m",
  "cortex-m-rt",
- "display-interface-spi",
  "eeprom24x",
  "embedded-graphics",
  "embedded-hal 0.2.7",
  "k5board",
  "panic-halt",
  "spin",
- "st7565",
 ]
 
 [[package]]

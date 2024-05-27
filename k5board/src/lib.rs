@@ -10,6 +10,7 @@ pub use hal::pac;
 
 pub mod backlight;
 pub mod flashlight;
+pub mod lcd;
 pub mod ptt;
 
 /// A macro for producing a `VERSION` symbol containing the given string

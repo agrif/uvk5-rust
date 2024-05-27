@@ -17,10 +17,16 @@ bench = false
 [dependencies]
 cortex-m = "0.7.6"
 defmt = { version = "0.3.5", optional = true }
+display-interface = "0.4"
+display-interface-spi = "0.4"
+embedded-graphics-core = "0.4"
 dp32g030-hal = { path = "../dp32g030-hal" }
+embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}
+st7565 = "0.5"
 
 [dev-dependencies]
 cortex-m-rt = "0.7"
+embedded-graphics = "0.8"
 panic-halt = "0.2"
 
 [profile.release]

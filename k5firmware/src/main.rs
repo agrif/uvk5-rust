@@ -54,43 +54,6 @@ impl embedded_hal_02::digital::v2::InputPin for NoPin {
     }
 }
 
-struct DisplaySpec;
-
-impl st7565::DisplaySpecs<128, 64, 8> for DisplaySpec {
-    // 0xC0
-    const FLIP_ROWS: bool = false;
-
-    // 0xA1
-    const FLIP_COLUMNS: bool = true;
-
-    // 0xA6
-    const INVERTED: bool = false;
-
-    // 0xA2
-    const BIAS_MODE_1: bool = false;
-
-    // 0x2f
-    const POWER_CONTROL: st7565::types::PowerControlMode = st7565::types::PowerControlMode {
-        booster_circuit: true,
-        voltage_regulator_circuit: true,
-        voltage_follower_circuit: true,
-    };
-
-    // 0x24
-    const VOLTAGE_REGULATOR_RESISTOR_RATIO: u8 = 0x4;
-
-    // 0x81 0x1f
-    const ELECTRONIC_VOLUME: u8 = 0x1f;
-
-    // this appears to be an internal command??
-    // it's not present in original firmware
-    // go with the most 0 one
-    const BOOSTER_RATIO: st7565::types::BoosterRatio = st7565::types::BoosterRatio::StepUp2x3x4x;
-
-    // we lose four pixels to the left side of the screen
-    const COLUMN_OFFSET: u8 = 4;
-}
-
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StringError(alloc::string::String);
 
@@ -203,16 +166,20 @@ fn go() -> Result<(), StringError> {
     // PB6 backlight
     let mut backlight = k5board::backlight::new(pins_b.b6);
 
-    // PB7 ST7565 ??? P10
-    let lcd_cs = pins_b.b7.into_push_pull_output();
-    // PB8 ST7565 clk
-    let lcd_clk = pins_b.b8.into();
-    // PB9 ST7565 a0
-    let lcd_a0 = pins_b.b9.into_push_pull_output();
-    // PB10 ST7565 si
-    let lcd_mosi = pins_b.b10.into();
-    // PB11 ST7565 res / swdio / tp14
-    let mut lcd_res = pins_b.b11.into_push_pull_output();
+    let lcd_parts = k5board::lcd::Parts {
+        spi: p.SPI0,
+        gate: power.gates.spi0,
+        // PB7 ST7565 cs
+        cs: pins_b.b7.into_mode(),
+        // PB8 ST7565 clk
+        clk: pins_b.b8.into_mode(),
+        // PB9 ST7565 a0
+        a0: pins_b.b9.into_mode(),
+        // PB10 ST7565 si
+        mosi: pins_b.b10.into_mode(),
+        // PB11 ST7565 res / swdio / tp14
+        res: pins_b.b11.into_mode(),
+    };
 
     // PB14 BK4819 gpio2 / swclk / tp13
     // PB15 BK1080 rf on
@@ -247,20 +214,8 @@ fn go() -> Result<(), StringError> {
     let mut fm = bk1080::Bk1080::new(&mut i2c)?;
     //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
-    // spi for the display
-    let spi = hal::spi::new(p.SPI0, power.gates.spi0)
-        .divider(hal::spi::ClockDivider::Div16)
-        .mode(hal::spi::Mode::MODE_3)
-        .bit_order(hal::spi::BitOrder::Msb)
-        .master_tx(lcd_clk, lcd_mosi);
-
-    // LCD setup
-    let lcd_interface = display_interface_spi::SPIInterface::new(spi, lcd_a0, lcd_cs);
-    let page_buffer = cortex_m::singleton!(PAGE_BUFFER: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new()).unwrap();
-    let mut lcd = st7565::ST7565::new(lcd_interface, DisplaySpec).into_graphics_mode(page_buffer);
-    lcd.reset(&mut lcd_res, &mut delay)?;
-    lcd.flush()?;
-    lcd.set_display_on(true)?;
+    // the lcd display
+    let mut lcd = k5board::lcd::new(&mut delay, lcd_parts)?;
 
     // draw a thing
     use embedded_graphics::mono_font::{ascii::FONT_4X6, ascii::FONT_6X10, MonoTextStyle};
