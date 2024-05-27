@@ -249,7 +249,7 @@ fn go() -> Result<(), StringError> {
 
     // spi for the display
     let spi = hal::spi::new(p.SPI0, power.gates.spi0)
-        .divider(hal::spi::ClockDivider::Div32)
+        .divider(hal::spi::ClockDivider::Div16)
         .mode(hal::spi::Mode::MODE_3)
         .bit_order(hal::spi::BitOrder::Msb)
         .master_tx(lcd_clk, lcd_mosi);
