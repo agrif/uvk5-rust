@@ -288,7 +288,7 @@ where
 {
     /// Read a single byte from SPI.
     ///
-    /// To work, this must be preceeded by a [write_one()].
+    /// To work, this must be preceeded by a [Self::write_one()].
     pub fn read_one(&mut self) -> block::Result<u8, Infallible> {
         if self.is_rx_empty() {
             Err(block::Error::WouldBlock)
