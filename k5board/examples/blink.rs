@@ -16,10 +16,10 @@ fn main() -> ! {
     let power = hal::power::new(p.SYSCON, p.PMU);
     let clocks = power.clocks.sys_internal_24mhz().freeze();
 
-    // turn on GPIOC and grab our LED on pin C3 as an output
+    // turn on GPIOC and grab our flashlight on pin C3
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
     let pins_c = ports.port_c.enable(power.gates.gpio_c);
-    let mut led = pins_c.c3.into_push_pull_output();
+    let mut flashlight = k5board::flashlight::new(pins_c.c3);
 
     // turn TIMER_BASE0 into a 1kHz resolution timer, and use the Low half
     let mut timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
@@ -34,7 +34,7 @@ fn main() -> ! {
         // wait half a second
         timer.delay(500.millis()).unwrap();
 
-        // blink led
-        led.toggle();
+        // blink flashlight
+        flashlight.toggle();
     }
 }

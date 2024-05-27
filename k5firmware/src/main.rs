@@ -201,7 +201,7 @@ fn go() -> Result<(), StringError> {
     // PA14 battery current
 
     // PB6 backlight
-    let mut backlight = pins_b.b6.into_push_pull_output();
+    let mut backlight = k5board::backlight::new(pins_b.b6);
 
     // PB7 ST7565 ??? P10
     let lcd_cs = pins_b.b7.into_push_pull_output();
@@ -223,11 +223,11 @@ fn go() -> Result<(), StringError> {
     // PC2 BK4819 sda
 
     // PC3 flashlight
-    let mut flashlight = pins_c.c3.into_push_pull_output();
+    let mut flashlight = k5board::flashlight::new(pins_c.c3);
     // PC4 speaker amp on
     let mut speaker_enable = pins_c.c4.into_push_pull_output();
     // PC5 ptt
-    let ptt = pins_c.c5.into_pull_up_input();
+    let ptt = k5board::ptt::new(pins_c.c5);
 
     // get a timer going at 200kHz i2c
     let timer200k = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
@@ -282,10 +282,10 @@ fn go() -> Result<(), StringError> {
     lcd.flush()?;
 
     // turn off flashlight
-    flashlight.set_low();
+    flashlight.off();
 
     // turn on backlight
-    backlight.set_high();
+    backlight.on();
 
     // turn on radio
     fm_enable.set_low(); // active low
@@ -349,9 +349,8 @@ fn go() -> Result<(), StringError> {
 
     loop {
         if let Ok(()) = led_blink.wait() {
-            // ptt pressed means ptt low
             // ptt pressed means toggle flashlight
-            if ptt.is_low() {
+            if ptt.is_pressed() {
                 flashlight.toggle();
                 fm_enable.toggle();
             }

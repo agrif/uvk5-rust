@@ -8,6 +8,10 @@ pub use dp32g030_hal as hal;
 /// Peripheral access crate, providing raw, unconstrained access to peripherals.
 pub use hal::pac;
 
+pub mod backlight;
+pub mod flashlight;
+pub mod ptt;
+
 /// A macro for producing a `VERSION` symbol containing the given string
 /// literal, prefixed by a "*".
 ///
