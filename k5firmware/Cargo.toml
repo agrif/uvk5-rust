@@ -33,5 +33,5 @@ st7565 = "0.5"
 codegen-units = 1
 debug = true
 lto = true
-opt-level = "s"
+opt-level = "z"
 panic = "abort"
