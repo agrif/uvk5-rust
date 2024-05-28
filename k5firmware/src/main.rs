@@ -11,58 +11,13 @@ use hal::gpio::InputOutputPin;
 use hal::time::Hertz;
 
 pub mod bk1080;
+pub mod error;
 
 k5board::version!(env!("CARGO_PKG_VERSION"));
 
 #[global_allocator]
 static ALLOCATOR: alloc_cortex_m::CortexMHeap = alloc_cortex_m::CortexMHeap::empty();
 const HEAP_SIZE: usize = 1024;
-
-struct NoPin;
-
-impl embedded_hal_02::digital::v2::InputPin for NoPin {
-    type Error = core::convert::Infallible;
-
-    fn is_high(&self) -> Result<bool, Self::Error> {
-        Ok(false)
-    }
-
-    fn is_low(&self) -> Result<bool, Self::Error> {
-        Ok(true)
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StringError(alloc::string::String);
-
-impl StringError {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl core::fmt::Display for StringError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl<E> From<E> for StringError
-where
-    E: core::fmt::Debug,
-{
-    fn from(value: E) -> Self {
-        StringError(alloc::format!("{:?}", value))
-    }
-}
-
-impl core::ops::Deref for StringError {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_str()
-    }
-}
 
 fn reset() -> ! {
     println!("!!! reset !!!");
@@ -93,7 +48,7 @@ fn main() -> ! {
     }
 }
 
-fn go() -> Result<(), StringError> {
+fn go() -> error::Result<()> {
     unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
 
     let p = hal::pac::Peripherals::take().unwrap();
