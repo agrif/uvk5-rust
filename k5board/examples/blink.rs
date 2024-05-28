@@ -1,10 +1,11 @@
 #![no_std]
 #![no_main]
 
-use k5board::hal;
 use panic_halt as _;
 
-use hal::prelude::*;
+use k5board::hal;
+use k5board::prelude::*;
+
 use hal::time::Hertz;
 
 k5board::version!(concat!(env!("CARGO_PKG_VERSION"), "blink"));

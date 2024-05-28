@@ -4,8 +4,6 @@
 extern crate alloc;
 use panic_halt as _;
 
-use core::fmt::Write;
-
 use k5board::hal;
 use k5board::prelude::*;
 
@@ -19,26 +17,6 @@ k5board::version!(env!("CARGO_PKG_VERSION"));
 #[global_allocator]
 static ALLOCATOR: alloc_cortex_m::CortexMHeap = alloc_cortex_m::CortexMHeap::empty();
 const HEAP_SIZE: usize = 1024;
-
-static UART_RX: spin::Once<spin::Mutex<hal::uart::Rx<hal::pac::UART1>>> = spin::Once::new();
-static UART_TX: spin::Once<spin::Mutex<hal::uart::Tx<hal::pac::UART1>>> = spin::Once::new();
-
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
-}
-
-macro_rules! print {
-    ($($arg:tt)*) => {
-        // only try to lock.. if it's locked, it's likely never to unlock
-        // this is a best effort deal
-        if let Some(mutex) = UART_TX.get() {
-            if let Some(mut guard) = mutex.try_lock() {
-                write!(guard, "{}", format_args!($($arg)*)).unwrap();
-            }
-        }
-    }
-}
 
 struct NoPin;
 
@@ -88,11 +66,7 @@ impl core::ops::Deref for StringError {
 
 fn reset() -> ! {
     println!("!!! reset !!!");
-    if let Some(txmutex) = UART_TX.get() {
-        if let Some(mut txguard) = txmutex.try_lock() {
-            hal::block::block!(txguard.flush()).unwrap();
-        }
-    }
+    k5board::uart::flush();
     cortex_m::peripheral::SCB::sys_reset();
 }
 
@@ -107,11 +81,9 @@ fn main() -> ! {
             println!("{}", e);
 
             // reset if character received
-            if let Some(mutex) = UART_RX.get() {
-                if let Some(mut guard) = mutex.try_lock() {
-                    if guard.read_one().is_ok() {
-                        reset();
-                    }
+            if let Some(mut rx) = k5board::uart::try_rx() {
+                if rx.read_one().is_ok() {
+                    reset();
                 }
             }
 
@@ -135,12 +107,14 @@ fn go() -> Result<(), StringError> {
     let pins_c = ports.port_c.enable(power.gates.gpio_c);
 
     // fast track the uart (tx A7, rx A8)
-    let uart_tx = pins_a.a7.into();
-    let uart_rx = pins_a.a8.into();
-    let uart =
-        hal::uart::new(p.UART1, power.gates.uart1, &clocks, 38_400.Hz())?.port(uart_rx, uart_tx);
-    UART_RX.call_once(|| uart.rx.into());
-    UART_TX.call_once(|| uart.tx.into());
+    let uart_parts = k5board::uart::Parts {
+        uart: p.UART1,
+        gate: power.gates.uart1,
+        tx: pins_a.a7.into_mode(),
+        rx: pins_a.a8.into_mode(),
+    };
+    let uart = k5board::uart::new(&clocks, 38_400.Hz(), uart_parts)?;
+    k5board::uart::install(uart);
 
     // PA3 keypad column 1
     let col1 = pins_a.a3.into_pull_up_input();
@@ -356,7 +330,7 @@ fn go() -> Result<(), StringError> {
             lcd.flush()?;
         }
 
-        if let Ok(c) = UART_RX.wait().lock().read_one() {
+        if let Some(Ok(c)) = k5board::uart::try_rx().map(|mut rx| rx.read_one()) {
             if c == b'\r' {
                 print!("\r\n");
 
@@ -427,7 +401,9 @@ fn go() -> Result<(), StringError> {
                 line_size = 0;
             }
 
-            UART_TX.wait().lock().write_all(&[c])?;
+            k5board::uart::try_tx()
+                .map(|mut tx| tx.write_all(&[c]))
+                .transpose()?;
             line_buf[line_size] = c;
             line_size += 1;
         }

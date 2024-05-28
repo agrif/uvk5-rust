@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use panic_halt as _;
+
 use embedded_graphics::mono_font::ascii::FONT_6X10;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -8,7 +10,6 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Alignment, Text};
 
 use k5board::hal;
-use panic_halt as _;
 
 use hal::time::Hertz;
 

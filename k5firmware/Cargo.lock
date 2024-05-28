@@ -261,6 +261,7 @@ dependencies = [
  "dp32g030-hal",
  "embedded-graphics-core",
  "embedded-hal 0.2.7",
+ "spin",
  "st7565",
 ]
 
@@ -278,7 +279,6 @@ dependencies = [
  "embedded-hal 0.2.7",
  "k5board",
  "panic-halt",
- "spin",
 ]
 
 [[package]]

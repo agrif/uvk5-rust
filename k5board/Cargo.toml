@@ -22,6 +22,7 @@ display-interface-spi = "0.4"
 embedded-graphics-core = "0.4"
 dp32g030-hal = { path = "../dp32g030-hal" }
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}
+spin = { version = "0.9", features = ["portable_atomic"] }
 st7565 = "0.5"
 
 [dev-dependencies]
