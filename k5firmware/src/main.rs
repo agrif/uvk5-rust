@@ -125,19 +125,19 @@ fn go() -> error::Result<()> {
     // PC5 ptt
     let ptt = k5board::ptt::new(pins_c.c5.into_mode());
 
-    // get a timer going at 200kHz i2c
-    let timer200k = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(200).to_Hz() }>(&clocks)?
+    // get a timer going at 1MHz for i2c
+    let timer1m = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
+        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&clocks)?
         .split(&clocks);
-    let mut delay = timer200k.high.timing();
+    let mut delay = timer1m.high.timing();
 
     // get a timer going at 1kHz for blinks and frames
     let timer1k = hal::timer::new(p.TIMER_BASE2, power.gates.timer_base2)
         .frequency::<{ Hertz::kHz(1).to_Hz() }>(&clocks)?
         .split(&clocks);
 
-    // bitbang eeprom i2c at 100kHz (half the timer frequency)
-    let mut i2c_timer = timer200k.low.timing();
+    // bitbang eeprom i2c at 500kHz (half the timer frequency)
+    let mut i2c_timer = timer1m.low.timing();
     i2c_timer.start_native()?;
     let mut i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
     let mut fm = bk1080::Bk1080::new(&mut i2c)?;
@@ -178,6 +178,8 @@ fn go() -> error::Result<()> {
 
     let mut freq = 0;
     fm.tune(freq)?;
+
+    let mut rssi = 0;
 
     let mut led_blink = timer1k.low.timing();
     led_blink.start_frequency(2.Hz())?;
@@ -250,14 +252,13 @@ fn go() -> error::Result<()> {
                 freq -= 1;
                 fm.tune(freq)?;
             }
+
+            // update rssi
+            rssi = fm.read(bk1080::REG_RSSI)?;
         }
 
         if let Ok(()) = update_display.wait() {
-            let text = alloc::format!(
-                "freq {:?} rssi {:04x?}",
-                875 + 2 * freq,
-                0x0000 // fm.read(bk1080::REG_RSSI)?,
-            );
+            let text = alloc::format!("freq {:?} rssi {:04x?}", 875 + 2 * freq, rssi,);
 
             let text = Text::with_alignment(
                 &text,
