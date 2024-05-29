@@ -201,7 +201,7 @@ where
     /// # Safety
     /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO. You should also be sure Mode matches the pin's mode.
-    pub(crate) unsafe fn steal() -> Self {
+    pub(super) unsafe fn steal() -> Self {
         Pin {
             _marker: Default::default(),
         }

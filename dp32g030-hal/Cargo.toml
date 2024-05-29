@@ -16,6 +16,7 @@ bench = false
 
 [dependencies]
 cortex-m = "0.7.6"
+critical-section = "1"
 defmt = { version = "0.3.5", optional = true }
 dp32g030 = { path = "../dp32g030", features = ["atomics"] }
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}

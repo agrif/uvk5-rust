@@ -44,7 +44,7 @@ where
     /// # Safety
     /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO, and the mode must match the pin's mode.
-    unsafe fn steal(n: u8, p: char) -> Self {
+    pub(super) unsafe fn steal(n: u8, p: char) -> Self {
         assert!(n < 16);
         let port = match p {
             'A' => 0,

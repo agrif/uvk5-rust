@@ -3,7 +3,7 @@ use embedded_hal_02::digital::v2 as hal02;
 
 use super::{
     ErasedPin, Input, InputOutputPin, IntoMode, Output, PartiallyErasedPin, Pin, PinInfo, PinMode,
-    PinState,
+    PinState, SharedPin,
 };
 
 impl From<hal02::PinState> for PinState {
@@ -391,5 +391,67 @@ where
 
     fn toggle(&mut self) -> Result<(), Self::Error> {
         self.with_output(|p| p.toggle())
+    }
+}
+
+impl<P> hal02::InputPin for SharedPin<P>
+where
+    P: hal02::InputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(SharedPin::is_high(self))
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(SharedPin::is_low(self))
+    }
+}
+
+impl<P> hal02::OutputPin for SharedPin<P>
+where
+    P: hal02::OutputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        SharedPin::set_low(self);
+        Ok(())
+    }
+
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        SharedPin::set_high(self);
+        Ok(())
+    }
+
+    fn set_state(&mut self, state: hal02::PinState) -> Result<(), Self::Error> {
+        SharedPin::set_state(self, state.into());
+        Ok(())
+    }
+}
+
+impl<P> hal02::StatefulOutputPin for SharedPin<P>
+where
+    P: hal02::StatefulOutputPin<Error = Infallible>,
+{
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        Ok(SharedPin::is_set_high(self))
+    }
+
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        Ok(SharedPin::is_set_low(self))
+    }
+}
+
+impl<P> hal02::ToggleableOutputPin for SharedPin<P>
+where
+    P: hal02::ToggleableOutputPin<Error = Infallible>,
+{
+    type Error = Infallible;
+
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        SharedPin::toggle(self);
+        Ok(())
     }
 }

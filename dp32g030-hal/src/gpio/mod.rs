@@ -22,6 +22,9 @@ pub use partial::*;
 mod pin;
 pub use pin::*;
 
+mod shared;
+pub use shared::*;
+
 /// Wrap the GPIO registers into ports.
 pub fn new(portcon: pac::PORTCON, a: pac::GPIOA, b: pac::GPIOB, c: pac::GPIOC) -> Ports {
     Ports::new(portcon, a, b, c)

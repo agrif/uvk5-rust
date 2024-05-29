@@ -47,7 +47,7 @@ where
     /// # Safety
     /// This must be the only place this pin is accessed in both
     /// PORTCON and GPIO, and the mode must match the pin's mode.
-    pub(crate) unsafe fn steal(n: u8) -> Self {
+    pub(super) unsafe fn steal(n: u8) -> Self {
         Self {
             n,
             _marker: Default::default(),
