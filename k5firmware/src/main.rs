@@ -87,13 +87,13 @@ fn go() -> error::Result<()> {
         ),
         col: (
             // A10 keypad row 1 / eeprom scl
-            pins_a.a10.into_mode(),
+            pins_a.a10.into_mode().into(),
             // A11 keypad row 2 / eeprom sda
-            pins_a.a11.into_mode(),
+            pins_a.a11.into_mode().into(),
             // A12 keypad row 3 / voice clock
-            pins_a.a12.into_mode(),
+            pins_a.a12.into_mode().into(),
             // A13 keypad row 4 / voice data
-            pins_a.a13.into_mode(),
+            pins_a.a13.into_mode().into(),
         ),
     };
     let mut keypad = k5board::keypad::new(keypad_parts);

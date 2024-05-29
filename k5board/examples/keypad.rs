@@ -40,10 +40,10 @@ fn main() -> ! {
             pins_a.a6.into_mode(),
         ),
         col: (
-            pins_a.a10.into_mode(),
-            pins_a.a11.into_mode(),
-            pins_a.a12.into_mode(),
-            pins_a.a13.into_mode(),
+            pins_a.a10.into_mode().into(),
+            pins_a.a11.into_mode().into(),
+            pins_a.a12.into_mode().into(),
+            pins_a.a13.into_mode().into(),
         ),
     };
     let mut keypad = k5board::keypad::new(keypad_parts);

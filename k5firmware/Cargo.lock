@@ -145,6 +145,7 @@ name = "dp32g030-hal"
 version = "0.1.0"
 dependencies = [
  "cortex-m",
+ "critical-section",
  "dp32g030",
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0",

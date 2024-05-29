@@ -2,8 +2,8 @@
 
 use crate::bitflags;
 use crate::hal::gpio::{
-    Floating, Input, OpenDrain, Output, PullUp, PushPull, PA10, PA11, PA12, PA13, PA3, PA4, PA5,
-    PA6, PC5,
+    Floating, Input, OpenDrain, Output, PinMode, PinState, PullUp, PushPull, SharedPin, PA10, PA11,
+    PA12, PA13, PA3, PA4, PA5, PA6, PC5,
 };
 use crate::hal::time::TimerDuration;
 
@@ -27,12 +27,11 @@ pub struct Parts {
     #[allow(clippy::type_complexity)]
     pub col: (
         // shared with i2c
-        PA10<Output<OpenDrain>>,
-        PA11<Output<OpenDrain>>,
+        SharedPin<PA10<Output<OpenDrain>>>,
+        SharedPin<PA11<Output<OpenDrain>>>,
         // shared with voice ic
-        // FIXME we could detect more presses at once if this was open-drain
-        PA12<Output<PushPull>>,
-        PA13<Output<PushPull>>,
+        SharedPin<PA12<Output<PushPull>>>,
+        SharedPin<PA13<Output<PushPull>>>,
     ),
 }
 
@@ -174,9 +173,85 @@ pub struct Keypad<const DEBOUNCE: usize = { 1 << 3 }> {
     down: State,
 }
 
+// helper to read a Row
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+struct Row<'a>(
+    &'a PA3<Input<Floating>>,
+    &'a PA4<Input<Floating>>,
+    &'a PA5<Input<Floating>>,
+    &'a PA6<Input<Floating>>,
+);
+
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+struct Col<'a, Mode = PushPull>(
+    // shared with i2c
+    &'a mut SharedPin<PA10<Output<OpenDrain>>>,
+    &'a mut SharedPin<PA11<Output<OpenDrain>>>,
+    // shared with voice ic
+    &'a mut PA12<Output<Mode>>,
+    &'a mut PA13<Output<Mode>>,
+)
+where
+    Output<Mode>: PinMode;
+
 /// Create the keypad interface from the keypad pins.
 pub fn new(parts: Parts) -> Keypad {
     Keypad::new(parts)
+}
+
+impl<'a> Row<'a> {
+    // read a row, all at once, into bits
+    fn read(&self, mask: u32) -> u32 {
+        let bits = (self.0.is_high() as u32)
+            | ((self.1.is_high() as u32) << 1)
+            | ((self.2.is_high() as u32) << 2)
+            | ((self.3.is_high() as u32) << 3);
+        !bits & mask
+    }
+}
+
+impl<'a, Mode> Col<'a, Mode>
+where
+    Output<Mode>: PinMode,
+{
+    // make everything open-drain, temporarily
+    fn with_open_drain<R>(&mut self, f: impl FnOnce(Col<OpenDrain>) -> R) -> R {
+        self.2
+            .with_open_drain_output_in_state(PinState::High, |p2| {
+                self.3
+                    .with_open_drain_output_in_state(PinState::High, |p3| {
+                        f(Col::<'_, OpenDrain>(self.0, self.1, p2, p3))
+                    })
+            })
+    }
+
+    // scan across the columns in order
+    fn scan(&mut self, mut f: impl FnMut(Option<u8>)) {
+        self.0.set_high();
+        self.1.set_high();
+        self.2.set_high();
+        self.3.set_high();
+        f(None);
+
+        self.0.set_low();
+        f(Some(0));
+
+        self.0.set_high();
+        self.1.set_low();
+        f(Some(1));
+
+        self.1.set_high();
+        self.2.set_low();
+        f(Some(2));
+
+        self.2.set_high();
+        self.3.set_low();
+        f(Some(3));
+
+        self.3.set_high();
+    }
 }
 
 impl<const DEBOUNCE: usize> Keypad<DEBOUNCE> {
@@ -197,60 +272,27 @@ impl<const DEBOUNCE: usize> Keypad<DEBOUNCE> {
         self.pins
     }
 
-    // read a row, all at once, into bits
-    fn read_row(&mut self, mask: u32) -> u32 {
-        let bits = (self.pins.row.0.is_high() as u32)
-            | ((self.pins.row.1.is_high() as u32) << 1)
-            | ((self.pins.row.2.is_high() as u32) << 2)
-            | ((self.pins.row.3.is_high() as u32) << 3);
-        !bits & mask
-    }
-
-    /// Poll the keypad, returning any newly-pressed keys.
-    pub fn poll(&mut self) -> State {
+    // scan the keys, returning a raw, bouncy state
+    fn scan(row: Row, mut col: Col<OpenDrain>) -> State {
         let mut state = State::empty();
 
-        // set all columns high
-        self.pins.col.0.set_high();
-        self.pins.col.1.set_high();
-        self.pins.col.2.set_high();
-        self.pins.col.3.set_high();
-
-        // read sporadics
-        self.pins.col.3.set_high();
-        if self.pins.ptt.is_low() {
-            state |= State::PTT;
-        }
-
-        // these buttons make entire rows always low, so, mask them out if set
-        let sporadics = self.read_row(0b0011);
-        state |= State::from_bits_truncate(sporadics << 16);
-        let mask = 0b1111 & !sporadics;
-
-        // column 0
-        self.pins.col.0.set_low();
-        state |= State::from_bits_truncate(self.read_row(mask));
-
-        // column 1
-        self.pins.col.0.set_high();
-        self.pins.col.1.set_low();
-        state |= State::from_bits_truncate(self.read_row(mask) << 4);
-
-        // column 2
-        self.pins.col.1.set_high();
-        self.pins.col.2.set_low();
-        state |= State::from_bits_truncate(self.read_row(mask) << 8);
-
-        // column 3
-        self.pins.col.2.set_high();
-        self.pins.col.3.set_low();
-        state |= State::from_bits_truncate(self.read_row(mask) << 12);
+        let mut mask = 0b1111;
+        col.scan(|idx| {
+            // read the rows
+            let bits = row.read(mask);
+            // sporadics (None) maps to shifting by 16
+            state |= State::from_bits_truncate(bits << (idx.unwrap_or(4) << 2));
+            if idx.is_none() {
+                // the sporadics affect all reads after this, so mask them out
+                mask &= !bits;
+            }
+        });
 
         // to prevent confusing our peripherals that share these pins
 
         // send i2c stop on i2c pins
-        let scl = &mut self.pins.col.0;
-        let sda = &mut self.pins.col.1;
+        let scl = col.0;
+        let sda = col.1;
         // conservative estimate of 1us in clock cycles
         let us = TimerDuration::<72_000_000>::micros(1).ticks();
         sda.set_low();
@@ -263,10 +305,36 @@ impl<const DEBOUNCE: usize> Keypad<DEBOUNCE> {
         cortex_m::asm::delay(us);
 
         // reset voice ic pins
-        let vclk = &mut self.pins.col.2;
-        let vdata = &mut self.pins.col.3;
+        let vclk = col.2;
+        let vdata = col.3;
         vclk.set_low();
         vdata.set_high();
+
+        state
+    }
+
+    /// Poll the keypad, returning any newly-pressed keys.
+    pub fn poll(&mut self) -> State {
+        // do the type wrangling needed to call Self::scan()
+
+        let row = Row(
+            &self.pins.row.0,
+            &self.pins.row.1,
+            &self.pins.row.2,
+            &self.pins.row.3,
+        );
+
+        let mut state = self.pins.col.2.with(|c2| {
+            self.pins.col.3.with(|c3| {
+                let mut col = Col(&mut self.pins.col.0, &mut self.pins.col.1, c2, c3);
+                col.with_open_drain(|col| Self::scan(row, col))
+            })
+        });
+
+        // shuffle on PTT
+        if self.pins.ptt.is_low() {
+            state |= State::PTT;
+        }
 
         // store our read state
         self.history[self.next] = state;
