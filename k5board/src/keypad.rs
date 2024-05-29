@@ -1,16 +1,11 @@
 //! Read the keypad and other buttons.
 
+use crate::bitflags;
 use crate::hal::gpio::{
     Floating, Input, OpenDrain, Output, PullUp, PushPull, PA10, PA11, PA12, PA13, PA3, PA4, PA5,
     PA6, PC5,
 };
-
-#[cfg(not(feature = "defmt"))]
-use bitflags::bitflags;
-
-#[cfg(feature = "defmt")]
-use defmt::bitflags;
-use dp32g030_hal::time::TimerDuration;
+use crate::hal::time::TimerDuration;
 
 /// The pins required for the keypad.
 #[derive(Debug)]

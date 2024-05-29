@@ -14,6 +14,12 @@ pub mod keypad;
 pub mod lcd;
 pub mod uart;
 
+#[cfg(not(feature = "defmt"))]
+use bitflags::bitflags;
+
+#[cfg(feature = "defmt")]
+use defmt::bitflags;
+
 /// A macro for producing a `VERSION` symbol containing the given string
 /// literal, prefixed by a "*".
 ///
