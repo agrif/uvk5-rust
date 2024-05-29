@@ -189,14 +189,11 @@ fn go() -> error::Result<()> {
 
     let mut rssi = 0;
 
-    let mut led_blink = timer1k.low.timing();
-    led_blink.start_frequency(2.Hz())?;
+    let mut poll_keypad = timer1k.low.timing();
+    poll_keypad.start(2.millis())?;
 
     let mut update_display = timer1k.high.timing();
     update_display.start_frequency(30.Hz())?;
-
-    let mut poll_keypad = delay;
-    poll_keypad.start(1.millis())?;
 
     // a buffer in which to store our serial data
     let line_buf = cortex_m::singleton!(LINE_BUF: [u8; 0x100] = [0; 0x100]).unwrap();
@@ -248,6 +245,10 @@ fn go() -> error::Result<()> {
         if let Ok(()) = poll_keypad.wait() {
             let keys = keypad.poll();
 
+            if keys.is_ptt() {
+                flashlight.toggle();
+            }
+
             if keys.is_up() {
                 freq += 1;
                 //fm.tune(freq)?;
@@ -256,14 +257,6 @@ fn go() -> error::Result<()> {
             if keys.is_down() {
                 freq -= 1;
                 //fm.tune(freq)?;
-            }
-        }
-
-        if let Ok(()) = led_blink.wait() {
-            // ptt pressed means toggle flashlight
-            if keypad.pressed().is_ptt() {
-                flashlight.toggle();
-                fm_enable.toggle();
             }
 
             // update rssi
