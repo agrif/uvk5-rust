@@ -71,24 +71,34 @@ fn go() -> error::Result<()> {
     let uart = k5board::uart::new(&clocks, 38_400.Hz(), uart_parts)?;
     k5board::uart::install(uart);
 
-    // PA3 keypad column 1
-    let col1 = pins_a.a3.into_pull_up_input();
-    // PA4 keypad column 2
-    let col2 = pins_a.a4.into_pull_up_input();
-    // PA5 keypad column 3
-    // PA6 keypad column 4
+    // set up the keypad
+    let keypad_parts = k5board::keypad::Parts {
+        // C5 push-to-talk
+        ptt: pins_c.c5.into_mode(),
+        row: (
+            // A3 keypad row 1
+            pins_a.a3.into_mode(),
+            // A4 keypad row 2
+            pins_a.a4.into_mode(),
+            // A5 keypad row 3
+            pins_a.a5.into_mode(),
+            // A6 keypad row 4
+            pins_a.a6.into_mode(),
+        ),
+        col: (
+            // A10 keypad row 1 / eeprom scl
+            pins_a.a10.into_mode(),
+            // A11 keypad row 2 / eeprom sda
+            pins_a.a11.into_mode(),
+            // A12 keypad row 3 / voice clock
+            pins_a.a12.into_mode(),
+            // A13 keypad row 4 / voice data
+            pins_a.a13.into_mode(),
+        ),
+    };
+    let mut keypad = k5board::keypad::new(keypad_parts);
 
     // PA9 battery voltage
-
-    // PA10 keypad row 1 / eeprom scl
-    let eeprom_scl = pins_a.a10.into_open_drain_output();
-    // PA11 keypad row 2 / eeprom sda
-    let eeprom_sda = InputOutputPin::new_from_output(pins_a.a11.into_open_drain_output(), |p| {
-        p.into_floating_input()
-    })
-    .default_high();
-    // PA12 keypad row 3 / voice 0
-    // PA13 keypad row 4 / voice 1
 
     // PA14 battery current
 
@@ -122,8 +132,6 @@ fn go() -> error::Result<()> {
     let mut flashlight = k5board::flashlight::new(pins_c.c3.into_mode());
     // PC4 speaker amp on
     let mut speaker_enable = pins_c.c4.into_push_pull_output();
-    // PC5 ptt
-    let ptt = k5board::ptt::new(pins_c.c5.into_mode());
 
     // get a timer going at 1MHz for i2c
     let timer1m = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
@@ -139,8 +147,8 @@ fn go() -> error::Result<()> {
     // bitbang eeprom i2c at 500kHz (half the timer frequency)
     let mut i2c_timer = timer1m.low.timing();
     i2c_timer.start_native()?;
-    let mut i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
-    let mut fm = bk1080::Bk1080::new(&mut i2c)?;
+    //let mut i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
+    //let mut fm = bk1080::Bk1080::new(&mut i2c)?;
     //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // the lcd display
@@ -173,11 +181,11 @@ fn go() -> error::Result<()> {
 
     // turn on radio
     fm_enable.set_low(); // active low
-    fm.enable()?;
+                         //fm.enable()?;
     speaker_enable.set_high();
 
     let mut freq = 0;
-    fm.tune(freq)?;
+    //fm.tune(freq)?;
 
     let mut rssi = 0;
 
@@ -186,6 +194,9 @@ fn go() -> error::Result<()> {
 
     let mut update_display = timer1k.high.timing();
     update_display.start_frequency(30.Hz())?;
+
+    let mut poll_keypad = delay;
+    poll_keypad.start(1.millis())?;
 
     // a buffer in which to store our serial data
     let line_buf = cortex_m::singleton!(LINE_BUF: [u8; 0x100] = [0; 0x100]).unwrap();
@@ -234,27 +245,29 @@ fn go() -> error::Result<()> {
     }
 
     loop {
+        if let Ok(()) = poll_keypad.wait() {
+            let keys = keypad.poll();
+
+            if keys.is_up() {
+                freq += 1;
+                //fm.tune(freq)?;
+            }
+
+            if keys.is_down() {
+                freq -= 1;
+                //fm.tune(freq)?;
+            }
+        }
+
         if let Ok(()) = led_blink.wait() {
             // ptt pressed means toggle flashlight
-            if ptt.is_pressed() {
+            if keypad.pressed().is_ptt() {
                 flashlight.toggle();
                 fm_enable.toggle();
             }
 
-            // button 1 is pressed
-            if col1.is_low() {
-                freq += 1;
-                fm.tune(freq)?;
-            }
-
-            // button 2 is pressed
-            if col2.is_low() {
-                freq -= 1;
-                fm.tune(freq)?;
-            }
-
             // update rssi
-            rssi = fm.read(bk1080::REG_RSSI)?;
+            //rssi = fm.read(bk1080::REG_RSSI)?;
         }
 
         if let Ok(()) = update_display.wait() {
@@ -321,23 +334,23 @@ fn go() -> error::Result<()> {
                         fm_enable.set_high();
                     }
                     ("fm", "init") => {
-                        println!("init: {:x?}", fm.enable());
+                        //println!("init: {:x?}", fm.enable());
                     }
                     ("tune", val) => {
                         let Ok(val) = val.parse::<u16>() else {
                             continue;
                         };
-                        println!("tune: {:x?}", fm.tune(val));
+                        //println!("tune: {:x?}", fm.tune(val));
                     }
                     ("fm", "") => {
-                        let all = fm.update(..);
+                        /*let all = fm.update(..);
                         if let Ok(all) = all {
                             for (a, v) in all.iter().enumerate() {
                                 println!("fm {:02x}: {:x?}", a, v);
                             }
                         } else {
                             println!("fm {:?}", all);
-                        }
+                        }*/
                     }
                     ("read", addr) => {
                         let Ok(addr) = u32::from_str_radix(addr, 16) else {

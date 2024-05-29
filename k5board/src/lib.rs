@@ -10,8 +10,8 @@ pub use hal::pac;
 
 pub mod backlight;
 pub mod flashlight;
+pub mod keypad;
 pub mod lcd;
-pub mod ptt;
 pub mod uart;
 
 /// A macro for producing a `VERSION` symbol containing the given string
