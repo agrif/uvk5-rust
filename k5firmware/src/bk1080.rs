@@ -1,8 +1,8 @@
-use core::ops::{Bound, DerefMut, RangeBounds};
+use core::ops::{Bound, RangeBounds};
 
-use bitbang_hal::i2c::{Error, I2cBB};
 use embedded_hal_02::digital::v2::{InputPin, OutputPin};
 use embedded_hal_02::timer::{CountDown, Periodic};
+use k5board::shared_i2c::{Error, SharedI2c};
 
 // device id
 pub const DEVICE_ID: u8 = 0x80;
@@ -26,19 +26,18 @@ pub const REG_READ_CHANNEL: u8 = 0x0b;
 // size of addressable space, in u16s
 pub const REG_MAX: u8 = 0x22;
 
-pub struct Bk1080<I2c> {
-    i2c: I2c,
+pub struct Bk1080<'a, Timer, Scl, Sda> {
+    i2c: SharedI2c<'a, Timer, Scl, Sda>,
     registers: [u16; REG_MAX as usize],
 }
 
-impl<I2c, Scl, Sda, Clk, E> Bk1080<I2c>
+impl<'a, Timer, Scl, Sda> Bk1080<'a, Timer, Scl, Sda>
 where
-    I2c: DerefMut<Target = I2cBB<Scl, Sda, Clk>>,
-    Scl: OutputPin<Error = E>,
-    Sda: InputPin<Error = E> + OutputPin<Error = E>,
-    Clk: CountDown + Periodic,
+    Timer: CountDown + Periodic,
+    Scl: OutputPin,
+    Sda: OutputPin<Error = Scl::Error> + InputPin<Error = Scl::Error>,
 {
-    pub fn new(i2c: I2c) -> Result<Self, Error<E>> {
+    pub fn new(i2c: SharedI2c<'a, Timer, Scl, Sda>) -> Result<Self, Error> {
         let mut bk1080 = Self {
             i2c,
             registers: [0; REG_MAX as usize],
@@ -49,7 +48,7 @@ where
         Ok(bk1080)
     }
 
-    pub fn update<R>(&mut self, range: R) -> Result<&[u16], Error<E>>
+    pub fn update<R>(&mut self, range: R) -> Result<&[u16], Error>
     where
         R: RangeBounds<u8>,
     {
@@ -76,11 +75,13 @@ where
 
         let data = bytemuck::cast_slice_mut(&mut self.registers[start..end]);
 
-        self.i2c.raw_i2c_start()?;
-        self.i2c
-            .raw_write_to_slave(&[DEVICE_ID, ((start as u8) << 1) | 1])?;
-        self.i2c.raw_read_from_slave(data)?;
-        self.i2c.raw_i2c_stop()?;
+        self.i2c.with_raw(|raw| {
+            use k5board::shared_i2c::I2cRaw;
+            raw.start_raw()?;
+            raw.write_raw(&[DEVICE_ID, ((start as u8) << 1) | 1])?;
+            raw.read_raw(data)?;
+            raw.stop_raw()
+        })?;
 
         for d in self.registers[start..end].iter_mut() {
             *d = u16::from_be(*d);
@@ -93,28 +94,31 @@ where
         self.registers.get(address as usize).copied()
     }
 
-    pub fn read(&mut self, address: u8) -> Result<u16, Error<E>> {
+    pub fn read(&mut self, address: u8) -> Result<u16, Error> {
         Ok(self.update(address..address + 1)?[0])
     }
 
-    pub fn write(&mut self, address: u8, data: u16) -> Result<u16, Error<E>> {
+    pub fn write(&mut self, address: u8, data: u16) -> Result<u16, Error> {
         if address as usize >= self.registers.len() {
             return Err(Error::InvalidData);
         }
 
-        self.i2c.raw_i2c_start()?;
-        self.i2c.raw_write_to_slave(&[
-            DEVICE_ID,
-            address << 1,
-            ((data & 0xff00) >> 8) as u8,
-            (data & 0x00ff) as u8,
-        ])?;
-        self.i2c.raw_i2c_stop()?;
+        self.i2c.with_raw(|raw| {
+            use k5board::shared_i2c::I2cRaw;
+            raw.start_raw()?;
+            raw.write_raw(&[
+                DEVICE_ID,
+                address << 1,
+                ((data & 0xff00) >> 8) as u8,
+                (data & 0x00ff) as u8,
+            ])?;
+            raw.stop_raw()
+        })?;
 
         self.read(address)
     }
 
-    pub fn enable(&mut self) -> Result<(), Error<E>> {
+    pub fn enable(&mut self) -> Result<(), Error> {
         const INITREGS: &[u16] = &[
             0x0008, // 0x00 (r) : unknown 0
             0x1080, // 0x01 (r) : chip id
@@ -210,7 +214,7 @@ where
         Ok(())
     }
 
-    pub fn tune(&mut self, freq: u16) -> Result<(), Error<E>> {
+    pub fn tune(&mut self, freq: u16) -> Result<(), Error> {
         // FIXME delay? retry timeout??
         self.write(REG_CHANNEL, freq & 0x3ff)?;
         while self.read(REG_RSSI)? & (1 << 14) > 0 {}

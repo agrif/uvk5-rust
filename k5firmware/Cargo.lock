@@ -160,13 +160,12 @@ dependencies = [
 
 [[package]]
 name = "eeprom24x"
-version = "0.6.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a0a071d76033b574d8b87118546f45d9834f008f726f493bfb8e997d83fcb11"
+checksum = "9f7a31bca283ff29097bb5e7c0dbdb39fbe165dda33b825e19f8ac04f15a8eef"
 dependencies = [
- "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
  "embedded-storage",
- "nb 1.1.0",
 ]
 
 [[package]]
@@ -262,15 +261,19 @@ checksum = "1d758ba1b47b00caf47f24925c0074ecb20d6dfcffe7f6d53395c0465674841a"
 name = "k5board"
 version = "0.1.0"
 dependencies = [
+ "bitbang-hal",
  "bitflags",
  "cortex-m",
+ "critical-section",
  "display-interface",
  "display-interface-spi",
  "dp32g030-hal",
  "embedded-graphics-core",
  "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
  "spin",
  "st7565",
+ "void",
 ]
 
 [[package]]
@@ -278,7 +281,6 @@ name = "k5firmware"
 version = "0.1.0"
 dependencies = [
  "alloc-cortex-m",
- "bitbang-hal",
  "bytemuck",
  "cortex-m",
  "cortex-m-rt",

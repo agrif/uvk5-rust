@@ -12,6 +12,7 @@ pub mod backlight;
 pub mod flashlight;
 pub mod keypad;
 pub mod lcd;
+pub mod shared_i2c;
 pub mod uart;
 
 #[cfg(not(feature = "defmt"))]

@@ -146,13 +146,15 @@ fn go() -> error::Result<()> {
     // bitbang eeprom i2c at 500kHz (half the timer frequency)
     let mut i2c_timer = timer1m.low.timing();
     i2c_timer.start_native()?;
-    let mut i2c = bitbang_hal::i2c::I2cBB::new(
-        keypad.get_shared_scl().clone(),
-        keypad.get_shared_sda().clone(),
-        i2c_timer,
-    );
-    let mut fm = bk1080::Bk1080::new(&mut i2c)?;
-    //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
+    let i2c_parts = k5board::shared_i2c::Parts {
+        clk: i2c_timer,
+        scl: keypad.get_shared_scl().clone(),
+        sda: keypad.get_shared_sda().clone(),
+    };
+    let i2c = k5board::shared_i2c::new(i2c_parts);
+    let mut fm = bk1080::Bk1080::new(i2c.acquire())?;
+    let mut eeprom =
+        eeprom24x::Eeprom24x::new_24x64(i2c.acquire(), eeprom24x::SlaveAddr::default());
 
     // the lcd display
     let mut lcd = k5board::lcd::new(&mut delay, lcd_parts)?;
@@ -358,7 +360,7 @@ fn go() -> error::Result<()> {
                             continue;
                         };
                         let mut eeprom_data = [0; 16];
-                        //eeprom.read_data(addr, &mut eeprom_data[..])?;
+                        eeprom.read_data(addr, &mut eeprom_data[..])?;
                         println!("eeprom data: {:x?}", eeprom_data);
                     }
                     _ => {}
