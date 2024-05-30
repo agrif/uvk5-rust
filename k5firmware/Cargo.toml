@@ -19,7 +19,6 @@ alloc-cortex-m = "0.4"
 bytemuck = "1.16"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
-eeprom24x = "0.7"
 embedded-graphics = "0.8"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7" }
 k5board = { path = "../k5board" }

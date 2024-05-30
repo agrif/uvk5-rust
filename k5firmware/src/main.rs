@@ -153,8 +153,7 @@ fn go() -> error::Result<()> {
     };
     let i2c = k5board::shared_i2c::new(i2c_parts);
     let mut fm = bk1080::Bk1080::new(i2c.acquire())?;
-    let mut eeprom =
-        eeprom24x::Eeprom24x::new_24x64(i2c.acquire(), eeprom24x::SlaveAddr::default());
+    let mut eeprom = k5board::eeprom::new(i2c.acquire());
 
     // the lcd display
     let mut lcd = k5board::lcd::new(&mut delay, lcd_parts)?;
@@ -356,11 +355,11 @@ fn go() -> error::Result<()> {
                         }
                     }
                     ("read", addr) => {
-                        let Ok(addr) = u32::from_str_radix(addr, 16) else {
+                        let Ok(addr) = usize::from_str_radix(addr, 16) else {
                             continue;
                         };
                         let mut eeprom_data = [0; 16];
-                        eeprom.read_data(addr, &mut eeprom_data[..])?;
+                        eeprom.read(addr, &mut eeprom_data[..])?;
                         println!("eeprom data: {:x?}", eeprom_data);
                     }
                     _ => {}

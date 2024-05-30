@@ -9,6 +9,7 @@ pub use dp32g030_hal as hal;
 pub use hal::pac;
 
 pub mod backlight;
+pub mod eeprom;
 pub mod flashlight;
 pub mod keypad;
 pub mod lcd;
