@@ -272,6 +272,26 @@ impl<const DEBOUNCE: usize> Keypad<DEBOUNCE> {
         self.pins
     }
 
+    /// Get the shared I2C SCL pin.
+    pub fn get_shared_scl(&self) -> &SharedPin<PA10<Output<OpenDrain>>> {
+        &self.pins.col.0
+    }
+
+    /// Get the shared I2C SDA pin.
+    pub fn get_shared_sda(&self) -> &SharedPin<PA11<Output<OpenDrain>>> {
+        &self.pins.col.1
+    }
+
+    /// Get the shared voice clock pin.
+    pub fn get_shared_vclk(&self) -> &SharedPin<PA12<Output<PushPull>>> {
+        &self.pins.col.2
+    }
+
+    /// Get the shared voice data pin.
+    pub fn get_shared_vdata(&self) -> &SharedPin<PA13<Output<PushPull>>> {
+        &self.pins.col.3
+    }
+
     // scan the keys, returning a raw, bouncy state
     fn scan(row: Row, mut col: Col<OpenDrain>) -> State {
         let mut state = State::empty();

@@ -7,7 +7,6 @@ use panic_halt as _;
 use k5board::hal;
 use k5board::prelude::*;
 
-use hal::gpio::InputOutputPin;
 use hal::time::Hertz;
 
 pub mod bk1080;
@@ -147,8 +146,12 @@ fn go() -> error::Result<()> {
     // bitbang eeprom i2c at 500kHz (half the timer frequency)
     let mut i2c_timer = timer1m.low.timing();
     i2c_timer.start_native()?;
-    //let mut i2c = bitbang_hal::i2c::I2cBB::new(eeprom_scl, eeprom_sda, i2c_timer);
-    //let mut fm = bk1080::Bk1080::new(&mut i2c)?;
+    let mut i2c = bitbang_hal::i2c::I2cBB::new(
+        keypad.get_shared_scl().clone(),
+        keypad.get_shared_sda().clone(),
+        i2c_timer,
+    );
+    let mut fm = bk1080::Bk1080::new(&mut i2c)?;
     //let mut eeprom = eeprom24x::Eeprom24x::new_24x64(i2c, eeprom24x::SlaveAddr::default());
 
     // the lcd display
@@ -181,19 +184,22 @@ fn go() -> error::Result<()> {
 
     // turn on radio
     fm_enable.set_low(); // active low
-                         //fm.enable()?;
+    fm.enable()?;
     speaker_enable.set_high();
 
     let mut freq = 0;
-    //fm.tune(freq)?;
+    fm.tune(freq)?;
 
     let mut rssi = 0;
 
-    let mut poll_keypad = timer1k.low.timing();
-    poll_keypad.start(2.millis())?;
+    let mut rssi_update = timer1k.low.timing();
+    rssi_update.start(500.millis())?;
 
     let mut update_display = timer1k.high.timing();
     update_display.start_frequency(30.Hz())?;
+
+    let mut poll_keypad = delay;
+    poll_keypad.start(2.millis())?;
 
     // a buffer in which to store our serial data
     let line_buf = cortex_m::singleton!(LINE_BUF: [u8; 0x100] = [0; 0x100]).unwrap();
@@ -242,6 +248,11 @@ fn go() -> error::Result<()> {
     }
 
     loop {
+        if let Ok(()) = rssi_update.wait() {
+            // update rssi
+            rssi = fm.read(bk1080::REG_RSSI)?;
+        }
+
         if let Ok(()) = poll_keypad.wait() {
             let keys = keypad.poll();
 
@@ -251,16 +262,13 @@ fn go() -> error::Result<()> {
 
             if keys.is_up() {
                 freq += 1;
-                //fm.tune(freq)?;
+                fm.tune(freq)?;
             }
 
             if keys.is_down() {
                 freq -= 1;
-                //fm.tune(freq)?;
+                fm.tune(freq)?;
             }
-
-            // update rssi
-            //rssi = fm.read(bk1080::REG_RSSI)?;
         }
 
         if let Ok(()) = update_display.wait() {
@@ -327,23 +335,23 @@ fn go() -> error::Result<()> {
                         fm_enable.set_high();
                     }
                     ("fm", "init") => {
-                        //println!("init: {:x?}", fm.enable());
+                        println!("init: {:x?}", fm.enable());
                     }
                     ("tune", val) => {
                         let Ok(val) = val.parse::<u16>() else {
                             continue;
                         };
-                        //println!("tune: {:x?}", fm.tune(val));
+                        println!("tune: {:x?}", fm.tune(val));
                     }
                     ("fm", "") => {
-                        /*let all = fm.update(..);
+                        let all = fm.update(..);
                         if let Ok(all) = all {
                             for (a, v) in all.iter().enumerate() {
                                 println!("fm {:02x}: {:x?}", a, v);
                             }
                         } else {
                             println!("fm {:?}", all);
-                        }*/
+                        }
                     }
                     ("read", addr) => {
                         let Ok(addr) = u32::from_str_radix(addr, 16) else {
