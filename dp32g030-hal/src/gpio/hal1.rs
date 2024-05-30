@@ -3,8 +3,8 @@ use embedded_hal_02::digital::v2 as hal02;
 use embedded_hal_1::digital as hal1;
 
 use super::{
-    ErasedPin, Input, InputOutputPin, IntoMode, Output, PartiallyErasedPin, Pin, PinInfo, PinMode,
-    PinState, SharedPin,
+    ErasedPin, Input, InputOutputPin, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin,
+    PinInfo, PinMode, PinState, SharedPin,
 };
 
 impl From<hal1::PinState> for PinState {
@@ -37,11 +37,21 @@ where
     Input<Pull>: PinMode,
 {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(Pin::is_high(self))
+        Ok(Pin::<P, N, Input<Pull>>::is_high(self))
     }
 
     fn is_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(Pin::is_low(self))
+        Ok(Pin::<P, N, Input<Pull>>::is_low(self))
+    }
+}
+
+impl<const P: char, const N: u8> hal1::InputPin for Pin<P, N, Output<OpenDrain>> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::<P, N, Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(Pin::<P, N, Output<OpenDrain>>::is_low(self))
     }
 }
 
@@ -95,11 +105,21 @@ where
     Input<Pull>: PinMode,
 {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(PartiallyErasedPin::is_high(self))
+        Ok(PartiallyErasedPin::<P, Input<Pull>>::is_high(self))
     }
 
     fn is_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(PartiallyErasedPin::is_low(self))
+        Ok(PartiallyErasedPin::<P, Input<Pull>>::is_low(self))
+    }
+}
+
+impl<const P: char> hal1::InputPin for PartiallyErasedPin<P, Output<OpenDrain>> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::<P, Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::<P, Output<OpenDrain>>::is_low(self))
     }
 }
 
@@ -153,11 +173,21 @@ where
     Input<Pull>: PinMode,
 {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(ErasedPin::is_high(self))
+        Ok(ErasedPin::<Input<Pull>>::is_high(self))
     }
 
     fn is_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(ErasedPin::is_low(self))
+        Ok(ErasedPin::<Input<Pull>>::is_low(self))
+    }
+}
+
+impl hal1::InputPin for ErasedPin<Output<OpenDrain>> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::<Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::<Output<OpenDrain>>::is_low(self))
     }
 }
 

@@ -286,6 +286,37 @@ where
     }
 }
 
+impl ErasedPin<Output<OpenDrain>> {
+    /// Read the input pin.
+    pub fn read(&self) -> PinState {
+        if self.read_data().is_high() {
+            // high means high-Z, turn into an input briefly to see
+            // if something else is pulling us low
+            // safety: these are atomic changes, undone at the end
+            unsafe {
+                let mut pin = Self::steal(self.pin(), self.port());
+                let r = pin.with_floating_input(|p| p.read());
+                // cursed: pin output defaults to last input
+                pin.write_data(PinState::High);
+                r
+            }
+        } else {
+            // we're pulling it low
+            PinState::Low
+        }
+    }
+
+    /// Is the input pin high?
+    pub fn is_high(&self) -> bool {
+        self.read().is_high()
+    }
+
+    /// Is the input pin low?
+    pub fn is_low(&self) -> bool {
+        self.read().is_low()
+    }
+}
+
 impl<Mode> ErasedPin<Output<Mode>>
 where
     Output<Mode>: PinMode,

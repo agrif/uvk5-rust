@@ -2,8 +2,8 @@ use core::convert::Infallible;
 use embedded_hal_02::digital::v2 as hal02;
 
 use super::{
-    ErasedPin, Input, InputOutputPin, IntoMode, Output, PartiallyErasedPin, Pin, PinInfo, PinMode,
-    PinState, SharedPin,
+    ErasedPin, Input, InputOutputPin, IntoMode, OpenDrain, Output, PartiallyErasedPin, Pin,
+    PinInfo, PinMode, PinState, SharedPin,
 };
 
 impl From<hal02::PinState> for PinState {
@@ -53,11 +53,23 @@ where
     type Error = Infallible;
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        Ok(Pin::is_high(self))
+        Ok(Pin::<P, N, Input<Pull>>::is_high(self))
     }
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        Ok(Pin::is_low(self))
+        Ok(Pin::<P, N, Input<Pull>>::is_low(self))
+    }
+}
+
+impl<const P: char, const N: u8> hal02::InputPin for Pin<P, N, Output<OpenDrain>> {
+    type Error = Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::<P, N, Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(Pin::<P, N, Output<OpenDrain>>::is_low(self))
     }
 }
 
@@ -138,11 +150,23 @@ where
     type Error = Infallible;
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        Ok(PartiallyErasedPin::is_high(self))
+        Ok(PartiallyErasedPin::<P, Input<Pull>>::is_high(self))
     }
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        Ok(PartiallyErasedPin::is_low(self))
+        Ok(PartiallyErasedPin::<P, Input<Pull>>::is_low(self))
+    }
+}
+
+impl<const P: char> hal02::InputPin for PartiallyErasedPin<P, Output<OpenDrain>> {
+    type Error = Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::<P, Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(PartiallyErasedPin::<P, Output<OpenDrain>>::is_low(self))
     }
 }
 
@@ -222,11 +246,23 @@ where
     type Error = Infallible;
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        Ok(ErasedPin::is_high(self))
+        Ok(ErasedPin::<Input<Pull>>::is_high(self))
     }
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        Ok(ErasedPin::is_low(self))
+        Ok(ErasedPin::<Input<Pull>>::is_low(self))
+    }
+}
+
+impl hal02::InputPin for ErasedPin<Output<OpenDrain>> {
+    type Error = Infallible;
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::<Output<OpenDrain>>::is_high(self))
+    }
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(ErasedPin::<Output<OpenDrain>>::is_low(self))
     }
 }
 
