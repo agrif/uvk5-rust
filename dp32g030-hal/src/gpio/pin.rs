@@ -257,7 +257,9 @@ where
         Output<M>: PinMode,
     {
         self.write_data(state);
-        self.into_mode()
+        let mut pin = self.into_mode();
+        pin.write_data(state);
+        pin
     }
 
     /// Temporarily configure this pin in a new mode.
@@ -293,7 +295,10 @@ where
         Output<M>: PinMode,
     {
         self.write_data(state);
-        self.with_mode(f)
+        self.with_mode(|p| {
+            p.write_data(state);
+            f(p)
+        })
     }
 
     // internal helper to read data register
