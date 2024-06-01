@@ -104,7 +104,7 @@ mod test {
     impl Arbitrary for crate::Version {
         fn arbitrary(g: &mut Gen) -> Self {
             let mut version = Vec::<u8>::arbitrary(g);
-            version.truncate(crate::VERSION_LEN);
+            version.truncate(crate::VERSION_LEN - 1); // null terminator
             crate::Version::new_from_bytes(&version).unwrap()
         }
     }

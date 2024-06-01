@@ -26,30 +26,33 @@ impl core::fmt::Display for VersionError {
 }
 
 impl Version {
-    pub fn new_empty() -> Self {
+    pub const fn new_empty() -> Self {
         Self([0; VERSION_LEN])
     }
 
-    pub fn new(data: [u8; VERSION_LEN]) -> Self {
+    pub const fn new(data: [u8; VERSION_LEN]) -> Self {
         Self(data)
     }
 
-    pub fn new_from_str(name: &str) -> Result<Self, VersionError> {
+    pub const fn new_from_str(name: &str) -> Result<Self, VersionError> {
         Self::new_from_bytes(name.as_bytes())
     }
 
-    pub fn new_from_c_str(name: &core::ffi::CStr) -> Result<Self, VersionError> {
+    pub const fn new_from_c_str(name: &core::ffi::CStr) -> Result<Self, VersionError> {
         Self::new_from_bytes(name.to_bytes())
     }
 
-    pub fn new_from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
-        if bytes.len() > VERSION_LEN {
+    pub const fn new_from_bytes(bytes: &[u8]) -> Result<Self, VersionError> {
+        // use >= to force space for a terminating 0
+        if bytes.len() >= VERSION_LEN {
             return Err(VersionError::TooLong);
         }
 
         let mut data = [0; VERSION_LEN];
-        for (i, b) in bytes.iter().enumerate() {
-            data[i] = *b;
+        let mut i = 0;
+        while i < bytes.len() && bytes[i] > 0 {
+            data[i] = bytes[i];
+            i += 1;
         }
 
         Ok(Self(data))
@@ -57,15 +60,19 @@ impl Version {
 
     pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
         // unwrap: always at least one element
-        let zero_terminated = self.0.split(|b| *b == 0).next().unwrap();
+        let mut zero = 0;
+        while self.0[zero] > 0 && zero < self.0.len() {
+            zero += 1;
+        }
+        let zero_terminated = &self.0[..zero];
         core::str::from_utf8(zero_terminated)
     }
 
-    pub fn as_c_str(&self) -> Result<&core::ffi::CStr, core::ffi::FromBytesUntilNulError> {
+    pub const fn as_c_str(&self) -> Result<&core::ffi::CStr, core::ffi::FromBytesUntilNulError> {
         core::ffi::CStr::from_bytes_until_nul(&self.0)
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
+    pub const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
