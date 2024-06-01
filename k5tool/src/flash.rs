@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::common::{FLASH_MAX, RAM_MAX, RAM_START};
 
-use k5lib::protocol::{
+use k5lib::protocol::messages::bootloader::{
     BootloaderReady, BootloaderReadyReply, WriteFlash, WriteFlashReply, WRITE_FLASH_LEN,
     WRITE_FLASH_SESSION_ID,
 };

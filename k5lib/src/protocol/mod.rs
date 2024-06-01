@@ -6,8 +6,10 @@ pub const FRAME_END: [u8; 2] = [0xdc, 0xba];
 
 /// Largest size for an entire frame.
 ///
-/// This is an educated guess. [WriteFlash] payload is at most 0x100
-/// bytes, so this gives a little bit of wiggle room on top of that.
+/// This is an educated
+/// guess. [WriteFlash][messages::bootloader::WriteFlash] payload is
+/// at most 0x100 bytes, so this gives a little bit of wiggle room on
+/// top of that.
 pub const MAX_FRAME_SIZE: usize = 0x200;
 
 /// Default baud rate for radio UART.
@@ -20,8 +22,8 @@ pub mod obfuscation;
 pub mod parse;
 pub use parse::{MessageParse, Parse, ParseMut, ParseResult};
 
-mod messages;
-pub use messages::*;
+pub mod messages;
+pub use messages::{HostMessage, Message, MessageType, RadioMessage};
 
 pub mod serialize;
 pub use serialize::{MessageSerialize, Serializer};

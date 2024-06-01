@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use k5lib::protocol;
+use k5lib::protocol::messages::{bootloader, radio};
 use k5lib::protocol::{HostMessage, ParseResult};
 
 #[derive(clap::Args, Debug)]
@@ -130,7 +130,7 @@ where
     }
 
     fn send_boot_ready(&mut self) -> anyhow::Result<()> {
-        self.client.write(&protocol::BootloaderReady {
+        self.client.write(&bootloader::BootloaderReady {
             chip_id: [0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210],
             version: k5lib::Version::new_from_str(&self.opts.version)?,
         })?;
@@ -138,7 +138,7 @@ where
     }
 
     fn send_write_flash_error(&mut self) -> anyhow::Result<()> {
-        self.client.write(&protocol::WriteFlashReply {
+        self.client.write(&bootloader::WriteFlashReply {
             session_id: 0,
             page: 0,
             error: 1,
@@ -184,7 +184,7 @@ where
         match msg {
             HostMessage::Hello(m) => {
                 self.session_id = Some(m.session_id);
-                self.client.write(&protocol::HelloReply {
+                self.client.write(&radio::HelloReply {
                     version: k5lib::Version::new_from_str(&self.opts.version)?,
                     has_custom_aes_key: false,
                     is_in_lock_screen: false,
@@ -208,7 +208,7 @@ where
                     }
 
                     let data = &self.eeprom[start..end].to_owned();
-                    self.client.write(&protocol::ReadEepromReply {
+                    self.client.write(&radio::ReadEepromReply {
                         address: m.address,
                         len: data.len() as u8,
                         _pad: Default::default(),
@@ -260,13 +260,13 @@ where
                     }
 
                     // copy in
-                    let addr = m.page as usize * protocol::WRITE_FLASH_LEN;
+                    let addr = m.page as usize * bootloader::WRITE_FLASH_LEN;
                     for (i, b) in m.data.iter().enumerate() {
                         self.flash[addr + i] = *b;
                     }
 
                     // write reply
-                    self.client.write(&protocol::WriteFlashReply {
+                    self.client.write(&bootloader::WriteFlashReply {
                         session_id: self.flash_session_id,
                         page: m.page,
                         error: 0,

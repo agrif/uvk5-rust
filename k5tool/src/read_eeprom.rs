@@ -1,6 +1,8 @@
 use std::io::{Read, Write};
 
-use k5lib::protocol::{Hello, HelloReply, ReadEeprom, ReadEepromReply, HELLO_SESSION_ID};
+use k5lib::protocol::messages::radio::{
+    Hello, HelloReply, ReadEeprom, ReadEepromReply, HELLO_SESSION_ID,
+};
 
 const CHUNK_SIZE: u8 = 0x80;
 
