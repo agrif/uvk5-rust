@@ -27,6 +27,7 @@ embedded-graphics-core = "0.4"
 dp32g030-hal = { path = "../dp32g030-hal" }
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}
 embedded-hal-1 = { package = "embedded-hal", version = "1" }
+k5lib = { path = "../k5lib", default-features = false }
 spin = { version = "0.9", features = ["portable_atomic"] }
 st7565 = "0.5"
 void = { version = "1", default-features = false }
@@ -48,4 +49,5 @@ defmt = [
       "dep:defmt",
       "dp32g030-hal/defmt",
       "embedded-hal-1/defmt-03",
+      "k5lib/defmt",
 ]

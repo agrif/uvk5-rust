@@ -22,8 +22,11 @@ use bitflags::bitflags;
 #[cfg(feature = "defmt")]
 use defmt::bitflags;
 
+/// A k5lib Version, re-exported here so [version!()] can use it.
+pub use k5lib::Version;
+
 /// A macro for producing a `VERSION` symbol containing the given string
-/// literal, prefixed by a "*".
+/// literal, prefixed by a "*". This will be a &[k5lib::Version].
 ///
 /// Sufficiently smart programming tools can extract this value from
 /// the compiled ELF file while flashing the radio.
@@ -38,10 +41,10 @@ macro_rules! version {
     // use expr not literal, so we can accept things like env!(..)
     ($version:expr) => {
         #[no_mangle]
-        static VERSION: &::core::ffi::CStr = unsafe {
-            ::core::ffi::CStr::from_bytes_with_nul_unchecked(
-                concat!("*", $version, "\0").as_bytes(),
-            )
-        };
+        static VERSION: &$crate::Version =
+            &match $crate::Version::new_from_str(concat!("*", $version)) {
+                ::core::result::Result::Ok(v) => v,
+                ::core::result::Result::Err(e) => panic!("could not build version"),
+            };
     };
 }
