@@ -51,7 +51,7 @@ static TX: spin::Mutex<Option<Tx>> = spin::Mutex::new(None);
 #[macro_export]
 macro_rules! println {
     () => (print!("\n"));
-    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
 /// Print to the global UART.
