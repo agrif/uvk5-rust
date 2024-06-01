@@ -1,10 +1,12 @@
 pub mod binformat;
 pub mod common;
 pub mod debug;
+pub mod flash_lint;
 pub mod hexdump;
 pub mod packed;
 
 mod flash;
+mod flash_info;
 mod pack;
 mod parsedump;
 mod read_eeprom;
@@ -27,6 +29,7 @@ struct ToolOptions {
 #[derive(clap::Subcommand, Debug)]
 enum ToolCommand {
     Flash(flash::FlashOpts),
+    FlashInfo(flash_info::FlashInfoOpts),
     ListPorts(ListPortsOpts),
     Pack(pack::PackOpts),
     ParseDump(parsedump::ParseDumpOpts),
@@ -40,6 +43,7 @@ impl ToolRun for ToolCommand {
         use ToolCommand::*;
         match self {
             Flash(o) => o.run(),
+            FlashInfo(o) => o.run(),
             ListPorts(o) => o.run(),
             Pack(o) => o.run(),
             ParseDump(o) => o.run(),

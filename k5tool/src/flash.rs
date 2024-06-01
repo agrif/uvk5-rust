@@ -1,7 +1,5 @@
 use std::io::{Read, Write};
 
-use crate::common::{FLASH_MAX, RAM_MAX, RAM_START};
-
 use k5lib::protocol::messages::bootloader::{
     BootloaderReady, BootloaderReadyReply, WriteFlash, WriteFlashReply, WRITE_FLASH_LEN,
     WRITE_FLASH_SESSION_ID,
@@ -30,18 +28,7 @@ pub struct FlashOpts {
     ///
     /// !!! Very Dangerous !!
     #[arg(long)]
-    ignore: Vec<Ignores>,
-}
-
-/// Possible sanity checks the user can chose to ignore.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, clap::ValueEnum)]
-enum Ignores {
-    /// Ignore the stack pointer check.
-    Stack,
-    /// Ignore the entry point check.
-    Entry,
-    /// Ignore the flash size.
-    Size,
+    ignore: Vec<crate::flash_lint::Ignores>,
 }
 
 impl crate::ToolRun for FlashOpts {
@@ -107,23 +94,7 @@ where
             eprintln!();
         }
 
-        self.info.report();
-
-        if !self.opts.ignore.contains(&Ignores::Stack)
-            && (self.info.stack_top <= RAM_START || self.info.stack_top > RAM_START + RAM_MAX)
-        {
-            anyhow::bail!("Stack pointer is not inside RAM.");
-        }
-
-        if !self.opts.ignore.contains(&Ignores::Entry) && self.info.entry_point >= FLASH_MAX {
-            anyhow::bail!("Entry point is not inside flash.");
-        }
-
-        if !self.opts.ignore.contains(&Ignores::Size) && self.data.len() > FLASH_MAX {
-            anyhow::bail!("Image is larger than available flash.");
-        }
-
-        Ok(())
+        crate::flash_lint::check(self.data, &self.info, &self.opts.ignore)
     }
 
     fn flash(&mut self) -> anyhow::Result<()> {
@@ -137,7 +108,7 @@ where
         assert!(max_page * page_size - self.data.len() < page_size);
 
         // last sanity check
-        if !self.opts.ignore.contains(&Ignores::Size) {
+        if !self.opts.ignore.contains(&crate::flash_lint::Ignores::Size) {
             // bootloader starts
             assert!(max_page <= BOOTLOADER_START_PAGE);
         }
@@ -173,7 +144,7 @@ where
 
         for page in 0..max_page {
             // paranoia
-            if !self.opts.ignore.contains(&Ignores::Size) {
+            if !self.opts.ignore.contains(&crate::flash_lint::Ignores::Size) {
                 assert!(page < BOOTLOADER_START_PAGE);
             }
 
