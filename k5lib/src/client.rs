@@ -398,8 +398,7 @@ where
         res
     }
 
-    /// Read from the port and attempt to parse a message, while also
-    /// returning the buffer used for parsing.
+    /// Read from the port and attempt to parse a message.
     pub fn read<'a, M, I>(&'a mut self) -> Result<ParseResult<I, M>, ClientError<F::Error>>
     where
         M: MessageParse<I>,
