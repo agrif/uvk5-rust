@@ -264,9 +264,35 @@ where
         }
     }
 
+    /// Release the components used to create this client.
+    pub fn free(self) -> (B, InC, OutC, F) {
+        (self.buffer, self.in_crc, self.out_crc, self.port)
+    }
+
     /// Get the underlying buffer.
     pub fn buffer(&self) -> &B {
         &self.buffer
+    }
+
+    /// Get the underlying buffer, mutably.
+    ///
+    /// Be careful mutating this, as it may cause the client to become
+    /// confused.
+    pub fn buffer_mut(&mut self) -> &mut B {
+        &mut self.buffer
+    }
+
+    /// Get the underlying port.
+    pub fn port(&self) -> &F {
+        &self.port
+    }
+
+    /// Get the underlying port, mutably
+    ///
+    /// Using this won't confuse the client, but it might cause you to miss
+    /// messages if you are not careful.
+    pub fn port_mut(&mut self) -> &mut F {
+        &mut self.port
     }
 
     /// Get the incoming [crc::CrcStyle] implementation.
