@@ -68,6 +68,41 @@ pub trait ClientBuffer {
     fn clear(&mut self);
 }
 
+// would be nice to do this for &'b mut B, but 'static is all we really use
+impl<B> ClientBuffer for &'static mut B
+where
+    B: ClientBuffer,
+{
+    type Slice<'a> = B::Slice<'a>;
+
+    fn skip(&mut self, n: usize) {
+        (**self).skip(n)
+    }
+
+    fn is_full(&self) -> bool {
+        (**self).is_full()
+    }
+
+    fn read<R>(&mut self, reader: &mut R) -> Result<usize, R::Error>
+    where
+        R: embedded_io::Read,
+    {
+        (**self).read(reader)
+    }
+
+    fn data_mut(&mut self) -> Self::Slice<'_> {
+        (**self).data_mut()
+    }
+
+    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input {
+        (**self).data()
+    }
+
+    fn clear(&mut self) {
+        (**self).clear()
+    }
+}
+
 /// A [ClientBuffer] using a flat array.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -77,7 +112,7 @@ pub struct ArrayBuffer<const SIZE: usize = MAX_FRAME_SIZE> {
 }
 
 impl<const SIZE: usize> ArrayBuffer<SIZE> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             len: 0,
             buffer: [0u8; SIZE],
