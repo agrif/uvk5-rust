@@ -293,6 +293,7 @@ dependencies = [
  "embedded-graphics-core",
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0",
+ "embedded-io",
  "k5lib",
  "spin",
  "st7565",

@@ -1,7 +1,10 @@
 //! UART on the headset connector.
 
+use core::cell::UnsafeCell;
 use core::fmt;
 use core::ops::{Deref, DerefMut};
+
+use k5lib::{ArrayBuffer, ClientBuffer};
 
 use crate::hal::block;
 use crate::hal::gpio::{Alternate, Floating, Input, Output, PushPull, PA7, PA8};
@@ -35,6 +38,9 @@ pub type Rx = uart::Rx<UART1>;
 
 /// The Tx half of the UART.
 pub type Tx = uart::Tx<UART1>;
+
+/// The global [k5lib::Client], created by [GlobalUart::client()].
+pub type ClientRadio = k5lib::ClientRadio<GlobalUart, &'static mut ArrayBuffer>;
 
 /// Create a new UART from parts.
 pub fn new(clocks: &Clocks, baud: Hertz, parts: Parts) -> Result<Uart, Error> {
@@ -152,16 +158,139 @@ impl GlobalUart {
         Err(self)
     }
 
-    /// Get the global Rx exclusively.
+    /// Get the global [Rx] exclusively.
     pub fn lock_rx(&self) -> Proxy<Rx> {
         // unwrap is ok: we have reference to the token that sets it
         Proxy::new(RX.lock()).unwrap()
     }
 
-    /// Get the global Tx exclusively.
+    /// Get the global [Tx] exclusively.
     pub fn lock_tx(&self) -> Proxy<Tx> {
         // unwrap is ok: we have reference to the token that sets it
         Proxy::new(TX.lock()).unwrap()
+    }
+
+    /// Crate a [ClientRadio] from the global UART.
+    pub fn client(self) -> ClientRadio {
+        static mut BUFFER: UnsafeCell<ArrayBuffer> = UnsafeCell::new(ArrayBuffer::new());
+        // safety: this is only ever accessed by a ClientRadio, which
+        // owns a GlobalUart.  GlobalUart is a unique value, and we
+        // own it now in self, so we're safe
+        unsafe {
+            let buf = BUFFER.get().as_mut().unwrap();
+            buf.clear();
+            ClientRadio::new_with(buf, self)
+        }
+    }
+}
+
+impl embedded_io::ErrorType for GlobalUart {
+    type Error = core::convert::Infallible;
+}
+
+impl<'a> embedded_io::ErrorType for &'a GlobalUart {
+    type Error = core::convert::Infallible;
+}
+
+impl embedded_io::Read for GlobalUart {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        block::block!(self.lock_rx().read(buf))
+    }
+
+    fn read_exact(
+        &mut self,
+        buf: &mut [u8],
+    ) -> Result<(), embedded_io::ReadExactError<Self::Error>> {
+        self.lock_rx().read_exact(buf)?;
+        Ok(())
+    }
+}
+
+impl<'a> embedded_io::Read for &'a GlobalUart {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        block::block!(self.lock_rx().read(buf))
+    }
+
+    fn read_exact(
+        &mut self,
+        buf: &mut [u8],
+    ) -> Result<(), embedded_io::ReadExactError<Self::Error>> {
+        self.lock_rx().read_exact(buf)?;
+        Ok(())
+    }
+}
+
+impl embedded_io::ReadReady for GlobalUart {
+    fn read_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.lock_rx().is_empty())
+    }
+}
+
+impl<'a> embedded_io::ReadReady for &'a GlobalUart {
+    fn read_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.lock_rx().is_empty())
+    }
+}
+
+impl embedded_io::Write for GlobalUart {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        block::block!(self.lock_tx().write(buf))
+    }
+
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        block::block!(self.lock_tx().flush())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.lock_tx().write_all(buf)
+    }
+
+    fn write_fmt(
+        &mut self,
+        fmt: core::fmt::Arguments<'_>,
+    ) -> Result<(), embedded_io::WriteFmtError<Self::Error>> {
+        use core::fmt::Write;
+        self.lock_tx()
+            .write_fmt(fmt)
+            .map_err(|_| embedded_io::WriteFmtError::FmtError)?;
+        Ok(())
+    }
+}
+
+impl<'a> embedded_io::Write for &'a GlobalUart {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        block::block!(self.lock_tx().write(buf))
+    }
+
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        block::block!(self.lock_tx().flush())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.lock_tx().write_all(buf)
+    }
+
+    fn write_fmt(
+        &mut self,
+        fmt: core::fmt::Arguments<'_>,
+    ) -> Result<(), embedded_io::WriteFmtError<Self::Error>> {
+        use core::fmt::Write;
+        self.lock_tx()
+            .write_fmt(fmt)
+            .map_err(|_| embedded_io::WriteFmtError::FmtError)?;
+        Ok(())
+    }
+}
+
+impl embedded_io::WriteReady for GlobalUart {
+    fn write_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.lock_tx().is_full())
+    }
+}
+
+impl<'a> embedded_io::WriteReady for &'a GlobalUart {
+    fn write_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.lock_tx().is_full())
     }
 }
 
@@ -173,7 +302,7 @@ pub struct Proxy<T: 'static> {
 }
 
 impl<T> Proxy<T> {
-    fn new(guard: spin::MutexGuard<'static, Option<T>>) -> Option<Proxy<T>> {
+    fn new(guard: spin::MutexGuard<'static, Option<T>>) -> Option<Self> {
         if guard.is_none() {
             None
         } else {
@@ -198,14 +327,14 @@ impl<T> DerefMut for Proxy<T> {
     }
 }
 
-/// Try to get the global Rx.
+/// Try to get the global [Rx].
 ///
 /// This will fail if the global UART is not set, or if Rx is in use already.
 pub fn try_rx() -> Option<Proxy<Rx>> {
     Proxy::new(RX.try_lock()?)
 }
 
-/// Try to get the global Tx.
+/// Try to get the global [Tx].
 ///
 /// This will fail if the global UART is not set, or if Tx is in use already.
 pub fn try_tx() -> Option<Proxy<Tx>> {
