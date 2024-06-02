@@ -30,11 +30,10 @@ pub struct DebugClientArgs {
     dump: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct DebugClient<F, InC, OutC> {
     args: DebugClientArgs,
-    client: k5lib::Client<F, k5lib::ArrayBuffer, InC, OutC>,
-    dump: Option<SerializerWrap<std::fs::File>>,
+    client: k5lib::Client<k5lib::FromStd<F>, k5lib::ArrayBuffer, InC, OutC>,
+    dump: Option<SerializerWrap<k5lib::FromStd<std::fs::File>>>,
     // direction is the message type this client *writes*
     direction: ClientDirection,
 }
@@ -43,13 +42,16 @@ pub type DebugClientHost<F> = DebugClient<F, crc::CrcConstantIgnore, crc::CrcXMo
 pub type DebugClientRadio<F> = DebugClient<F, crc::CrcXModem, crc::CrcConstantIgnore>;
 
 impl DebugClientArgs {
-    pub fn wrap_host<F>(&self, client: k5lib::ClientHost<F>) -> anyhow::Result<DebugClientHost<F>> {
+    pub fn wrap_host<F>(
+        &self,
+        client: k5lib::ClientHostStd<F>,
+    ) -> anyhow::Result<DebugClientHost<F>> {
         self.wrap(ClientDirection::Host, client)
     }
 
     pub fn wrap_radio<F>(
         &self,
-        client: k5lib::ClientRadio<F>,
+        client: k5lib::ClientRadioStd<F>,
     ) -> anyhow::Result<DebugClientRadio<F>> {
         self.wrap(ClientDirection::Radio, client)
     }
@@ -58,16 +60,16 @@ impl DebugClientArgs {
     pub fn wrap<F, InC, OutC>(
         &self,
         direction: ClientDirection,
-        client: k5lib::Client<F, k5lib::ArrayBuffer, InC, OutC>,
+        client: k5lib::Client<k5lib::FromStd<F>, k5lib::ArrayBuffer, InC, OutC>,
     ) -> anyhow::Result<DebugClient<F, InC, OutC>> {
         let mut dump = None;
         if let Some(ref path) = self.dump {
-            dump = Some(SerializerWrap::new(
+            dump = Some(SerializerWrap::new(k5lib::FromStd::new(
                 std::fs::File::options()
                     .create(true)
                     .append(true)
                     .open(path)?,
-            ));
+            )));
         }
 
         Ok(DebugClient {
@@ -84,7 +86,9 @@ where
     InC: crc::CrcStyle,
     OutC: crc::CrcStyle,
 {
-    pub fn read<'a, M>(&'a mut self) -> std::io::Result<ParseResult<&'a [u8], M>>
+    pub fn read<'a, M>(
+        &'a mut self,
+    ) -> Result<ParseResult<&'a [u8], M>, k5lib::ClientError<std::io::Error>>
     where
         M: MessageParse<&'a [u8]> + std::fmt::Debug,
         F: std::io::Read,
@@ -146,7 +150,10 @@ where
     }
 
     /// Read a Message.
-    pub fn read_any(&mut self) -> std::io::Result<ParseResult<&[u8], Message<&[u8]>>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_any(
+        &mut self,
+    ) -> Result<ParseResult<&[u8], Message<&[u8]>>, k5lib::ClientError<std::io::Error>>
     where
         F: std::io::Read,
     {
@@ -154,7 +161,10 @@ where
     }
 
     /// Read a HostMessage.
-    pub fn read_host(&mut self) -> std::io::Result<ParseResult<&[u8], HostMessage<&[u8]>>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_host(
+        &mut self,
+    ) -> Result<ParseResult<&[u8], HostMessage<&[u8]>>, k5lib::ClientError<std::io::Error>>
     where
         F: std::io::Read,
     {
@@ -162,7 +172,10 @@ where
     }
 
     /// Read a RadioMessage.
-    pub fn read_radio(&mut self) -> std::io::Result<ParseResult<&[u8], RadioMessage<&[u8]>>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_radio(
+        &mut self,
+    ) -> Result<ParseResult<&[u8], RadioMessage<&[u8]>>, k5lib::ClientError<std::io::Error>>
     where
         F: std::io::Read,
     {
@@ -170,15 +183,16 @@ where
     }
 
     /// Write a message to the port.
-    pub fn write<M>(&mut self, msg: &M) -> std::io::Result<()>
+    pub fn write<M>(&mut self, msg: &M) -> Result<(), k5lib::ClientError<std::io::Error>>
     where
         F: std::io::Write,
         M: MessageSerialize + std::fmt::Debug,
     {
         // also making some assumptions here about how write is implemented
         if self.args.debug >= 3 || self.dump.is_some() {
-            let mut ser = serialize::SerializerWrap::new(Vec::new());
-            msg.frame(self.client.out_crc(), &mut ser)?;
+            let mut ser = serialize::SerializerVec::new();
+            msg.frame(self.client.out_crc(), &mut ser)
+                .unwrap_or_else(|e| match e {});
             let raw = ser.done();
 
             if let Some(ref mut dump) = self.dump {
@@ -193,8 +207,9 @@ where
             }
         }
         if self.args.debug >= 2 {
-            let mut ser = serialize::SerializerWrap::new(Vec::new());
-            msg.frame_body_crc(self.client.out_crc(), &mut ser)?;
+            let mut ser = serialize::SerializerVec::new();
+            msg.frame_body_crc(self.client.out_crc(), &mut ser)
+                .unwrap_or_else(|e| match e {});
             eprintln!(">>> deobfuscated:");
             crate::hexdump::ehexdump_prefix(">>>   ", &ser.done());
         }

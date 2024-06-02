@@ -3,9 +3,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(feature = "std")]
 mod client;
-#[cfg(feature = "std")]
 pub use client::*;
 
 pub mod protocol;

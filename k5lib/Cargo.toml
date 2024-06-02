@@ -8,6 +8,8 @@ authors = ["Aaron Griffith <aargri@gmail.com>"]
 [dependencies]
 crc = "3"
 defmt = { version = "0.3.5", optional = true }
+embedded-io = "0.6"
+embedded-io-adapters = { version = "0.6", optional = true }
 nom = { version = "7", default-features = false }
 
 [dev-dependencies]
@@ -17,7 +19,16 @@ quickcheck_macros = "1"
 [features]
 default = ["std"]
 
-alloc = ["nom/alloc"]
-std = ["alloc", "nom/std"]
+alloc = [
+      "embedded-io/alloc",
+      "nom/alloc",
+]
+std = [
+    "alloc",
+    "embedded-io/std",
+    "dep:embedded-io-adapters",
+    "embedded-io-adapters/std",
+    "nom/std",
+]
 
-defmt = ["dep:defmt"]
+defmt = ["dep:defmt", "embedded-io/defmt-03"]

@@ -60,28 +60,32 @@ impl crate::ToolRun for SimulateOpts {
             // (if we need to)
             stream.set_read_timeout(Some(std::time::Duration::from_secs(1)))?;
 
-            let client = k5lib::ClientRadio::new(stream);
+            let client = k5lib::ClientRadio::new_std(stream);
             let client = self.debug.wrap_radio(client)?;
             if let Err(e) = Simulator::new(client, self, &mut eeprom, &mut flash).simulate() {
-                match e.downcast_ref::<std::io::Error>().map(|e| e.kind()) {
+                match e.downcast_ref::<k5lib::ClientError<std::io::Error>>() {
                     // an expected error, at disconnect
-                    Some(std::io::ErrorKind::UnexpectedEof)
-                    | Some(std::io::ErrorKind::ConnectionReset)
-                    | Some(std::io::ErrorKind::BrokenPipe) => {
-                        println!("Disconnected from {}.", addr);
+                    Some(k5lib::ClientError::UnexpectedEof) => {}
 
-                        if let Some(ref eeprom_path) = self.dump_eeprom {
-                            std::fs::write(eeprom_path, &eeprom)?;
-                        }
-
-                        if let Some(ref flash_path) = self.dump_flash {
-                            std::fs::write(flash_path, &flash)?;
-                        }
-
-                        continue;
-                    }
+                    // also expected on disconnect
+                    Some(k5lib::ClientError::Io(io))
+                        if matches!(
+                            io.kind(),
+                            std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::BrokenPipe
+                        ) => {}
                     // any other error is unexpected
                     _ => anyhow::bail!(e),
+                }
+
+                // if we make it here, it's an expected error
+                println!("Disconnected from {}.", addr);
+
+                if let Some(ref eeprom_path) = self.dump_eeprom {
+                    std::fs::write(eeprom_path, &eeprom)?;
+                }
+
+                if let Some(ref flash_path) = self.dump_flash {
+                    std::fs::write(flash_path, &flash)?;
                 }
             }
         }
@@ -166,8 +170,15 @@ where
                     continue;
                 }
                 Err(e) => {
-                    if let std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock = e.kind()
-                    {
+                    let timed_out = if let k5lib::ClientError::Io(ref io) = e {
+                        matches!(
+                            io.kind(),
+                            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock,
+                        )
+                    } else {
+                        false
+                    };
+                    if timed_out {
                         // try again if timed out
                         continue;
                     } else {

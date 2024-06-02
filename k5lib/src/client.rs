@@ -6,6 +6,41 @@ use crate::protocol::{
     RadioMessage, MAX_FRAME_SIZE,
 };
 
+/// Re-export to allow using [Client] with [std::io] streams.
+#[cfg(feature = "std")]
+pub use embedded_io_adapters::std::FromStd;
+
+/// An error type for [Client].
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum ClientError<E> {
+    /// EOF in underlying stream.
+    UnexpectedEof,
+    /// Other IO error in underlying stream.
+    Io(E),
+}
+
+#[cfg(feature = "std")]
+impl<E> std::error::Error for ClientError<E> where E: core::fmt::Debug {}
+
+impl<E> core::fmt::Display for ClientError<E>
+where
+    E: core::fmt::Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match self {
+            Self::UnexpectedEof => write!(f, "unexpected eof"),
+            Self::Io(e) => write!(f, "io error: {:?}", e),
+        }
+    }
+}
+
+impl<E> From<E> for ClientError<E> {
+    fn from(other: E) -> Self {
+        Self::Io(other)
+    }
+}
+
 /// A trait to encapsulate a buffer with filled and unfilled areas.
 pub trait ClientBuffer {
     type Slice<'a>: ParseMut
@@ -19,9 +54,9 @@ pub trait ClientBuffer {
     fn is_full(&self) -> bool;
 
     /// Read data from a reader into the filled part, consuming unfilled areas.
-    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<usize>
+    fn read<R>(&mut self, reader: &mut R) -> Result<usize, R::Error>
     where
-        R: std::io::Read;
+        R: embedded_io::Read;
 
     /// Get a hold of the accumulated data to do some parsin'.
     fn data_mut(&mut self) -> Self::Slice<'_>;
@@ -68,9 +103,9 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
         self.len >= SIZE
     }
 
-    fn read<R>(&mut self, reader: &mut R) -> std::io::Result<usize>
+    fn read<R>(&mut self, reader: &mut R) -> Result<usize, R::Error>
     where
-        R: std::io::Read,
+        R: embedded_io::Read,
     {
         let amt = reader.read(&mut self.buffer[self.len..])?;
         self.len += amt;
@@ -105,6 +140,10 @@ pub struct Client<F, B, InC, OutC> {
 /// A host-sided client.
 pub type ClientHost<F, B = ArrayBuffer> = Client<F, B, crc::CrcConstantIgnore, crc::CrcXModem>;
 
+/// A host-sided client using an [std::io] port.
+#[cfg(feature = "std")]
+pub type ClientHostStd<F, B = ArrayBuffer> = ClientHost<FromStd<F>, B>;
+
 impl<F, B> ClientHost<F, B>
 where
     B: ClientBuffer,
@@ -128,8 +167,32 @@ where
     }
 }
 
+#[cfg(feature = "std")]
+impl<F, B> ClientHost<FromStd<F>, B>
+where
+    B: ClientBuffer,
+{
+    /// Create a new host client using an [std::io] port.
+    pub fn new_std(port: F) -> Self
+    where
+        B: Default,
+    {
+        Self::new(FromStd::new(port))
+    }
+
+    /// Create a new host client using and [std::io] port and the
+    /// provided internal buffer.
+    pub fn new_std_with(buffer: B, port: F) -> Self {
+        Self::new_with(buffer, FromStd::new(port))
+    }
+}
+
 /// A radio-sided client.
 pub type ClientRadio<F, B = ArrayBuffer> = Client<F, B, crc::CrcXModem, crc::CrcConstantIgnore>;
+
+/// A radio-sided client using an [std::io] port.
+#[cfg(feature = "std")]
+pub type ClientRadioStd<F, B = ArrayBuffer> = ClientRadio<FromStd<F>, B>;
 
 impl<F, B> ClientRadio<F, B>
 where
@@ -151,6 +214,26 @@ where
             crc::CrcConstantIgnore(0xffff),
             port,
         )
+    }
+}
+
+#[cfg(feature = "std")]
+impl<F, B> ClientRadio<FromStd<F>, B>
+where
+    B: ClientBuffer,
+{
+    /// Create a new radio client using an [std::io] port.
+    pub fn new_std(port: F) -> Self
+    where
+        B: Default,
+    {
+        Self::new(FromStd::new(port))
+    }
+
+    /// Create a new radio client using and [std::io] port and the
+    /// provided internal buffer.
+    pub fn new_std_with(buffer: B, port: F) -> Self {
+        Self::new_with(buffer, FromStd::new(port))
     }
 }
 
@@ -201,9 +284,9 @@ where
     ///
     /// If you call this while [self.buffer().is_full()][ClientBuffer::is_full],
     /// this will clear the internal buffer to make room for new data.
-    pub fn read_into_buffer(&mut self) -> std::io::Result<()>
+    pub fn read_into_buffer(&mut self) -> Result<(), ClientError<F::Error>>
     where
-        F: std::io::Read,
+        F: embedded_io::Read,
     {
         // apply skip from last read cycle. see parse().
         if let Some(skip) = self.skip.take() {
@@ -222,10 +305,7 @@ where
             let amt = self.buffer.read(&mut self.port)?;
             if amt == 0 {
                 // end of file is an error
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::UnexpectedEof,
-                    "end of stream",
-                ));
+                return Err(ClientError::UnexpectedEof);
             }
             self.needs_read = false;
         }
@@ -259,55 +339,62 @@ where
 
     /// Read from the port and attempt to parse a message, while also
     /// returning the buffer used for parsing.
-    pub fn read<'a, M, I>(&'a mut self) -> std::io::Result<ParseResult<I, M>>
+    pub fn read<'a, M, I>(&'a mut self) -> Result<ParseResult<I, M>, ClientError<F::Error>>
     where
         M: MessageParse<I>,
         I: Parse,
         B::Slice<'a>: ParseMut<Input = I>,
-        F: std::io::Read,
+        F: embedded_io::Read,
     {
         self.read_into_buffer()?;
         Ok(self.parse())
     }
 
     /// Read a [Message].
-    pub fn read_any<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, Message<I>>>
+    pub fn read_any<'a, I>(
+        &'a mut self,
+    ) -> Result<ParseResult<I, Message<I>>, ClientError<F::Error>>
     where
         I: Parse,
         B::Slice<'a>: ParseMut<Input = I>,
-        F: std::io::Read,
+        F: embedded_io::Read,
     {
         self.read()
     }
 
     /// Read a [HostMessage].
-    pub fn read_host<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, HostMessage<I>>>
+    pub fn read_host<'a, I>(
+        &'a mut self,
+    ) -> Result<ParseResult<I, HostMessage<I>>, ClientError<F::Error>>
     where
         I: Parse,
         B::Slice<'a>: ParseMut<Input = I>,
-        F: std::io::Read,
+        F: embedded_io::Read,
     {
         self.read()
     }
 
     /// Read a [RadioMessage].
-    pub fn read_radio<'a, I>(&'a mut self) -> std::io::Result<ParseResult<I, RadioMessage<I>>>
+    pub fn read_radio<'a, I>(
+        &'a mut self,
+    ) -> Result<ParseResult<I, RadioMessage<I>>, ClientError<F::Error>>
     where
         I: Parse,
         B::Slice<'a>: ParseMut<Input = I>,
-        F: std::io::Read,
+        F: embedded_io::Read,
     {
         self.read()
     }
 
     /// Write a message to the port.
-    pub fn write<M>(&mut self, msg: &M) -> std::io::Result<()>
+    pub fn write<M>(&mut self, msg: &M) -> Result<(), ClientError<F::Error>>
     where
-        F: std::io::Write,
+        F: embedded_io::Write,
         M: MessageSerialize,
     {
         let mut ser = serialize::SerializerWrap::new(&mut self.port);
         protocol::serialize(&self.out_crc, &mut ser, msg)?;
-        self.port.flush()
+        self.port.flush()?;
+        Ok(())
     }
 }

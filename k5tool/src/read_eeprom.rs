@@ -32,7 +32,7 @@ impl ReadEepromOpts {
         F: Read + Write,
     {
         let session_id = HELLO_SESSION_ID;
-        let mut client = self.debug.wrap_host(k5lib::ClientHost::<F>::new(port))?;
+        let mut client = self.debug.wrap_host(k5lib::ClientHost::new_std(port))?;
 
         client.write(&Hello { session_id })?;
         let m = loop {

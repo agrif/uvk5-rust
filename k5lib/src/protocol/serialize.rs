@@ -101,15 +101,13 @@ where
     }
 }
 
-/// Wrap an [std::io::Write] to become a [Serializer].
-#[cfg(feature = "std")]
+/// Wrap an [embedded_io::Write] to become a [Serializer].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SerializerWrap<T> {
     inner: T,
 }
 
-#[cfg(feature = "std")]
 impl<T> SerializerWrap<T> {
     pub fn new(inner: T) -> Self {
         Self { inner }
@@ -120,7 +118,6 @@ impl<T> SerializerWrap<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> core::ops::Deref for SerializerWrap<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -128,19 +125,17 @@ impl<T> core::ops::Deref for SerializerWrap<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> core::ops::DerefMut for SerializerWrap<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> Serializer for SerializerWrap<T>
 where
-    T: std::io::Write,
+    T: embedded_io::Write,
 {
-    type Error = std::io::Error;
+    type Error = T::Error;
 
     fn write_u8(&mut self, val: u8) -> Result<(), Self::Error> {
         self.inner.write_all(&[val])

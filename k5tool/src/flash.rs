@@ -75,7 +75,7 @@ where
     ) -> anyhow::Result<Self> {
         Ok(Self {
             opts,
-            client: opts.debug.wrap_host(k5lib::ClientHost::new(port))?,
+            client: opts.debug.wrap_host(k5lib::ClientHost::new_std(port))?,
             data,
             version,
             info,

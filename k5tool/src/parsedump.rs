@@ -27,12 +27,12 @@ impl crate::ToolRun for ParseDumpOpts {
             if dir == crate::debug::ClientDirection::Host.flip() as u8 {
                 // radio -> computer, so act like host
                 eprintln!("*** from radio");
-                let mut host = debug.wrap_host(k5lib::ClientHost::new(frameraw))?;
+                let mut host = debug.wrap_host(k5lib::ClientHost::new_std(frameraw))?;
                 host.read_radio()?;
             } else if dir == crate::debug::ClientDirection::Radio.flip() as u8 {
                 // computer -> radio, so act like radio
                 eprintln!("*** from host");
-                let mut radio = debug.wrap_radio(k5lib::ClientRadio::new(frameraw))?;
+                let mut radio = debug.wrap_radio(k5lib::ClientRadio::new_std(frameraw))?;
                 radio.read_host()?;
             }
         }
