@@ -73,3 +73,16 @@ where
         )
     }
 }
+
+impl<Uart, Data> core::fmt::Write for Port<Uart, Data>
+where
+    Uart: Instance,
+    Data: UartData,
+{
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.tx
+            .write_all(s.as_bytes())
+            .unwrap_or_else(|e| match e {});
+        Ok(())
+    }
+}

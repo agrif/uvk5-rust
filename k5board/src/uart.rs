@@ -194,103 +194,93 @@ impl<'a> embedded_io::ErrorType for &'a GlobalUart {
 
 impl embedded_io::Read for GlobalUart {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        block::block!(self.lock_rx().read(buf))
+        embedded_io::Read::read(self.lock_rx().deref_mut(), buf)
     }
 
     fn read_exact(
         &mut self,
         buf: &mut [u8],
     ) -> Result<(), embedded_io::ReadExactError<Self::Error>> {
-        self.lock_rx().read_exact(buf)?;
-        Ok(())
+        embedded_io::Read::read_exact(self.lock_rx().deref_mut(), buf)
     }
 }
 
 impl<'a> embedded_io::Read for &'a GlobalUart {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        block::block!(self.lock_rx().read(buf))
+        embedded_io::Read::read(self.lock_rx().deref_mut(), buf)
     }
 
     fn read_exact(
         &mut self,
         buf: &mut [u8],
     ) -> Result<(), embedded_io::ReadExactError<Self::Error>> {
-        self.lock_rx().read_exact(buf)?;
-        Ok(())
+        embedded_io::Read::read_exact(self.lock_rx().deref_mut(), buf)
     }
 }
 
 impl embedded_io::ReadReady for GlobalUart {
     fn read_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.lock_rx().is_empty())
+        embedded_io::ReadReady::read_ready(self.lock_rx().deref_mut())
     }
 }
 
 impl<'a> embedded_io::ReadReady for &'a GlobalUart {
     fn read_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.lock_rx().is_empty())
+        embedded_io::ReadReady::read_ready(self.lock_rx().deref_mut())
     }
 }
 
 impl embedded_io::Write for GlobalUart {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        block::block!(self.lock_tx().write(buf))
+        embedded_io::Write::write(self.lock_tx().deref_mut(), buf)
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        block::block!(self.lock_tx().flush())
+        embedded_io::Write::flush(self.lock_tx().deref_mut())
     }
 
     fn write_all(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
-        self.lock_tx().write_all(buf)
+        embedded_io::Write::write_all(self.lock_tx().deref_mut(), buf)
     }
 
     fn write_fmt(
         &mut self,
         fmt: core::fmt::Arguments<'_>,
     ) -> Result<(), embedded_io::WriteFmtError<Self::Error>> {
-        use core::fmt::Write;
-        self.lock_tx()
-            .write_fmt(fmt)
-            .map_err(|_| embedded_io::WriteFmtError::FmtError)?;
-        Ok(())
+        embedded_io::Write::write_fmt(self.lock_tx().deref_mut(), fmt)
     }
 }
 
 impl<'a> embedded_io::Write for &'a GlobalUart {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        block::block!(self.lock_tx().write(buf))
+        embedded_io::Write::write(self.lock_tx().deref_mut(), buf)
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        block::block!(self.lock_tx().flush())
+        embedded_io::Write::flush(self.lock_tx().deref_mut())
     }
 
     fn write_all(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
-        self.lock_tx().write_all(buf)
+        embedded_io::Write::write_all(self.lock_tx().deref_mut(), buf)
     }
 
     fn write_fmt(
         &mut self,
         fmt: core::fmt::Arguments<'_>,
     ) -> Result<(), embedded_io::WriteFmtError<Self::Error>> {
-        use core::fmt::Write;
-        self.lock_tx()
-            .write_fmt(fmt)
-            .map_err(|_| embedded_io::WriteFmtError::FmtError)?;
-        Ok(())
+        embedded_io::Write::write_fmt(self.lock_tx().deref_mut(), fmt)
     }
 }
 
 impl embedded_io::WriteReady for GlobalUart {
     fn write_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.lock_tx().is_full())
+        embedded_io::WriteReady::write_ready(self.lock_tx().deref_mut())
     }
 }
 
 impl<'a> embedded_io::WriteReady for &'a GlobalUart {
     fn write_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.lock_tx().is_full())
+        embedded_io::WriteReady::write_ready(self.lock_tx().deref_mut())
     }
 }
 
