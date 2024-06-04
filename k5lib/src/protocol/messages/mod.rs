@@ -6,6 +6,7 @@ use crate::protocol::parse::{MessageParse, Parse};
 use crate::protocol::serialize::{MessageSerialize, Serializer};
 
 pub mod bootloader;
+pub mod custom;
 pub mod radio;
 pub mod util;
 
@@ -105,6 +106,9 @@ pub enum HostMessage<I> {
     ReadEeprom(radio::ReadEeprom),
     /// 0x0530 Bootloader Ready Reply (bootloader mode)
     BootloaderReadyReply(bootloader::BootloaderReadyReply),
+
+    /// 0x8500 Debug Input (custom)
+    DebugInput(custom::DebugInput<I>),
 }
 
 impl<I> HostMessage<I> {
@@ -117,6 +121,8 @@ impl<I> HostMessage<I> {
             Self::WriteFlash(o) => HostMessage::WriteFlash(o.map(f)),
             Self::ReadEeprom(o) => HostMessage::ReadEeprom(o),
             Self::BootloaderReadyReply(o) => HostMessage::BootloaderReadyReply(o),
+
+            Self::DebugInput(o) => HostMessage::DebugInput(o.map(f)),
         }
     }
 
@@ -129,6 +135,8 @@ impl<I> HostMessage<I> {
             Self::WriteFlash(o) => HostMessage::WriteFlash(o.map_ref(f)),
             Self::ReadEeprom(o) => HostMessage::ReadEeprom(o.clone()),
             Self::BootloaderReadyReply(o) => HostMessage::BootloaderReadyReply(o.clone()),
+
+            Self::DebugInput(o) => HostMessage::DebugInput(o.map_ref(f)),
         }
     }
 
@@ -158,6 +166,8 @@ where
             Self::WriteFlash(m) => m.message_type(),
             Self::ReadEeprom(m) => m.message_type(),
             Self::BootloaderReadyReply(m) => m.message_type(),
+
+            Self::DebugInput(m) => m.message_type(),
         }
     }
 
@@ -170,6 +180,8 @@ where
             Self::WriteFlash(m) => m.message_body(ser),
             Self::ReadEeprom(m) => m.message_body(ser),
             Self::BootloaderReadyReply(m) => m.message_body(ser),
+
+            Self::DebugInput(m) => m.message_body(ser),
         }
     }
 }
@@ -192,6 +204,10 @@ where
                     .map(Self::BootloaderReadyReply)
                     .parse(input)
             }
+
+            custom::DebugInput::<()>::TYPE => custom::DebugInput::parse_body(typ)
+                .map(Self::DebugInput)
+                .parse(input),
 
             // we don't recognize the message type
             _ => nom::combinator::fail(input),
