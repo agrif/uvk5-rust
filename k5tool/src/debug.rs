@@ -93,18 +93,25 @@ where
         M: MessageParse<&'a [u8]> + std::fmt::Debug,
         F: std::io::Read,
     {
+        Ok(self.read_and_get_extra()?.0)
+    }
+
+    pub fn read_and_get_extra<'a, M>(
+        &'a mut self,
+    ) -> Result<(ParseResult<&'a [u8], M>, &'a [u8]), k5lib::ClientError<std::io::Error>>
+    where
+        M: MessageParse<&'a [u8]> + std::fmt::Debug,
+        F: std::io::Read,
+    {
         // two-step read, to grab the buffer to look into
         self.client.read_into_buffer()?;
-        // only make a copy of the data if we need it later
-        let data = (self.args.debug >= 2 || self.dump.is_some())
-            .then(|| self.client.buffer().data().to_owned());
         let res = self.client.parse();
 
-        if let Some(mut data) = data {
+        if self.args.debug >= 2 || self.dump.is_some() {
             // if this data produced a frame, we have to find it.
             if let Some(range) = res.range() {
                 if self.args.debug >= 3 || self.dump.is_some() {
-                    let raw = &data[range.clone()];
+                    let raw = &self.client.buffer().data()[range.clone()];
 
                     if let Some(ref mut dump) = self.dump {
                         dump.write_u8(self.direction.flip() as u8)?;
@@ -119,6 +126,7 @@ where
                 }
 
                 if self.args.debug >= 2 {
+                    let mut data = self.client.buffer().data().to_owned();
                     if let (_, Some(found)) = parse::find_frame(data.as_mut()) {
                         eprintln!("<<< deobfuscated:");
                         crate::hexdump::ehexdump_prefix("<<<   ", &data[found.full_frame]);
@@ -146,7 +154,17 @@ where
                 ParseResult::None => {}
             }
         }
-        Ok(res)
+
+        // what did we discard to get here?
+        let discarded = self
+            .client
+            .found()
+            .as_ref()
+            .map(|f| f.full_frame.start)
+            .unwrap_or(self.client.skipped());
+        let extra = &self.client.buffer().data()[..discarded];
+
+        Ok((res, extra))
     }
 
     /// Read a Message.

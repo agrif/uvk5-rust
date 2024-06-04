@@ -29,6 +29,9 @@ pub struct FlashOpts {
     /// !!! Very Dangerous !!
     #[arg(long)]
     ignore: Vec<crate::flash_lint::Ignores>,
+
+    #[arg(short, long)]
+    attach: bool,
 }
 
 impl crate::ToolRun for FlashOpts {
@@ -186,6 +189,11 @@ where
         }
 
         bar.finish();
+
+        if self.opts.attach {
+            let mut console = crate::console::Console::new(&mut self.client);
+            console.run()?;
+        }
 
         Ok(())
     }

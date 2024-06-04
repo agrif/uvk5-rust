@@ -5,6 +5,7 @@ pub mod flash_lint;
 pub mod hexdump;
 pub mod packed;
 
+pub mod console;
 mod flash;
 mod flash_info;
 mod pack;
@@ -28,6 +29,7 @@ struct ToolOptions {
 
 #[derive(clap::Subcommand, Debug)]
 enum ToolCommand {
+    Console(console::ConsoleOpts),
     Flash(flash::FlashOpts),
     FlashInfo(flash_info::FlashInfoOpts),
     ListPorts(ListPortsOpts),
@@ -42,6 +44,7 @@ impl ToolRun for ToolCommand {
     fn run(&self) -> anyhow::Result<()> {
         use ToolCommand::*;
         match self {
+            Console(o) => o.run(),
             Flash(o) => o.run(),
             FlashInfo(o) => o.run(),
             ListPorts(o) => o.run(),
