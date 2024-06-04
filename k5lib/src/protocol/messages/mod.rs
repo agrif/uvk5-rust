@@ -227,6 +227,9 @@ pub enum RadioMessage<I> {
     WriteFlashReply(bootloader::WriteFlashReply),
     /// 0x51c Read EEPROM Reply
     ReadEepromReply(radio::ReadEepromReply<I>),
+
+    /// 0x8501 Debug Output (custom)
+    DebugOutput(custom::DebugOutput<I>),
 }
 
 impl<I> RadioMessage<I> {
@@ -239,6 +242,8 @@ impl<I> RadioMessage<I> {
             Self::BootloaderReady(o) => RadioMessage::BootloaderReady(o),
             Self::WriteFlashReply(o) => RadioMessage::WriteFlashReply(o),
             Self::ReadEepromReply(o) => RadioMessage::ReadEepromReply(o.map(f)),
+
+            Self::DebugOutput(o) => RadioMessage::DebugOutput(o.map(f)),
         }
     }
 
@@ -251,6 +256,8 @@ impl<I> RadioMessage<I> {
             Self::BootloaderReady(o) => RadioMessage::BootloaderReady(o.clone()),
             Self::WriteFlashReply(o) => RadioMessage::WriteFlashReply(o.clone()),
             Self::ReadEepromReply(o) => RadioMessage::ReadEepromReply(o.map_ref(f)),
+
+            Self::DebugOutput(o) => RadioMessage::DebugOutput(o.map_ref(f)),
         }
     }
 
@@ -280,6 +287,8 @@ where
             Self::BootloaderReady(m) => m.message_type(),
             Self::WriteFlashReply(m) => m.message_type(),
             Self::ReadEepromReply(m) => m.message_type(),
+
+            Self::DebugOutput(m) => m.message_type(),
         }
     }
 
@@ -292,6 +301,8 @@ where
             Self::BootloaderReady(m) => m.message_body(ser),
             Self::WriteFlashReply(m) => m.message_body(ser),
             Self::ReadEepromReply(m) => m.message_body(ser),
+
+            Self::DebugOutput(m) => m.message_body(ser),
         }
     }
 }
@@ -313,6 +324,10 @@ where
                 .parse(input),
             radio::ReadEepromReply::<()>::TYPE => radio::ReadEepromReply::parse_body(typ)
                 .map(Self::ReadEepromReply)
+                .parse(input),
+
+            custom::DebugOutput::<()>::TYPE => custom::DebugOutput::parse_body(typ)
+                .map(Self::DebugOutput)
                 .parse(input),
 
             // we don't recognize the message type
