@@ -6,6 +6,7 @@ use panic_halt as _;
 
 use k5board::hal;
 use k5board::prelude::*;
+use k5lib::protocol::messages::custom::DebugInput;
 
 use hal::time::Hertz;
 
@@ -68,7 +69,7 @@ fn go() -> error::Result<()> {
         rx: pins_a.a8.into_mode(),
     };
     let uart = k5board::uart::new(&clocks, 38_400.Hz(), uart_parts)?;
-    k5board::uart::install(uart);
+    let mut client = k5board::uart::install(uart).client();
 
     // set up the keypad
     let keypad_parts = k5board::keypad::Parts {
@@ -202,10 +203,6 @@ fn go() -> error::Result<()> {
     let mut poll_keypad = delay;
     poll_keypad.start(2.millis())?;
 
-    // a buffer in which to store our serial data
-    let line_buf = cortex_m::singleton!(LINE_BUF: [u8; 0x100] = [0; 0x100]).unwrap();
-    let mut line_size = 0;
-
     // a snaking dot that moves across the screen
     let mut snake = 0;
     const SNAKE_LEN: i32 = 50;
@@ -301,12 +298,12 @@ fn go() -> error::Result<()> {
             lcd.flush()?;
         }
 
-        if let Some(Ok(c)) = k5board::uart::try_rx().map(|mut rx| rx.read_one()) {
-            if c == b'\r' {
-                print!("\r\n");
-
-                let line = core::str::from_utf8(&line_buf[..line_size]);
-                line_size = 0;
+        if k5board::uart::try_rx()
+            .map(|rx| !rx.is_empty())
+            .unwrap_or(false)
+        {
+            if let Some(input) = client.read::<DebugInput<&[u8]>>()?.ok() {
+                let line = core::str::from_utf8(&input.line);
 
                 let Some(line) = line.ok() else {
                     continue;
@@ -366,17 +363,6 @@ fn go() -> error::Result<()> {
                 }
                 continue;
             }
-
-            if line_size >= line_buf.len() {
-                println!("overrun!");
-                line_size = 0;
-            }
-
-            k5board::uart::try_tx()
-                .map(|mut tx| tx.write_all(&[c]))
-                .transpose()?;
-            line_buf[line_size] = c;
-            line_size += 1;
         }
     }
 }

@@ -22,6 +22,7 @@ cortex-m-rt = "0.7"
 embedded-graphics = "0.8"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7" }
 k5board = { path = "../k5board" }
+k5lib = { path = "../k5lib", default-features = false }
 panic-halt = "0.2"
 
 [profile.release]

@@ -311,6 +311,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-hal 0.2.7",
  "k5board",
+ "k5lib",
  "panic-halt",
 ]
 
