@@ -14,6 +14,7 @@ elf = "0.7"
 indicatif = "0.17"
 k5lib = { path = "../k5lib" }
 nom = "7"
+rustyline = "14"
 
 # https://github.com/serialport/serialport-rs/pull/79
 serialport = { git = "https://github.com/agrif/serialport-rs.git", branch = "uvk5-dep" }

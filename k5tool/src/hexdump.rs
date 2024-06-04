@@ -200,3 +200,11 @@ pub fn ehexdump_prefix(prefix: &str, data: &[u8]) {
         eprintln!("{}{}", prefix, line);
     }
 }
+
+pub fn hexdump_format(data: &[u8]) -> String {
+    let mut out = String::new();
+    for line in hexdump_iter(data) {
+        out += &format!("{}\n", line);
+    }
+    out
+}

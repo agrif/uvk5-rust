@@ -86,6 +86,10 @@ where
     InC: crc::CrcStyle,
     OutC: crc::CrcStyle,
 {
+    pub fn port(&mut self) -> &F {
+        self.client.port().inner()
+    }
+
     pub fn read<'a, M>(
         &'a mut self,
     ) -> Result<ParseResult<&'a [u8], M>, k5lib::ClientError<std::io::Error>>

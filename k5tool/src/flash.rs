@@ -67,7 +67,7 @@ struct Flasher<'a, F> {
 
 impl<'a, F> Flasher<'a, F>
 where
-    F: Read + Write,
+    F: Read + Write + Send + crate::console::ConsoleTryClone,
 {
     fn new(
         opts: &'a FlashOpts,
