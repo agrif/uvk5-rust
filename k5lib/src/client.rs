@@ -349,6 +349,16 @@ where
         &self.out_crc
     }
 
+    /// Get the number of bytes consumed by the last parse.
+    pub fn skipped(&self) -> usize {
+        self.skip
+    }
+
+    /// Get the bounds of the frame found in the last parse, if any.
+    pub fn found(&self) -> &Option<FoundFrame> {
+        &self.found
+    }
+
     /// Read from the port into the internal buffer, if needed, and
     /// find a frame. First half of [Self::read()].
     ///
