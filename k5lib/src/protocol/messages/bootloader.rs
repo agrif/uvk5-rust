@@ -354,9 +354,7 @@ mod test {
 
     #[quickcheck]
     fn roundtrip_write_flash(msg: WriteFlash<Vec<u8>>) -> bool {
-        let mut a = roundtrip_a(&msg.borrow());
-        let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
-        Some(msg.borrow()) == b
+        RoundTrip::new().run(&msg.borrow())
     }
 
     impl Arbitrary for WriteFlashReply {

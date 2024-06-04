@@ -311,7 +311,7 @@ mod test {
     use alloc::vec::Vec;
 
     use crate::protocol::crc::CrcXModem;
-    use crate::protocol::{parse, serialize};
+    use crate::protocol::{find_frame, parse, serialize};
 
     use super::*;
 
@@ -319,33 +319,48 @@ mod test {
     where
         M: for<'a> MessageParse<&'a [u8]> + MessageSerialize + PartialEq + Eq,
     {
-        let mut a = roundtrip_a(&msg);
-        let b = a.as_mut().and_then(|ser| roundtrip_b(ser));
-        Some(msg) == b
+        RoundTrip::new().run(&msg)
     }
 
-    pub(super) fn roundtrip_a<M>(msg: &M) -> Option<Vec<u8>>
-    where
-        M: MessageSerialize,
-    {
-        let crc = CrcXModem::new();
-        let mut serialized = serialize::SerializerVec::new();
-        serialize(&crc, &mut serialized, msg)
-            .ok()
-            .map(|_| serialized.done())
-    }
+    pub(super) struct RoundTrip(Vec<u8>);
 
-    pub(super) fn roundtrip_b<'a, M>(serialized: &'a mut [u8]) -> Option<M>
-    where
-        M: MessageParse<&'a [u8]>,
-    {
-        let crc = CrcXModem::new();
-        let len = serialized.len();
-        let (amt, unserialized) = parse(&crc, serialized);
-        if amt != len {
-            None
-        } else {
-            unserialized.ok()
+    impl RoundTrip {
+        pub(super) fn new() -> Self {
+            Self(Default::default())
+        }
+
+        pub(super) fn run<'a, M>(&'a mut self, msg: &M) -> bool
+        where
+            M: MessageSerialize + MessageParse<&'a [u8]> + PartialEq + Eq,
+        {
+            Some(msg) == self.ser(msg).de().as_ref()
+        }
+
+        pub(super) fn ser<M>(&mut self, msg: &M) -> &mut Self
+        where
+            M: MessageSerialize,
+        {
+            let crc = CrcXModem::new();
+            let mut serialized = serialize::SerializerVec::new();
+            if serialize(&crc, &mut serialized, msg).is_ok() {
+                self.0 = serialized.done();
+            }
+            self
+        }
+
+        pub(super) fn de<'a, M>(&'a mut self) -> Option<M>
+        where
+            M: MessageParse<&'a [u8]>,
+        {
+            let crc = CrcXModem::new();
+            let len = self.0.len();
+            let (amt, found) = find_frame(self.0.as_mut());
+            let unserialized = parse(&crc, self.0.as_ref(), &found);
+            if amt != len {
+                None
+            } else {
+                unserialized.ok()
+            }
         }
     }
 }

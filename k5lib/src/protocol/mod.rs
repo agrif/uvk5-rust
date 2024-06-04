@@ -28,21 +28,31 @@ pub use messages::{HostMessage, Message, MessageType, RadioMessage};
 pub mod serialize;
 pub use serialize::{MessageSerialize, Serializer};
 
-/// Parse an entire frame containing a message, skipping data before
-/// the frame. If the frame doesn't parse as this message, or the CRC
-/// fails, it will still consume the frame from the input.
+/// Find a frame, skipping data before the frame. If no frame is
+/// found, return None but still consume the input.
 ///
-/// Returns the *number of consumed bytes* and the parse or CRC
-/// result.
+/// Regardless of whether a frame is found, the token returned by this
+/// function can be passed to [parse()] to parse any found frame into
+/// a message.
+pub fn find_frame<I>(input: I) -> (usize, Option<parse::FoundFrame>)
+where
+    I: ParseMut,
+{
+    parse::find_frame(input)
+}
+
+/// Parse an entire frame containing a message, checking the CRC. If
+/// the frame doesn't parse as this message, or the CRC fails, it will
+/// return that error.
 ///
-/// This handles frame start/end, length, obfuscation, and CRC.
-pub fn parse<C, I, M>(crc: &C, input: I) -> (usize, ParseResult<I::Input, M>)
+/// Call this with the result of [find_frame()].
+pub fn parse<C, I, M>(crc: &C, input: I, found: &Option<parse::FoundFrame>) -> ParseResult<I, M>
 where
     C: crc::CrcStyle,
-    I: ParseMut,
-    M: MessageParse<I::Input>,
+    I: Parse,
+    M: MessageParse<I>,
 {
-    M::parse_frame(&crc, input)
+    M::parse_frame(&crc, input, found)
 }
 
 /// Serialize a message into a full frame, with obfuscation, CRC, and

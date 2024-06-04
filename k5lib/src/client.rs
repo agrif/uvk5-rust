@@ -1,5 +1,6 @@
 use crate::protocol;
 use crate::protocol::crc;
+use crate::protocol::parse::FoundFrame;
 use crate::protocol::serialize;
 use crate::protocol::{
     HostMessage, Message, MessageParse, MessageSerialize, Parse, ParseMut, ParseResult,
@@ -43,7 +44,11 @@ impl<E> From<E> for ClientError<E> {
 
 /// A trait to encapsulate a buffer with filled and unfilled areas.
 pub trait ClientBuffer {
-    type Slice<'a>: ParseMut
+    type Slice<'a>: Parse
+    where
+        Self: 'a;
+
+    type SliceMut<'a>: ParseMut
     where
         Self: 'a;
 
@@ -59,10 +64,10 @@ pub trait ClientBuffer {
         R: embedded_io::Read;
 
     /// Get a hold of the accumulated data to do some parsin'.
-    fn data_mut(&mut self) -> Self::Slice<'_>;
+    fn data_mut(&mut self) -> Self::SliceMut<'_>;
 
     /// Get a hold of the accumulated data to do some introspectin'.
-    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input;
+    fn data(&self) -> Self::Slice<'_>;
 
     /// Clear the buffer.
     fn clear(&mut self);
@@ -74,6 +79,7 @@ where
     B: ClientBuffer,
 {
     type Slice<'a> = B::Slice<'a>;
+    type SliceMut<'a> = B::SliceMut<'a>;
 
     fn skip(&mut self, n: usize) {
         (**self).skip(n)
@@ -90,11 +96,11 @@ where
         (**self).read(reader)
     }
 
-    fn data_mut(&mut self) -> Self::Slice<'_> {
+    fn data_mut(&mut self) -> Self::SliceMut<'_> {
         (**self).data_mut()
     }
 
-    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input {
+    fn data(&self) -> Self::Slice<'_> {
         (**self).data()
     }
 
@@ -127,7 +133,8 @@ impl<const SIZE: usize> Default for ArrayBuffer<SIZE> {
 }
 
 impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
-    type Slice<'a> = &'a mut [u8];
+    type Slice<'a> = &'a [u8];
+    type SliceMut<'a> = &'a mut [u8];
 
     fn skip(&mut self, n: usize) {
         self.buffer.copy_within(n..self.len, 0);
@@ -147,11 +154,11 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
         Ok(amt)
     }
 
-    fn data_mut(&mut self) -> Self::Slice<'_> {
+    fn data_mut(&mut self) -> Self::SliceMut<'_> {
         &mut self.buffer[..self.len]
     }
 
-    fn data(&self) -> <Self::Slice<'_> as ParseMut>::Input {
+    fn data(&self) -> Self::Slice<'_> {
         &self.buffer[..self.len]
     }
 
@@ -161,12 +168,13 @@ impl<const SIZE: usize> ClientBuffer for ArrayBuffer<SIZE> {
 }
 
 /// A client for the UV-K5 serial protocol.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Client<F, B, InC, OutC> {
     port: F,
     buffer: B,
-    skip: Option<usize>,
+    skip: usize,
+    found: Option<FoundFrame>,
     needs_read: bool,
     in_crc: InC,
     out_crc: OutC,
@@ -292,7 +300,8 @@ where
         Self {
             port,
             buffer,
-            skip: None,
+            skip: 0,
+            found: None,
             needs_read: true,
             in_crc,
             out_crc,
@@ -340,8 +349,8 @@ where
         &self.out_crc
     }
 
-    /// Read from the port into the internal buffer, if needed. First
-    /// half of [Self::read()].
+    /// Read from the port into the internal buffer, if needed, and
+    /// find a frame. First half of [Self::read()].
     ///
     /// If you call this while [self.buffer().is_full()][ClientBuffer::is_full],
     /// this will clear the internal buffer to make room for new data.
@@ -349,9 +358,13 @@ where
     where
         F: embedded_io::Read,
     {
-        // apply skip from last read cycle. see parse().
-        if let Some(skip) = self.skip.take() {
-            self.buffer.skip(skip);
+        // clear any previously found frame
+        self.found = None;
+
+        // apply skip from last read cycle.
+        if self.skip > 0 {
+            self.buffer.skip(self.skip);
+            self.skip = 0;
         }
 
         // if the buffer is full, even now, clear it and restart
@@ -371,39 +384,32 @@ where
             self.needs_read = false;
         }
 
+        // attempt to find a frame
+        let (skip, found) = protocol::find_frame(self.buffer.data_mut());
+        self.skip = skip;
+        self.found = found;
+
+        if self.found.is_none() {
+            // we found no frames, so we need more data
+            self.needs_read = true;
+        }
+
         Ok(())
     }
 
     /// Parse from the internal buffer. Second half of [Self::read()].
-    pub fn parse<'a, M, I>(&'a mut self) -> ParseResult<I, M>
+    pub fn parse<'a, M>(&'a self) -> ParseResult<B::Slice<'a>, M>
     where
-        M: MessageParse<I>,
-        I: Parse,
-        B::Slice<'a>: ParseMut<Input = I>,
+        M: MessageParse<B::Slice<'a>>,
     {
-        // attempt to parse it
-        let (skip, res) = protocol::parse(&self.in_crc, self.buffer.data_mut());
-
-        if let ParseResult::None = res {
-            // we didn't find anything, not even an error, so we need more data
-            self.needs_read = true;
-        }
-
-        // store the skip value until next read_into_buffer, because
-        // modifying self.buffer would interfere with the borrow in res
-        if skip > 0 {
-            self.skip = Some(skip);
-        }
-
-        res
+        // attempt to parse the found frame, if any
+        protocol::parse(&self.in_crc, self.buffer.data(), &self.found)
     }
 
     /// Read from the port and attempt to parse a message.
-    pub fn read<'a, M, I>(&'a mut self) -> Result<ParseResult<I, M>, ClientError<F::Error>>
+    pub fn read<'a, M>(&'a mut self) -> Result<ParseResult<B::Slice<'a>, M>, ClientError<F::Error>>
     where
-        M: MessageParse<I>,
-        I: Parse,
-        B::Slice<'a>: ParseMut<Input = I>,
+        M: MessageParse<B::Slice<'a>>,
         F: embedded_io::Read,
     {
         self.read_into_buffer()?;
@@ -411,36 +417,33 @@ where
     }
 
     /// Read a [Message].
-    pub fn read_any<'a, I>(
-        &'a mut self,
-    ) -> Result<ParseResult<I, Message<I>>, ClientError<F::Error>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_any(
+        &mut self,
+    ) -> Result<ParseResult<B::Slice<'_>, Message<B::Slice<'_>>>, ClientError<F::Error>>
     where
-        I: Parse,
-        B::Slice<'a>: ParseMut<Input = I>,
         F: embedded_io::Read,
     {
         self.read()
     }
 
     /// Read a [HostMessage].
-    pub fn read_host<'a, I>(
-        &'a mut self,
-    ) -> Result<ParseResult<I, HostMessage<I>>, ClientError<F::Error>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_host(
+        &mut self,
+    ) -> Result<ParseResult<B::Slice<'_>, HostMessage<B::Slice<'_>>>, ClientError<F::Error>>
     where
-        I: Parse,
-        B::Slice<'a>: ParseMut<Input = I>,
         F: embedded_io::Read,
     {
         self.read()
     }
 
     /// Read a [RadioMessage].
-    pub fn read_radio<'a, I>(
-        &'a mut self,
-    ) -> Result<ParseResult<I, RadioMessage<I>>, ClientError<F::Error>>
+    #[allow(clippy::type_complexity)]
+    pub fn read_radio(
+        &mut self,
+    ) -> Result<ParseResult<B::Slice<'_>, RadioMessage<B::Slice<'_>>>, ClientError<F::Error>>
     where
-        I: Parse,
-        B::Slice<'a>: ParseMut<Input = I>,
         F: embedded_io::Read,
     {
         self.read()

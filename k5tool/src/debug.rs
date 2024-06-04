@@ -119,9 +119,9 @@ where
                 }
 
                 if self.args.debug >= 2 {
-                    if let (_, Some((range, _))) = parse::frame_raw(data.as_mut()) {
+                    if let (_, Some(found)) = parse::find_frame(data.as_mut()) {
                         eprintln!("<<< deobfuscated:");
-                        crate::hexdump::ehexdump_prefix("<<<   ", &data[range]);
+                        crate::hexdump::ehexdump_prefix("<<<   ", &data[found.full_frame]);
                     }
                 }
             }

@@ -51,9 +51,6 @@ pub trait ParseMut: Sized {
     /// Slice this input.
     fn slice(self, range: Range<usize>) -> Self;
 
-    /// Drop mutability for use with nom.
-    fn to_input(self) -> Self::Input;
-
     /// Deobfuscate the contents of this slice.
     fn deobfuscate(&mut self, key: &mut Key) {
         for b in self.iter_mut() {
@@ -79,10 +76,6 @@ impl<'a> ParseMut for &'a mut [u8] {
 
     fn slice(self, range: Range<usize>) -> Self {
         &mut self[range]
-    }
-
-    fn to_input(self) -> Self::Input {
-        self
     }
 }
 
@@ -177,15 +170,23 @@ fn read_le_u16(iter: &mut impl Iterator<Item = (usize, u8)>) -> Option<u16> {
     Some((iter.next()?.1 as u16) | ((iter.next()?.1 as u16) << 8))
 }
 
-/// Find a frame, and return the deobfuscated body and CRC.
+/// A possible result from [find_frame()].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct FoundFrame {
+    pub full_frame: Range<usize>,
+    pub frame_contents: Range<usize>,
+}
+
+/// Find a frame, and deobfuscate the contents.
 ///
-/// Returns the number of consumed bytes and None if it only skipped
-/// data and found no complete frames.
+/// Returns the modified input, number of consumed bytes and None if
+/// it only skipped data and found no complete frames.
 ///
 /// If a frame is found, return the range for the full frame, and a
-/// slice of the deobfuscated body and CRC.
+/// range for the deobfuscated contents.
 #[allow(clippy::type_complexity)]
-pub fn frame_raw<I>(input: I) -> (usize, Option<(Range<usize>, I::Input)>)
+pub fn find_frame<I>(input: I) -> (usize, Option<FoundFrame>)
 where
     I: ParseMut,
 {
@@ -262,13 +263,20 @@ where
         // we have a frame from start.start to end.end
         // the body + crc is inside body_start to crc_end
         drop(bytes);
-        let mut frame_body = input.slice(body_start..crc_end);
+        let body_range = body_start..crc_end;
+        let mut frame_body = input.slice(body_range.clone());
         frame_body.deobfuscate(&mut Key::new());
-        return (end.end, Some((start.start..end.end, frame_body.to_input())));
+        return (
+            end.end,
+            Some(FoundFrame {
+                full_frame: start.start..end.end,
+                frame_contents: body_range,
+            }),
+        );
     }
 }
 
-/// A possible result from [frame()].
+/// A possible result from [parse_frame_with()].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ParseResult<I, O, E = Error<I>> {
@@ -358,55 +366,52 @@ where
     }
 }
 
-/// Find a frame, and deobfuscate and then parse with the provided parser.
+/// Parse a found frame with the provided parser.
 ///
 /// The parser is always run against an entire frame.
 ///
-/// Returns number of consumed bytes and [ParseResult::Ok] on
-/// successful parse, [ParseResult::ParseErr] if the provided parser
-/// failed, [ParseResult::CrcErr] if the checksum was wrong, and
-/// [ParseResult::None] if it only skipped data and found no complete
-/// frames.  In all cases, any frames passed to the parser are removed
-/// from the input.
-pub fn frame<C, I, P, O>(crc: C, input: I, parser: P) -> (usize, ParseResult<I::Input, O>)
+/// Returns [ParseResult::Ok] on successful parse,
+/// [ParseResult::ParseErr] if the provided parser failed,
+/// [ParseResult::CrcErr] if the checksum was wrong, and
+/// [ParseResult::None] if no frame was found.
+pub fn parse_frame_with<C, I, P, O>(
+    crc: C,
+    input: I,
+    found: &Option<FoundFrame>,
+    parser: P,
+) -> ParseResult<I, O>
 where
     C: CrcStyle,
-    P: nom::Parser<I::Input, O, Error<I::Input>>,
-    I: ParseMut,
+    P: nom::Parser<I, O, Error<I>>,
+    I: Parse,
 {
-    let mut parser_all = nom::combinator::all_consuming(parser);
+    let Some(found) = found else {
+        return ParseResult::None;
+    };
 
-    let (consumed, maybe_content) = frame_raw(input);
-    match maybe_content {
-        Some((r, content)) => {
-            // found a frame, wrap it and feed it to our parser
-            if let Some(body) = check_crc(&crc, content.clone()) {
-                match parser_all(body.clone()) {
-                    Ok((_, result)) => (consumed, ParseResult::Ok(r, result)),
-                    Err(e) => match e {
-                        nom::Err::Incomplete(_) => (
-                            consumed,
-                            ParseResult::ParseErr(
-                                r,
-                                body.clone(),
-                                Error {
-                                    input: body,
-                                    code: nom::error::ErrorKind::Complete,
-                                },
-                            ),
-                        ),
-                        nom::Err::Error(e) => (consumed, ParseResult::ParseErr(r, body, e)),
-                        nom::Err::Failure(e) => (consumed, ParseResult::ParseErr(r, body, e)),
+    let mut parser_all = nom::combinator::all_consuming(parser);
+    let content = input.slice(found.frame_contents.clone());
+
+    // found a frame, wrap it and feed it to our parser
+    if let Some(body) = check_crc(&crc, content.clone()) {
+        match parser_all(body.clone()) {
+            Ok((_, result)) => ParseResult::Ok(found.full_frame.clone(), result),
+            Err(e) => match e {
+                nom::Err::Incomplete(_) => ParseResult::ParseErr(
+                    found.full_frame.clone(),
+                    body.clone(),
+                    Error {
+                        input: body,
+                        code: nom::error::ErrorKind::Complete,
                     },
-                }
-            } else {
-                (consumed, ParseResult::CrcErr(r, content))
-            }
+                ),
+
+                nom::Err::Error(e) => ParseResult::ParseErr(found.full_frame.clone(), body, e),
+                nom::Err::Failure(e) => ParseResult::ParseErr(found.full_frame.clone(), body, e),
+            },
         }
-        None => {
-            // no frame found, only ate input
-            (consumed, ParseResult::None)
-        }
+    } else {
+        ParseResult::CrcErr(found.full_frame.clone(), content)
     }
 }
 
@@ -457,12 +462,11 @@ where
     /// Returns the number of consumed bytes and the parse or CRC result.
     ///
     /// This parses and handles frame start/end, length, obfuscation, and CRC.
-    fn parse_frame<C, IM>(crc: &C, input: IM) -> (usize, ParseResult<I, Self>)
+    fn parse_frame<C>(crc: &C, input: I, found: &Option<FoundFrame>) -> ParseResult<I, Self>
     where
         C: CrcStyle,
-        IM: ParseMut<Input = I>,
     {
-        frame(crc, input, Self::parse_frame_body())
+        parse_frame_with(crc, input, found, Self::parse_frame_body())
     }
 }
 
@@ -474,225 +478,253 @@ mod test {
     use super::super::crc::CrcConstant;
     use super::*;
 
+    fn found(full: Range<usize>) -> FoundFrame {
+        let contents_start = full.start + FRAME_START.len() + core::mem::size_of::<u16>();
+        let contents_end = full.end - FRAME_END.len();
+        FoundFrame {
+            full_frame: full.clone(),
+            frame_contents: contents_start..contents_end,
+        }
+    }
+
     #[test]
     fn frame_raw_empty() {
         let mut frame = b"".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (0, None))
+        assert_eq!(find_frame(frame.as_mut()), (0, None))
     }
 
     #[test]
-    fn frame_raw_discard_garbage() {
+    fn find_frame_discard_garbage() {
         let mut frame = b"abcdef".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (6, None));
+        assert_eq!(find_frame(frame.as_mut()), (6, None));
     }
 
     #[test]
-    fn frame_raw_incomplete_prefix_imm() {
+    fn find_frame_incomplete_prefix_imm() {
         let mut frame = b"\xab".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (0, None));
+        assert_eq!(find_frame(frame.as_mut()), (0, None));
     }
 
     #[test]
-    fn frame_raw_incomplete_imm() {
+    fn find_frame_incomplete_imm() {
         let mut frame = b"\xab\xcd\x01\x00\x70\x03\x7b".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (0, None));
+        assert_eq!(find_frame(frame.as_mut()), (0, None));
     }
 
     #[test]
-    fn frame_raw_complete_imm() {
+    fn find_frame_complete_imm() {
         let mut frame = b"\xab\xcd\x01\x00\x70\x03\x7b\xdc\xbaafter".to_owned();
-        assert_eq!(
-            frame_raw(frame.as_mut()),
-            (9, Some((0..9, b"foo".as_ref())))
-        );
+        assert_eq!(find_frame(frame.as_mut()), (9, Some(found(0..9))));
     }
 
     #[test]
-    fn frame_raw_incomplete_prefix() {
+    fn find_frame_incomplete_prefix() {
         let mut frame = b"abc\xab".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (3, None));
+        assert_eq!(find_frame(frame.as_mut()), (3, None));
     }
 
     #[test]
-    fn frame_raw_incomplete() {
+    fn find_frame_incomplete() {
         let mut frame = b"abc\xab\xcd\x01\x00\x70\x03\x7b".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (3, None));
+        assert_eq!(find_frame(frame.as_mut()), (3, None));
     }
 
     #[test]
-    fn frame_raw_complete() {
+    fn find_frame_complete() {
         let mut frame = b"abc\xab\xcd\x01\x00\x70\x03\x7b\xdc\xbaafter".to_owned();
-        assert_eq!(
-            frame_raw(frame.as_mut()),
-            (12, Some((3..12, b"foo".as_ref())))
-        );
+        assert_eq!(find_frame(frame.as_mut()), (12, Some(found(3..12))));
     }
 
     #[test]
-    fn frame_raw_incomplete_prefix_2() {
+    fn find_frame_incomplete_prefix_2() {
         let mut frame = b"abc\xabdef\xab".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (7, None));
+        assert_eq!(find_frame(frame.as_mut()), (7, None));
     }
 
     #[test]
-    fn frame_raw_incomplete_2() {
+    fn find_frame_incomplete_2() {
         let mut frame = b"abc\xabdef\xab\xcd\x01\x00\x70\x03\x7b".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (7, None));
+        assert_eq!(find_frame(frame.as_mut()), (7, None));
     }
 
     #[test]
-    fn frame_raw_complete_2() {
+    fn find_frame_complete_2() {
         let mut frame = b"abc\xabdef\xab\xcd\x01\x00\x70\x03\x7b\xdc\xbaafter".to_owned();
 
-        assert_eq!(
-            frame_raw(frame.as_mut()),
-            (16, Some((7..16, b"foo".as_ref())))
-        );
+        assert_eq!(find_frame(frame.as_mut()), (16, Some(found(7..16))));
     }
 
     #[test]
-    fn frame_raw_bad_length() {
+    fn find_frame_bad_length() {
         let mut frame = b"abc\xab\xcd\x00\x02foo".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (10, None));
+        assert_eq!(find_frame(frame.as_mut()), (10, None));
     }
 
     #[test]
-    fn frame_raw_bad_end() {
+    fn find_frame_bad_end() {
         let mut frame = b"abc\xab\xcd\x01\x00\x70\x03\x7b\xdc\xbbafter".to_owned();
-        assert_eq!(frame_raw(frame.as_mut()), (17, None));
+        assert_eq!(find_frame(frame.as_mut()), (17, None));
     }
 
     #[test]
     fn frame_empty() {
         let mut data = b"".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (0, ParseResult::None))
+        assert_eq!((skip, res), (0, ParseResult::None))
     }
 
     #[test]
     fn frame_discard_garbage() {
         let mut data = b"abcdef".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (6, ParseResult::None))
+        assert_eq!((skip, res), (6, ParseResult::None))
     }
 
     #[test]
     fn frame_incomplete_prefix_imm() {
         let mut data = b"".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"\xab".as_ref()),
         );
-        assert_eq!(res, (0, ParseResult::None))
+        assert_eq!((skip, res), (0, ParseResult::None))
     }
 
     #[test]
     fn frame_incomplete_imm() {
         let mut data = b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (0, ParseResult::None))
+        assert_eq!((skip, res), (0, ParseResult::None))
     }
 
     #[test]
     fn frame_complete_imm() {
         let mut data = b"\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (11, ParseResult::Ok(0..11, b"foo".as_ref())))
+        assert_eq!((skip, res), (11, ParseResult::Ok(0..11, b"foo".as_ref())))
     }
 
     #[test]
     fn frame_incomplete_prefix() {
         let mut data = b"abc\xab".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (3, ParseResult::None))
+        assert_eq!((skip, res), (3, ParseResult::None))
     }
 
     #[test]
     fn frame_incomplete() {
         let mut data = b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (3, ParseResult::None))
+        assert_eq!((skip, res), (3, ParseResult::None))
     }
 
     #[test]
     fn frame_complete() {
         let mut data = b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (14, ParseResult::Ok(3..14, b"foo".as_ref())))
+        assert_eq!((skip, res), (14, ParseResult::Ok(3..14, b"foo".as_ref())))
     }
 
     #[test]
     fn frame_incomplete_prefix_2() {
         let mut data = b"abc\xabdef\xab".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (7, ParseResult::None))
+        assert_eq!((skip, res), (7, ParseResult::None))
     }
 
     #[test]
     fn frame_incomplete_2() {
         let mut data = b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (7, ParseResult::None))
+        assert_eq!((skip, res), (7, ParseResult::None))
     }
 
     #[test]
     fn frame_complete_2() {
         let mut data = b"abc\xabdef\xab\xcd\x03\x00\x70\x03\x7b\x18\xe4\xdc\xbaafter".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
-        assert_eq!(res, (18, ParseResult::Ok(7..18, b"foo".as_ref())))
+        assert_eq!((skip, res), (18, ParseResult::Ok(7..18, b"foo".as_ref())))
     }
 
     #[test]
     fn frame_crc_error() {
         let mut data = b"abc\xab\xcd\x03\x00\x70\x03\x7b\x18\xee\xdc\xbaafter".to_owned();
-        let res = frame(
+        let (skip, found) = find_frame(data.as_mut());
+        let res = parse_frame_with(
             CrcConstant(0xcafe),
-            data.as_mut(),
+            data.as_ref(),
+            &found,
             nom::bytes::complete::tag(b"foo".as_ref()),
         );
         assert_eq!(
-            res,
+            (skip, res),
             (14, ParseResult::CrcErr(3..14, b"foo\xfe\xc0".as_ref()))
         )
     }
