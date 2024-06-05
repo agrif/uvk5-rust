@@ -24,6 +24,7 @@ pub enum BinaryFormat {
 /// Miscellaneous info about a firmware image.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BinaryInfo {
+    pub format: BinaryFormat,
     pub version: Option<Version>,
     pub flash_len: usize,
     pub stack_top: usize,
@@ -33,7 +34,11 @@ pub struct BinaryInfo {
 }
 
 impl BinaryInfo {
-    fn from_image(data: &[u8], version: Option<Version>) -> anyhow::Result<Self> {
+    fn from_image(
+        format: BinaryFormat,
+        data: &[u8],
+        version: Option<Version>,
+    ) -> anyhow::Result<Self> {
         let flash_len = data.len();
         // initial stack pointer is the first u32 in cortex-m0
         let stack_top = crate::common::read_le_u32(&data[0..])
@@ -43,6 +48,7 @@ impl BinaryInfo {
             .ok_or(anyhow::anyhow!("could not read entry_point"))?;
 
         Ok(Self {
+            format,
             version,
             flash_len,
             stack_top: stack_top as usize,
@@ -134,12 +140,13 @@ pub fn read_firmware_from(
     match format {
         BinaryFormat::Raw => Ok((
             UnpackedFirmware::new_cloned(data),
-            BinaryInfo::from_image(data, None)?,
+            BinaryInfo::from_image(BinaryFormat::Raw, data, None)?,
         )),
         BinaryFormat::Packed => {
             let packed = PackedFirmware::new_cloned(data)?;
             let (unpacked, fileversion) = packed.unpack()?;
-            let mut info = BinaryInfo::from_image(&unpacked, Some(fileversion))?;
+            let mut info =
+                BinaryInfo::from_image(BinaryFormat::Packed, &unpacked, Some(fileversion))?;
             info.override_version(version);
             Ok((unpacked, info))
         }
@@ -245,7 +252,7 @@ pub fn flatten_elf(elf: ElfBytes<AnyEndian>) -> anyhow::Result<(UnpackedFirmware
         })
     });
 
-    let mut info = BinaryInfo::from_image(&flat, version)?;
+    let mut info = BinaryInfo::from_image(BinaryFormat::Elf, &flat, version)?;
 
     // count up ram used and figure out where the stack ends
     let mut ram_len = 0;

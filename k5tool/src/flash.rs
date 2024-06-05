@@ -191,7 +191,9 @@ where
         bar.finish();
 
         if self.opts.attach {
-            let mut console = crate::console::Console::new(&mut self.client);
+            let elf = (self.info.format == crate::binformat::BinaryFormat::Elf)
+                .then(|| self.opts.firmware.as_str());
+            let mut console = crate::console::Console::new(&mut self.client, elf);
             console.run()?;
         }
 
