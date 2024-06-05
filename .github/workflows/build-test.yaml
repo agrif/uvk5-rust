@@ -74,7 +74,7 @@ jobs:
     needs: generate-pac
     strategy:
       matrix:
-        features: ["", "defmt"]
+        features: ["", "defmt,defmt-logger"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -110,14 +110,14 @@ jobs:
           path: github-work
       - run: chmod +x github-work/k5tool
 
-      - run: cargo build --release --examples
+      - run: cargo build --release --examples --all-features
         working-directory: dp32g030-hal
       - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "dp32g030-hal") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/hal-examples.txt
         working-directory: dp32g030-hal
       - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "dp32g030-hal") | .version' | tee ../github-work/hal-version.txt
         working-directory: dp32g030-hal
 
-      - run: cargo build --release --examples
+      - run: cargo build --release --examples --all-features
         working-directory: k5board
       - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "k5board") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/board-examples.txt
         working-directory: k5board

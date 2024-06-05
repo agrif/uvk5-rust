@@ -9,6 +9,8 @@ pub use dp32g030_hal as hal;
 pub use hal::pac;
 
 pub mod backlight;
+#[cfg(feature = "defmt-logger")]
+pub mod defmt_logger;
 pub mod eeprom;
 pub mod flashlight;
 pub mod keypad;

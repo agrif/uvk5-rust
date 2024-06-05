@@ -53,3 +53,8 @@ defmt = [
       "embedded-io/defmt-03",
       "k5lib/defmt",
 ]
+defmt-logger = ["defmt"]
+
+[[example]]
+name = "defmt"
+required-features = ["defmt-logger"]
