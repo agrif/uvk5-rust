@@ -88,6 +88,20 @@ jobs:
       - run: cargo build --no-default-features --features "${{ matrix.features }}"
         working-directory: k5board
 
+  bk4819:
+    name: bk4819
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features: ["", "defmt"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --no-default-features --features "${{ matrix.features }}"
+        working-directory: bk4819
+      - run: cargo test --no-default-features --features "${{ matrix.features }}"
+        working-directory: bk4819
+
   examples:
     name: Examples
     runs-on: ubuntu-latest
