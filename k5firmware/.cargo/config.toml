@@ -1,3 +1,6 @@
 [build]
 # Cortex-M0
 target = "thumbv6m-none-eabi"
+
+[target.thumbv6m-none-eabi]
+runner = "k5tool flash -a"
