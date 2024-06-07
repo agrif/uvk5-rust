@@ -20,7 +20,7 @@ static ALLOCATOR: alloc_cortex_m::CortexMHeap = alloc_cortex_m::CortexMHeap::emp
 const HEAP_SIZE: usize = 1024;
 
 fn reset() -> ! {
-    println!("!!! reset !!!");
+    defmt::println!("!!! reset !!!");
     k5board::uart::flush();
     cortex_m::peripheral::SCB::sys_reset();
 }
@@ -32,8 +32,8 @@ fn main() -> ! {
             cortex_m::asm::wfi();
         },
         Err(e) => loop {
-            println!("error in go(), press any key to reset");
-            println!("{}", e);
+            defmt::println!("error in go(), press any key to reset");
+            defmt::println!("{}", defmt::Display2Format(&e));
 
             // reset if character received
             if let Some(mut rx) = k5board::uart::try_rx() {
@@ -303,7 +303,7 @@ fn go() -> error::Result<()> {
             .unwrap_or(false)
         {
             if let Some(input) = client.read::<DebugInput<&[u8]>>()?.ok() {
-                let line = core::str::from_utf8(&input.line);
+                let line = core::str::from_utf8(input.line);
 
                 let Some(line) = line.ok() else {
                     continue;
@@ -315,7 +315,7 @@ fn go() -> error::Result<()> {
 
                 match cmd {
                     ("hello", _) => {
-                        println!("Hello!");
+                        defmt::println!("Hello!");
                     }
                     ("reset", _) => {
                         reset();
@@ -333,22 +333,22 @@ fn go() -> error::Result<()> {
                         fm_enable.set_high();
                     }
                     ("fm", "init") => {
-                        println!("init: {:x?}", fm.enable());
+                        defmt::println!("init: {:x}", fm.enable());
                     }
                     ("tune", val) => {
                         let Ok(val) = val.parse::<u16>() else {
                             continue;
                         };
-                        println!("tune: {:x?}", fm.tune(val));
+                        defmt::println!("tune: {:x}", fm.tune(val));
                     }
                     ("fm", "") => {
                         let all = fm.update(..);
                         if let Ok(all) = all {
                             for (a, v) in all.iter().enumerate() {
-                                println!("fm {:02x}: {:x?}", a, v);
+                                defmt::println!("fm {=usize:02x}: {=u16:x}", a, v);
                             }
                         } else {
-                            println!("fm {:?}", all);
+                            defmt::println!("fm {}", all);
                         }
                     }
                     ("read", addr) => {
@@ -357,7 +357,7 @@ fn go() -> error::Result<()> {
                         };
                         let mut eeprom_data = [0; 16];
                         eeprom.read(addr, &mut eeprom_data[..])?;
-                        println!("eeprom data: {:x?}", eeprom_data);
+                        defmt::println!("eeprom data: {=[u8]:02x}", eeprom_data);
                     }
                     _ => {}
                 }

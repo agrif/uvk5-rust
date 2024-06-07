@@ -19,10 +19,11 @@ alloc-cortex-m = "0.4"
 bytemuck = "1.16"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
+defmt = "0.3"
 embedded-graphics = "0.8"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7" }
-k5board = { path = "../k5board" }
-k5lib = { path = "../k5lib", default-features = false }
+k5board = { path = "../k5board", features = ["defmt-logger"] }
+k5lib = { path = "../k5lib", default-features = false, features = ["defmt"] }
 panic-halt = "0.2"
 
 [profile.release]
