@@ -3,8 +3,7 @@
 use bitfield_struct::bitfield;
 
 /// A trait describing a register generically.
-//#[cfg(not(feature = "defmt"))]
-pub trait Register: core::fmt::Debug + From<u16> + Into<u16> {
+pub trait Register: From<u16> + Into<u16> {
     /// The address of this register, 7 bits.
     const ADDRESS: u8;
 
@@ -12,18 +11,9 @@ pub trait Register: core::fmt::Debug + From<u16> + Into<u16> {
     const WRITEABLE: bool = true;
 }
 
-/// A trait describing a register generically.
-// #[cfg(feature = "defmt")]
-// pub trait Register: core::fmt::Debug + From<u16> + Into<u16> + defmt::Format {
-//     /// The address of this register, 7 bits.
-//     const ADDRESS: u8;
-
-//     /// Can this register be written to?
-//     const WRITEABLE: bool = true;
-// }
-
 /// 0x00 Reset.
-#[bitfield(u16)]
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Reset {
     #[bits(15)]
@@ -40,7 +30,8 @@ impl Register for Reset {
 /// 0x02 Interrupt status flags.
 ///
 /// Writing any value to this register clears these flags.
-#[bitfield(u16)]
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Interrupts {
     __: bool,
@@ -97,7 +88,8 @@ impl Register for Interrupts {
 }
 
 /// 0x07 CTCSS/CDCSS frequency control.
-#[bitfield(u16)]
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CtcControl {
     /// Frequency control word.
