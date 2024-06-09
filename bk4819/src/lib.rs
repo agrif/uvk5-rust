@@ -247,4 +247,44 @@ where
 
         Ok(())
     }
+
+    /// Is a given GPIO output enabled?
+    pub fn gpio_is_output_enabled(&mut self, pin: u8) -> Result<bool, Error<E>> {
+        Ok(self.read::<registers::GpioOutput>()?.enabled(pin))
+    }
+
+    /// Set a given GPIO output to be enabled.
+    pub fn gpio_set_output_enabled(&mut self, pin: u8, enabled: bool) -> Result<(), Error<E>> {
+        self.modify(|r: registers::GpioOutput| r.with_enabled(pin, enabled))
+    }
+
+    /// Is a given GPIO output set high?
+    pub fn gpio_is_set_high(&mut self, pin: u8) -> Result<bool, Error<E>> {
+        Ok(self.read::<registers::GpioOutput>()?.state(pin))
+    }
+
+    /// Is a given GPIO output set low?
+    pub fn gpio_is_set_low(&mut self, pin: u8) -> Result<bool, Error<E>> {
+        Ok(!self.gpio_is_set_high(pin)?)
+    }
+
+    /// Set a given GPIO output state.
+    pub fn gpio_set_state(&mut self, pin: u8, state: bool) -> Result<(), Error<E>> {
+        self.modify(|r: registers::GpioOutput| r.with_state(pin, state))
+    }
+
+    /// Set a given GPIO output high.
+    pub fn gpio_set_high(&mut self, pin: u8) -> Result<(), Error<E>> {
+        self.gpio_set_state(pin, true)
+    }
+
+    /// Set a given GPIO output low.
+    pub fn gpio_set_low(&mut self, pin: u8) -> Result<(), Error<E>> {
+        self.gpio_set_state(pin, false)
+    }
+
+    /// Toggle the given GPIO output.
+    pub fn gpio_toggle(&mut self, pin: u8) -> Result<(), Error<E>> {
+        self.modify(|r: registers::GpioOutput| r.with_state(pin, !r.state(pin)))
+    }
 }

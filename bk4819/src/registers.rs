@@ -105,9 +105,14 @@ pub struct CtcControl {
     pub mode: Result<CtcMode, u8>,
 }
 
+impl Register for CtcControl {
+    const ADDRESS: u8 = 0x07;
+}
+
 /// CTCSS/CDCSS mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub enum CtcMode {
     /// Normal CTCSS.
     Ctc1 = 0,
@@ -135,42 +140,403 @@ impl CtcMode {
     }
 }
 
-impl Register for CtcControl {
-    const ADDRESS: u8 = 0x07;
+/// 0x33 GPIO output.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GpioOutput {
+    /// GPIO6 output state.
+    state6: bool,
+
+    /// GPIO5 output state.
+    state5: bool,
+
+    /// GPIO4 output state.
+    state4: bool,
+
+    /// GPIO3 output state.
+    state3: bool,
+
+    /// GPIO2 output state.
+    state2: bool,
+
+    /// GPIO1 output state.
+    state1: bool,
+
+    /// GPIO0 output state.
+    state0: bool,
+
+    #[bits(1)]
+    __: u8,
+
+    /// GPIO6 output disabled.
+    #[bits(1, default = true)]
+    disabled6: bool,
+
+    /// GPIO5 output disabled.
+    #[bits(1, default = true)]
+    disabled5: bool,
+
+    /// GPIO4 output disabled.
+    #[bits(1, default = true)]
+    disabled4: bool,
+
+    /// GPIO3 output disabled.
+    #[bits(1, default = true)]
+    disabled3: bool,
+
+    /// GPIO2 output disabled.
+    #[bits(1, default = true)]
+    disabled2: bool,
+
+    /// GPIO1 output disabled.
+    #[bits(1, default = true)]
+    disabled1: bool,
+
+    /// GPIO0 output disabled.
+    #[bits(1, default = true)]
+    disabled0: bool,
+
+    #[bits(1)]
+    __: u8,
+}
+
+impl Register for GpioOutput {
+    const ADDRESS: u8 = 0x33;
+}
+
+impl GpioOutput {
+    /// Is this GPIO pin output enabled?
+    pub fn enabled(&self, pin: u8) -> bool {
+        match pin {
+            0 => !self.disabled0(),
+            1 => !self.disabled1(),
+            2 => !self.disabled2(),
+            3 => !self.disabled3(),
+            4 => !self.disabled4(),
+            5 => !self.disabled5(),
+            6 => !self.disabled6(),
+            _ => false,
+        }
+    }
+
+    /// Set a GPIO pin output enabled.
+    pub fn set_enabled(&mut self, pin: u8, enabled: bool) {
+        match pin {
+            0 => self.set_disabled0(!enabled),
+            1 => self.set_disabled1(!enabled),
+            2 => self.set_disabled2(!enabled),
+            3 => self.set_disabled3(!enabled),
+            4 => self.set_disabled4(!enabled),
+            5 => self.set_disabled5(!enabled),
+            6 => self.set_disabled6(!enabled),
+            _ => {}
+        }
+    }
+
+    /// Modify self to enable a given GPIO pin output.
+    pub fn with_enabled(self, pin: u8, enabled: bool) -> Self {
+        match pin {
+            0 => self.with_disabled0(!enabled),
+            1 => self.with_disabled1(!enabled),
+            2 => self.with_disabled2(!enabled),
+            3 => self.with_disabled3(!enabled),
+            4 => self.with_disabled4(!enabled),
+            5 => self.with_disabled5(!enabled),
+            6 => self.with_disabled6(!enabled),
+            _ => self,
+        }
+    }
+
+    /// Is a GPIO pin output set high?
+    pub fn state(&self, pin: u8) -> bool {
+        match pin {
+            0 => self.state0(),
+            1 => self.state1(),
+            2 => self.state2(),
+            3 => self.state3(),
+            4 => self.state4(),
+            5 => self.state5(),
+            6 => self.state6(),
+            _ => false,
+        }
+    }
+
+    /// Set a GPIO pin output high.
+    pub fn set_state(&mut self, pin: u8, state: bool) {
+        match pin {
+            0 => self.set_state0(state),
+            1 => self.set_state1(state),
+            2 => self.set_state2(state),
+            3 => self.set_state3(state),
+            4 => self.set_state4(state),
+            5 => self.set_state5(state),
+            6 => self.set_state6(state),
+            _ => {}
+        }
+    }
+
+    /// Modify self to set a given GPIO pin output high.
+    pub fn with_state(self, pin: u8, state: bool) -> Self {
+        match pin {
+            0 => self.with_state0(state),
+            1 => self.with_state1(state),
+            2 => self.with_state2(state),
+            3 => self.with_state3(state),
+            4 => self.with_state4(state),
+            5 => self.with_state5(state),
+            6 => self.with_state6(state),
+            _ => self,
+        }
+    }
+}
+
+/// 0x36 Power amplifier control.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PaControl {
+    /// PA Gain 2 tuning, 0b111 (max) to 0b000 (min).
+    #[bits(3, default = 0b111)]
+    pub gain2: u8,
+
+    /// PA Gain 1 tuning, 0b111 (max) to 0b000 (min).
+    #[bits(3, default = 0b111)]
+    pub gain1: u8,
+
+    #[bits(1)]
+    __: u8,
+
+    /// PA CTL output enable.
+    pub pactl_enable: bool,
+
+    /// PA bias output, 0x00 (0V) to 0xff (3.2V).
+    pub bias: u8,
+}
+
+impl Register for PaControl {
+    const ADDRESS: u8 = 0x36;
+}
+
+/// 0x37 Power save settings.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PowerControl {
+    /// Band-gap enable.
+    pub band_gap_enable: bool,
+
+    /// XTAL enable.
+    pub xtal_enable: bool,
+
+    /// DSP enable.
+    pub dsp_enable: bool,
+
+    /// Unknown (reserved).
+    pub unknown_b3: bool,
+
+    /// PLL LDO bypass.
+    pub pll_ldo_bypass: bool,
+
+    /// FF LDO bypass.
+    pub rf_ldo_bypass: bool,
+
+    /// VCO LDO bypass.
+    pub vco_ldo_bypass: bool,
+
+    /// ANA LDO bypass.
+    pub ana_ldo_bypass: bool,
+
+    /// PLL LDO voltage selection.
+    #[bits(1, default = LdoVoltage::V2_7)]
+    pub pll_ldo_select: LdoVoltage,
+
+    /// RF LDO voltage selection.
+    #[bits(1, default = LdoVoltage::V2_7)]
+    pub rf_ldo_select: LdoVoltage,
+
+    /// VCO LDO voltage selection.
+    #[bits(1, default = LdoVoltage::V2_7)]
+    pub vco_ldo_select: LdoVoltage,
+
+    /// ANA LDO voltage selection.
+    #[bits(1, default = LdoVoltage::V2_7)]
+    pub ana_ldo_select: LdoVoltage,
+
+    /// DSP voltage setting.
+    #[bits(3, default = 0b001)]
+    pub dsp_voltage: u8,
+
+    #[bits(1)]
+    __: u8,
+}
+
+/// LDO voltage selection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub enum LdoVoltage {
+    /// 2.4 volts.
+    V2_4 = 0,
+    /// 2.7 volts.
+    V2_7 = 1,
+}
+
+impl LdoVoltage {
+    pub const fn into_bits(self) -> u8 {
+        self as u8
+    }
+
+    pub const fn from_bits(v: u8) -> Self {
+        match v {
+            0 => Self::V2_4,
+            _ => Self::V2_7,
+        }
+    }
+}
+
+impl Register for PowerControl {
+    const ADDRESS: u8 = 0x37;
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
 
+    // helper to read off bit slices from the datasheet and assert them
+    macro_rules! check_bits {
+        ($name:ty { $($field:ident[$($spec:tt)*] $(= $default:expr)?),*$(,)? }) => {
+            $(
+                {
+                    paste::paste! {
+                        let found = ($name::[<$field:upper _OFFSET>], $name::[<$field:upper _BITS>]);
+                    }
+                    let expected = check_bits!(@spechelper, [$($spec)*]);
+                    assert_eq!(expected, found, "on {}::{}, expected (len, size) of {:?}, found {:?}", stringify!($name), stringify!($field), expected, found);
+                    $(
+                        let expected = $default;
+                        let found = <$name>::new().$field();
+                        assert_eq!(expected, found, "on {}::{}, expected default {:?}, found {:?}", stringify!($name), stringify!($field), expected, found);
+                    )?
+                }
+            )*
+        };
+        (@spechelper, [$bit:literal]) => {
+            // start, len
+            ($bit, 1)
+        };
+        (@spechelper, [$end:literal : $start:literal]) => {
+            // start, len
+            ($start, 1 + $end - $start)
+        };
+    }
+
     #[test]
-    fn reset() {
+    fn r00_reset() {
+        assert_eq!(Reset::ADDRESS, 0x00);
+        check_bits!(Reset { reset[15] = false });
         assert_eq!(0x8000, Reset::new().with_reset(true).into_bits());
     }
 
     #[test]
-    fn interrupts() {
-        assert_eq!(0x0000, Interrupts::new().into_bits());
+    fn r02_interrupts() {
+        assert_eq!(Interrupts::ADDRESS, 0x02);
+        check_bits!(Interrupts {
+            fsk_tx_finished[15] = false,
+            fsk_fifo_almost_empty[14] = false,
+            fsk_rx_finished[13] = false,
+            fsk_fifo_almost_full[12] = false,
+            tone_found[11] = false,
+            tail_found[10] = false,
+            cdcss_found[9] = false,
+            cdcss_lost[8] = false,
+            ctcss_found[7] = false,
+            ctcss_lost[6] = false,
+            vox_found[5] = false,
+            vox_lost[4] = false,
+            squelch_found[3] = false,
+            squelch_lost[2] = false,
+            fsk_rx_sync[1] = false,
+        });
+    }
 
-        let i = Interrupts::from_bits(0xaaaa);
+    #[test]
+    fn r07_ctc_control() {
+        assert_eq!(CtcControl::ADDRESS, 0x07);
+        check_bits!(CtcControl {
+            mode[15:13],
+            frequency[12:0],
+        });
+    }
 
-        // odd bits
-        assert!(i.fsk_rx_sync());
-        assert!(i.squelch_found());
-        assert!(i.vox_found());
-        assert!(i.ctcss_found());
-        assert!(i.cdcss_found());
-        assert!(i.tone_found());
-        assert!(i.fsk_rx_finished());
-        assert!(i.fsk_tx_finished());
+    #[test]
+    fn r33_gpio_output() {
+        assert_eq!(GpioOutput::ADDRESS, 0x33);
+        check_bits!(GpioOutput {
+            disabled0[14] = true,
+            disabled1[13] = true,
+            disabled2[12] = true,
+            disabled3[11] = true,
+            disabled4[10] = true,
+            disabled5[9] = true,
+            disabled6[8] = true,
+            state0[6] = false,
+            state1[5] = false,
+            state2[4] = false,
+            state3[3] = false,
+            state4[2] = false,
+            state5[1] = false,
+            state6[0] = false,
+        });
+    }
 
-        // even bits
-        assert!(!i.squelch_lost());
-        assert!(!i.vox_lost());
-        assert!(!i.ctcss_lost());
-        assert!(!i.cdcss_lost());
-        assert!(!i.tail_found());
-        assert!(!i.fsk_fifo_almost_full());
-        assert!(!i.fsk_fifo_almost_empty());
+    #[test]
+    fn r36_pa_control() {
+        assert_eq!(PaControl::ADDRESS, 0x36);
+        check_bits!(PaControl {
+            bias[15:8] = 0x00,
+            pactl_enable[7] = false,
+            gain1[5:3] = 0b111,
+            gain2[2:0] = 0b111,
+        });
+
+        assert_eq!(
+            0x0022,
+            PaControl::new()
+                .with_gain2(0b010)
+                .with_gain1(0b100)
+                .into_bits()
+        );
+    }
+
+    #[test]
+    fn r37_power_control() {
+        assert_eq!(PowerControl::ADDRESS, 0x37);
+        check_bits!(PowerControl {
+            dsp_voltage[14:12] = 0b001,
+            ana_ldo_select[11] = LdoVoltage::V2_7,
+            vco_ldo_select[10] = LdoVoltage::V2_7,
+            rf_ldo_select[9] = LdoVoltage::V2_7,
+            pll_ldo_select[8] = LdoVoltage::V2_7,
+            ana_ldo_bypass[7] = false,
+            vco_ldo_bypass[6] = false,
+            rf_ldo_bypass[5] = false,
+            pll_ldo_bypass[4] = false,
+            unknown_b3[3] = false,
+            dsp_enable[2] = false,
+            xtal_enable[1] = false,
+            band_gap_enable[0] = false,
+        });
+
+        assert_eq!(
+            0x1d0f,
+            PowerControl::new()
+                .with_band_gap_enable(true)
+                .with_xtal_enable(true)
+                .with_dsp_enable(true)
+                .with_unknown_b3(true)
+                .with_rf_ldo_select(LdoVoltage::V2_4)
+                .into_bits()
+        );
     }
 }
