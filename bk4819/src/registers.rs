@@ -3,12 +3,9 @@
 use bitfield_struct::bitfield;
 
 /// A trait describing a register generically.
-pub trait Register: From<u16> + Into<u16> {
+pub trait Register: Clone + From<u16> + Into<u16> {
     /// The address of this register, 7 bits.
     const ADDRESS: u8;
-
-    /// Can this register be written to?
-    const WRITEABLE: bool = true;
 }
 
 /// 0x00 Reset.
