@@ -3,6 +3,8 @@
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
 
+mod doc_table;
+
 pub mod registers;
 pub use registers::Register;
 
