@@ -533,7 +533,7 @@ pub struct PaControl {
     __: u8,
 
     /// PA CTL output enable.
-    pub pactl_enable: bool,
+    pub pactl_enabled: bool,
 
     /// PA bias output, 0x00 (0V) to 0xff (3.2V).
     pub bias: u8,
@@ -549,28 +549,28 @@ impl Register for PaControl {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PowerControl {
     /// Band-gap enable.
-    pub band_gap_enable: bool,
+    pub band_gap_enabled: bool,
 
     /// XTAL enable.
-    pub xtal_enable: bool,
+    pub xtal_enabled: bool,
 
     /// DSP enable.
-    pub dsp_enable: bool,
+    pub dsp_enabled: bool,
 
     /// Unknown (reserved).
     pub unknown_b3: bool,
 
     /// PLL LDO bypass.
-    pub pll_ldo_bypass: bool,
+    pub pll_ldo_bypassed: bool,
 
     /// FF LDO bypass.
-    pub rf_ldo_bypass: bool,
+    pub rf_ldo_bypassed: bool,
 
     /// VCO LDO bypass.
-    pub vco_ldo_bypass: bool,
+    pub vco_ldo_bypassed: bool,
 
     /// ANA LDO bypass.
-    pub ana_ldo_bypass: bool,
+    pub ana_ldo_bypassed: bool,
 
     /// PLL LDO voltage selection.
     #[bits(1, default = LdoVoltage::V2_7)]
@@ -887,7 +887,7 @@ mod test {
         assert_eq!(PaControl::new().into_bits(), 0x003f);
         check_bits!(PaControl {
             bias[15:8] = 0x00,
-            pactl_enable[7] = false,
+            pactl_enabled[7] = false,
             gain1[5:3] = 0b111,
             gain2[2:0] = 0b111,
         });
@@ -911,22 +911,22 @@ mod test {
             vco_ldo_select[10] = LdoVoltage::V2_7,
             rf_ldo_select[9] = LdoVoltage::V2_7,
             pll_ldo_select[8] = LdoVoltage::V2_7,
-            ana_ldo_bypass[7] = false,
-            vco_ldo_bypass[6] = false,
-            rf_ldo_bypass[5] = false,
-            pll_ldo_bypass[4] = false,
+            ana_ldo_bypassed[7] = false,
+            vco_ldo_bypassed[6] = false,
+            rf_ldo_bypassed[5] = false,
+            pll_ldo_bypassed[4] = false,
             unknown_b3[3] = false,
-            dsp_enable[2] = false,
-            xtal_enable[1] = false,
-            band_gap_enable[0] = false,
+            dsp_enabled[2] = false,
+            xtal_enabled[1] = false,
+            band_gap_enabled[0] = false,
         });
 
         assert_eq!(
             0x1d0f,
             PowerControl::new()
-                .with_band_gap_enable(true)
-                .with_xtal_enable(true)
-                .with_dsp_enable(true)
+                .with_band_gap_enabled(true)
+                .with_xtal_enabled(true)
+                .with_dsp_enabled(true)
                 .with_unknown_b3(true)
                 .with_rf_ldo_select(LdoVoltage::V2_4)
                 .into_bits()
