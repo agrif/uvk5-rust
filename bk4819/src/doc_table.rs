@@ -62,7 +62,7 @@ macro_rules! doc_table {
     (@testentry,) => {""};
 
     (@testentry, $reg:ty) => {
-        concat!("#     assert_eq!(addr, ", stringify!($reg), "::ADDRESS);\n")
+        concat!("#     assert_eq!(addr, ", stringify!($reg), "::ADDRESS, \"bad address for ", stringify!($reg), " in doc table.\");\n")
     };
 }
 
