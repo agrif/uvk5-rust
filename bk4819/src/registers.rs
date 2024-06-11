@@ -10,7 +10,7 @@
     "0x10" => {
         /* 0x10 */ AgcGainTable0, /* 0x11 */ AgcGainTable1, /* 0x12 */ AgcGainTable2, /* 0x13 */ AgcGainTable3,
         /* 0x14 */ AgcGainTable4, /* 0x15 */, /* 0x16 */, /* 0x17 */,
-        /* 0x18 */, /* 0x19 */, /* 0x1a */, /* 0x1b */,
+        /* 0x18 */, /* 0x19 */ MicAgc, /* 0x1a */, /* 0x1b */,
         /* 0x1c */, /* 0x1d */, /* 0x1e */, /* 0x1f */,
     },
     "0x20" => {
@@ -28,7 +28,7 @@
     "0x40" => {
         /* 0x40 */, /* 0x41 */, /* 0x42 */, /* 0x43 */,
         /* 0x44 */, /* 0x45 */, /* 0x46 */, /* 0x47 */,
-        /* 0x48 */, /* 0x49 */ Unknown49, /* 0x4a */, /* 0x4b */,
+        /* 0x48 */ AfGain, /* 0x49 */ Unknown49, /* 0x4a */, /* 0x4b */,
         /* 0x4c */, /* 0x4d */, /* 0x4e */, /* 0x4f */,
     },
     "0x50" => {
@@ -47,7 +47,7 @@
         /* 0x70 */, /* 0x71 */, /* 0x72 */, /* 0x73 */,
         /* 0x74 */, /* 0x75 */, /* 0x76 */, /* 0x77 */,
         /* 0x78 */, /* 0x79 */, /* 0x7a */, /* 0x7b */ Unknown7b,
-        /* 0x7c */, /* 0x7d */, /* 0x7e */ AgcFilters, /* 0x7f */,
+        /* 0x7c */, /* 0x7d */ MicSensitivity, /* 0x7e */ AgcFilters, /* 0x7f */,
     },
 }]
 
@@ -365,6 +365,40 @@ instance!(
     with_lna_short: u8,
 );
 
+/// 0x19 Mic AGC disable.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MicAgc {
+    #[bits(15, default = 0x1041)]
+    __: u16,
+
+    /// Automatic Mic PGA gain controller (Mic AGC) disable.
+    #[bits(1, default = true)]
+    pub disabled: bool,
+}
+
+impl MicAgc {
+    /// Automatic Mic PGA gain controller (Mic AGC) enable.
+    pub fn enabled(&self) -> bool {
+        !self.disabled()
+    }
+
+    /// Set automatic Mic PGA gain controller (Mic AGC) enable.
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.set_disabled(!enabled)
+    }
+
+    /// Replace Mic PGA gain controller (Mic AGC) enable.
+    pub fn with_enabled(self, enabled: bool) -> Self {
+        self.with_disabled(!enabled)
+    }
+}
+
+impl Register for MicAgc {
+    const ADDRESS: u8 = 0x19;
+}
+
 /// 0x33 GPIO output.
 #[cfg_attr(not(feature = "defmt"), bitfield(u16))]
 #[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
@@ -624,6 +658,38 @@ impl Register for PowerControl {
     const ADDRESS: u8 = 0x37;
 }
 
+/// 0x48 AF Rx gain.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AfGain {
+    /// AF DAC gain (after gain 1 and gain 2).
+    ///
+    /// 0xf max, 0x0 min, about 2dB / step.
+    #[bits(4, default = 0b1111)]
+    pub dac_gain: u8,
+
+    /// AF Rx gain 2.
+    ///
+    /// -26dB to 5.5dB, 0.5dB / step. 0x00 is mute.
+    #[bits(6, default = 0x3c)]
+    pub gain2: u8,
+
+    /// AF Rx gain 1.
+    ///
+    /// 0b00 = 0dB to 0b11 = -18dB, 6dB / step.
+    #[bits(2, default = 0b00)]
+    pub gain1: u8,
+
+    /// Unknown field.
+    #[bits(4, default = 0x3)]
+    pub unknown_b15_12: u8,
+}
+
+impl Register for AfGain {
+    const ADDRESS: u8 = 0x48;
+}
+
 /// 0x49 Unknown.
 ///
 /// Might have something to do with AGC?
@@ -657,6 +723,30 @@ pub struct Unknown7b {
 
 impl Register for Unknown7b {
     const ADDRESS: u8 = 0x7b;
+}
+
+/// 0x7d Mic sensitivity.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MicSensitivity {
+    /// Mic sensitivity, 0x00 min to 0x1f max, 0.5dB / step.
+    #[bits(5, default = 0x10)]
+    pub sensitivity: u8,
+
+    #[bits(5, default = 0b01010)]
+    __: u8,
+
+    /// Unknown field.
+    #[bits(2, default = 0b01)]
+    pub unknown_b11_10: u8,
+
+    #[bits(4, default = 0b1110)]
+    __: u8,
+}
+
+impl Register for MicSensitivity {
+    const ADDRESS: u8 = 0x7d;
 }
 
 /// 0x7e AGC lock, status, and DC filters.
@@ -860,6 +950,20 @@ mod test {
     }
 
     #[test]
+    fn r19_mic_agc() {
+        assert_eq!(MicAgc::ADDRESS, 0x19);
+        assert_eq!(MicAgc::new().into_bits(), 0x9041);
+        check_bits!(MicAgc {
+            disabled[15] = true,
+        });
+
+        assert_eq!(
+            0b0001_0000_0100_0001,
+            MicAgc::new().with_disabled(false).into_bits()
+        );
+    }
+
+    #[test]
     fn r33_gpio_output() {
         assert_eq!(GpioOutput::ADDRESS, 0x33);
         assert_eq!(GpioOutput::new().into_bits(), 0xff00);
@@ -934,6 +1038,28 @@ mod test {
     }
 
     #[test]
+    fn r48_af_gain() {
+        assert_eq!(AfGain::ADDRESS, 0x48);
+        assert_eq!(AfGain::new().into_bits(), 0x33cf);
+        check_bits!(AfGain {
+            unknown_b15_12[15:12] = 0x3,
+            gain1[11:10] = 0b00,
+            gain2[9:4] = 0x3c,
+            dac_gain[3:0] = 0b1111,
+        });
+
+        assert_eq!(
+            0xb3a8,
+            AfGain::new()
+                .with_dac_gain(8)
+                .with_gain2(58)
+                .with_gain1(0)
+                .with_unknown_b15_12(11)
+                .into_bits()
+        );
+    }
+
+    #[test]
     fn r49_unknown() {
         assert_eq!(Unknown49::ADDRESS, 0x49);
         assert_eq!(Unknown49::new().into_bits(), 0x2830);
@@ -962,6 +1088,24 @@ mod test {
         });
 
         assert_eq!(0x8420, Unknown7b::new().with_data(0x8420).into_bits());
+    }
+
+    #[test]
+    fn r7d_mic_sensitivity() {
+        assert_eq!(MicSensitivity::ADDRESS, 0x7d);
+        assert_eq!(MicSensitivity::new().into_bits(), 0xe550);
+        check_bits!(MicSensitivity {
+            unknown_b11_10[11:10] = 0b01,
+            sensitivity[4:0] = 0x10,
+        });
+
+        assert_eq!(
+            0xe940,
+            MicSensitivity::new()
+                .with_sensitivity(0x00)
+                .with_unknown_b11_10(0b10)
+                .into_bits()
+        );
     }
 
     #[test]
