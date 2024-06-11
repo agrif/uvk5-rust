@@ -28,7 +28,7 @@
     "0x40" => {
         /* 0x40 */, /* 0x41 */, /* 0x42 */, /* 0x43 */,
         /* 0x44 */, /* 0x45 */, /* 0x46 */, /* 0x47 */,
-        /* 0x48 */, /* 0x49 */, /* 0x4a */, /* 0x4b */,
+        /* 0x48 */, /* 0x49 */ Unknown49, /* 0x4a */, /* 0x4b */,
         /* 0x4c */, /* 0x4d */, /* 0x4e */, /* 0x4f */,
     },
     "0x50" => {
@@ -46,8 +46,8 @@
     "0x70" => {
         /* 0x70 */, /* 0x71 */, /* 0x72 */, /* 0x73 */,
         /* 0x74 */, /* 0x75 */, /* 0x76 */, /* 0x77 */,
-        /* 0x78 */, /* 0x79 */, /* 0x7a */, /* 0x7b */,
-        /* 0x7c */, /* 0x7d */, /* 0x7e */, /* 0x7f */,
+        /* 0x78 */, /* 0x79 */, /* 0x7a */, /* 0x7b */ Unknown7b,
+        /* 0x7c */, /* 0x7d */, /* 0x7e */ AgcFilters, /* 0x7f */,
     },
 }]
 
@@ -283,6 +283,8 @@ impl CtcMode {
 /// Index Max->Min is 3, 2, 1, 0, -1.
 ///
 /// No I don't know what that means either.
+///
+/// *Probably* 0x10-0x13 are AGC indices 0, 1, 2, 3, and 0x14 is index -1.
 #[cfg_attr(not(feature = "defmt"), bitfield(u16))]
 #[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -622,6 +624,98 @@ impl Register for PowerControl {
     const ADDRESS: u8 = 0x37;
 }
 
+/// 0x49 Unknown.
+///
+/// Might have something to do with AGC?
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Unknown49 {
+    #[bits(7)]
+    pub unknown_b6_0: u8,
+
+    #[bits(7)]
+    pub unknown_b13_7: u8,
+
+    #[bits(2)]
+    pub unknown_b15_14: u8,
+}
+
+impl Register for Unknown49 {
+    const ADDRESS: u8 = 0x49;
+}
+
+/// 0x7b Unknown.
+///
+/// Might have something to do with AGC?
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Unknown7b {
+    pub data: u16,
+}
+
+impl Register for Unknown7b {
+    const ADDRESS: u8 = 0x7b;
+}
+
+/// 0x7e AGC lock, status, and DC filters.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AgcFilters {
+    /// DC filter bandwidth for Rx (IF in).
+    ///
+    /// 0b000 means bypass.
+    #[bits(3, default = 0b110)]
+    pub rx_filter_width: u8,
+
+    /// DC filter bandwidth for Tx (Mic in).
+    ///
+    /// 0b000 means bypass.
+    #[bits(3, default = 0b101)]
+    pub tx_filter_width: u8,
+
+    #[bits(6)]
+    __: u8,
+
+    /// AGC index.
+    ///
+    /// Probably only valid values are 3, 2, 1, 0, -1.
+    #[bits(3, default = 0b011)]
+    pub agc_index: i8,
+
+    /// AGC mode, auto or locked.
+    #[bits(1, default = AgcMode::Auto)]
+    pub agc_mode: AgcMode,
+}
+
+/// AGC lock mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub enum AgcMode {
+    Auto = 0,
+    Locked = 1,
+}
+
+impl AgcMode {
+    pub const fn into_bits(self) -> u8 {
+        self as u8
+    }
+
+    pub const fn from_bits(v: u8) -> Self {
+        match v {
+            0 => Self::Auto,
+            _ => Self::Locked,
+        }
+    }
+}
+
+impl Register for AgcFilters {
+    const ADDRESS: u8 = 0x7e;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -833,5 +927,49 @@ mod test {
                 .with_rf_ldo_select(LdoVoltage::V2_4)
                 .into_bits()
         );
+    }
+
+    #[test]
+    fn r49_unknown() {
+        assert_eq!(Unknown49::ADDRESS, 0x49);
+        check_bits!(Unknown49 {
+            unknown_b15_14[15:14],
+            unknown_b13_7[13:7],
+            unknown_b6_0[6:0],
+        });
+
+        assert_eq!(
+            0x2a38,
+            Unknown49::new()
+                .with_unknown_b6_0(56)
+                .with_unknown_b13_7(84)
+                .with_unknown_b15_14(0)
+                .into_bits()
+        );
+    }
+
+    #[test]
+    fn r7b_unknown() {
+        assert_eq!(Unknown7b::ADDRESS, 0x7b);
+        check_bits!(Unknown7b {
+            data[15:0],
+        });
+
+        assert_eq!(0x8420, Unknown7b::new().with_data(0x8420).into_bits());
+    }
+
+    #[test]
+    fn r7e_agc_filters() {
+        assert_eq!(AgcFilters::ADDRESS, 0x7e);
+        check_bits!(AgcFilters {
+            agc_mode[15] = AgcMode::Auto,
+            agc_index[14:12] = 0b011,
+            tx_filter_width[5:3] = 0b101,
+            rx_filter_width[2:0] = 0b110,
+        });
+
+        assert_eq!(0x702e, AgcFilters::new().with_agc_index(-1).into_bits());
+
+        assert_eq!(AgcFilters::from_bits(0x702e).agc_index(), -1);
     }
 }
