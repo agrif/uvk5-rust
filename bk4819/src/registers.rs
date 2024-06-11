@@ -197,56 +197,56 @@ impl CtcMode {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GpioOutput {
     /// GPIO6 output state.
-    state6: bool,
+    pub state6: bool,
 
     /// GPIO5 output state.
-    state5: bool,
+    pub state5: bool,
 
     /// GPIO4 output state.
-    state4: bool,
+    pub state4: bool,
 
     /// GPIO3 output state.
-    state3: bool,
+    pub state3: bool,
 
     /// GPIO2 output state.
-    state2: bool,
+    pub state2: bool,
 
     /// GPIO1 output state.
-    state1: bool,
+    pub state1: bool,
 
     /// GPIO0 output state.
-    state0: bool,
+    pub state0: bool,
 
     #[bits(1)]
     __: u8,
 
     /// GPIO6 output disabled.
     #[bits(1, default = true)]
-    disabled6: bool,
+    pub disabled6: bool,
 
     /// GPIO5 output disabled.
     #[bits(1, default = true)]
-    disabled5: bool,
+    pub disabled5: bool,
 
     /// GPIO4 output disabled.
     #[bits(1, default = true)]
-    disabled4: bool,
+    pub disabled4: bool,
 
     /// GPIO3 output disabled.
     #[bits(1, default = true)]
-    disabled3: bool,
+    pub disabled3: bool,
 
     /// GPIO2 output disabled.
     #[bits(1, default = true)]
-    disabled2: bool,
+    pub disabled2: bool,
 
     /// GPIO1 output disabled.
     #[bits(1, default = true)]
-    disabled1: bool,
+    pub disabled1: bool,
 
     /// GPIO0 output disabled.
     #[bits(1, default = true)]
-    disabled0: bool,
+    pub disabled0: bool,
 
     #[bits(1)]
     __: u8,
