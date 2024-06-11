@@ -8,8 +8,8 @@
         /* 0x0c */, /* 0x0d */, /* 0x0e */, /* 0x0f */,
     },
     "0x10" => {
-        /* 0x10 */, /* 0x11 */, /* 0x12 */, /* 0x13 */,
-        /* 0x14 */, /* 0x15 */, /* 0x16 */, /* 0x17 */,
+        /* 0x10 */ AgcGainTable0, /* 0x11 */ AgcGainTable1, /* 0x12 */ AgcGainTable2, /* 0x13 */ AgcGainTable3,
+        /* 0x14 */ AgcGainTable4, /* 0x15 */, /* 0x16 */, /* 0x17 */,
         /* 0x18 */, /* 0x19 */, /* 0x1a */, /* 0x1b */,
         /* 0x1c */, /* 0x1d */, /* 0x1e */, /* 0x1f */,
     },
@@ -57,6 +57,93 @@ use bitfield_struct::bitfield;
 pub trait Register: Clone + From<u16> + Into<u16> {
     /// The address of this register, 7 bits.
     const ADDRESS: u8;
+}
+
+// a helper macro to define a register that's an instance of some common data
+macro_rules! instance {
+    (addr = $addr:expr, name = $name:ident, inner = $inner:ty, default = $default:expr, doc = $doc:literal, $($with:ident : $withty:ty),* $(,)?) => {
+        #[doc = $doc]
+        #[doc = ""]
+        #[doc = concat!("See [", stringify!($inner), "] for more details.")]
+        #[doc = concat!("This struct will dereference to [", stringify!($inner), "]")]
+        #[doc = "and re-implements all of its `with_*` methods."]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+        #[repr(transparent)]
+        pub struct $name(pub $inner);
+
+        impl From<u16> for $name {
+            fn from(other: u16) -> Self {
+                Self(other.into())
+            }
+        }
+
+        impl From<$name> for u16 {
+            fn from(other: $name) -> Self {
+                other.0.into()
+            }
+        }
+
+        impl From<$inner> for $name {
+            fn from(other: $inner) -> Self {
+                Self(other)
+            }
+        }
+
+        impl From<$name> for $inner {
+            fn from(other: $name) -> Self {
+                other.0
+            }
+        }
+
+        impl core::ops::Deref for $name {
+            type Target = $inner;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl core::ops::DerefMut for $name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self($default.into())
+            }
+        }
+
+        impl $name {
+            /// Creates a new default initialized bitfield.
+            pub fn new() -> Self {
+                Self($default.into())
+            }
+
+            /// Convert from bits.
+            pub fn from_bits(bits: u16) -> Self {
+                Self(bits.into())
+            }
+
+            /// Convert into bits.
+            pub fn into_bits(self) -> u16 {
+                self.0.into()
+            }
+
+            $(
+                #[doc = concat!("Call ", stringify!($with), " on the inner bitfield of this register.")]
+                pub fn $with(self, value: $withty) -> Self {
+                    Self(self.0.$with(value))
+                }
+            )*
+        }
+
+        impl Register for $name {
+            const ADDRESS: u8 = $addr;
+        }
+    };
 }
 
 /// 0x00 Reset.
@@ -190,6 +277,91 @@ impl CtcMode {
         }
     }
 }
+
+/// 0x10 - 0x14 AGC gain table entry.
+///
+/// Index Max->Min is 3, 2, 1, 0, -1.
+///
+/// No I don't know what that means either.
+#[cfg_attr(not(feature = "defmt"), bitfield(u16))]
+#[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AgcGainTable {
+    #[bits(3)]
+    pub pga: u8,
+
+    #[bits(2)]
+    pub mixer: u8,
+
+    #[bits(3)]
+    pub lna: u8,
+
+    #[bits(2)]
+    pub lna_short: u8,
+
+    #[bits(6)]
+    __: u8,
+}
+
+instance!(
+    addr = 0x10,
+    name = AgcGainTable0,
+    inner = AgcGainTable,
+    default = 0x0038,
+    doc = "0x10 AGC gain table \\[0\\].",
+    with_pga : u8,
+    with_mixer: u8,
+    with_lna: u8,
+    with_lna_short: u8,
+);
+
+instance!(
+    addr = 0x11,
+    name = AgcGainTable1,
+    inner = AgcGainTable,
+    default = 0x025a,
+    doc = "0x11 AGC gain table \\[1\\].",
+    with_pga : u8,
+    with_mixer: u8,
+    with_lna: u8,
+    with_lna_short: u8,
+);
+
+instance!(
+    addr = 0x12,
+    name = AgcGainTable2,
+    inner = AgcGainTable,
+    default = 0x037b,
+    doc = "0x12 AGC gain table \\[2\\].",
+    with_pga : u8,
+    with_mixer: u8,
+    with_lna: u8,
+    with_lna_short: u8,
+);
+
+instance!(
+    addr = 0x13,
+    name = AgcGainTable3,
+    inner = AgcGainTable,
+    default = 0x03de,
+    doc = "0x13 AGC gain table \\[3\\].",
+    with_pga : u8,
+    with_mixer: u8,
+    with_lna: u8,
+    with_lna_short: u8,
+);
+
+instance!(
+    addr = 0x14,
+    name = AgcGainTable4,
+    inner = AgcGainTable,
+    default = 0x0000,
+    doc = "0x14 AGC gain table \\[4\\].",
+    with_pga : u8,
+    with_mixer: u8,
+    with_lna: u8,
+    with_lna_short: u8,
+);
 
 /// 0x33 GPIO output.
 #[cfg_attr(not(feature = "defmt"), bitfield(u16))]
@@ -518,6 +690,78 @@ mod test {
             mode[15:13],
             frequency[12:0],
         });
+    }
+
+    #[test]
+    fn r10_r14_agc_gain_table() {
+        assert_eq!(AgcGainTable0::ADDRESS, 0x10);
+        assert_eq!(AgcGainTable1::ADDRESS, 0x11);
+        assert_eq!(AgcGainTable2::ADDRESS, 0x12);
+        assert_eq!(AgcGainTable3::ADDRESS, 0x13);
+        assert_eq!(AgcGainTable4::ADDRESS, 0x14);
+
+        check_bits!(AgcGainTable {
+            pga[2:0],
+            mixer[4:3],
+            lna[7:5],
+            lna_short[9:8],
+        });
+
+        assert_eq!(AgcGainTable0::new().into_bits(), 0x0038);
+        assert_eq!(AgcGainTable1::new().into_bits(), 0x025a);
+        assert_eq!(AgcGainTable2::new().into_bits(), 0x037b);
+        assert_eq!(AgcGainTable3::new().into_bits(), 0x03de);
+        assert_eq!(AgcGainTable4::new().into_bits(), 0x0000);
+
+        assert_eq!(
+            0x007a,
+            AgcGainTable0::new()
+                .with_pga(0b010)
+                .with_mixer(0b11)
+                .with_lna(0b011)
+                .with_lna_short(0b00)
+                .into_bits()
+        );
+
+        assert_eq!(
+            0x027b,
+            AgcGainTable1::new()
+                .with_pga(0b011)
+                .with_mixer(0b11)
+                .with_lna(0b011)
+                .with_lna_short(0b10)
+                .into_bits()
+        );
+
+        assert_eq!(
+            0x037b,
+            AgcGainTable2::new()
+                .with_pga(0b011)
+                .with_mixer(0b11)
+                .with_lna(0b011)
+                .with_lna_short(0b11)
+                .into_bits()
+        );
+
+        assert_eq!(
+            0x03be,
+            AgcGainTable3::new()
+                .with_pga(0b110)
+                .with_mixer(0b11)
+                .with_lna(0b101)
+                .with_lna_short(0b11)
+                .into_bits()
+        );
+
+        assert_eq!(
+            0x0019,
+            AgcGainTable0::new()
+                .with_pga(0b001)
+                .with_mixer(0b11)
+                .with_lna(0b000)
+                .with_lna_short(0b00)
+                .into_bits()
+        );
     }
 
     #[test]
