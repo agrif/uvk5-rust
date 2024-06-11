@@ -392,7 +392,7 @@ pub struct GpioOutput {
     pub state0: bool,
 
     #[bits(1)]
-    __: u8,
+    __: bool,
 
     /// GPIO6 output disabled.
     #[bits(1, default = true)]
@@ -422,8 +422,8 @@ pub struct GpioOutput {
     #[bits(1, default = true)]
     pub disabled0: bool,
 
-    #[bits(1)]
-    __: u8,
+    #[bits(1, default = true)]
+    __: bool,
 }
 
 impl Register for GpioOutput {
@@ -631,16 +631,15 @@ impl Register for PowerControl {
 #[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Unknown49 {
-    #[bits(7)]
+    #[bits(7, default = 0b0110000)]
     pub unknown_b6_0: u8,
 
-    #[bits(7)]
+    #[bits(7, default = 0b1010000)]
     pub unknown_b13_7: u8,
 
-    #[bits(2)]
+    #[bits(2, default = 0b00)]
     pub unknown_b15_14: u8,
 }
-
 impl Register for Unknown49 {
     const ADDRESS: u8 = 0x49;
 }
@@ -652,6 +651,7 @@ impl Register for Unknown49 {
 #[cfg_attr(feature = "defmt", bitfield(u16, defmt = true))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Unknown7b {
+    #[bits(16, default = 0xae34)]
     pub data: u16,
 }
 
@@ -780,6 +780,7 @@ mod test {
     #[test]
     fn r07_ctc_control() {
         assert_eq!(CtcControl::ADDRESS, 0x07);
+        assert_eq!(CtcControl::new().into_bits(), 0x0000);
         check_bits!(CtcControl {
             mode[15:13],
             frequency[12:0],
@@ -861,6 +862,7 @@ mod test {
     #[test]
     fn r33_gpio_output() {
         assert_eq!(GpioOutput::ADDRESS, 0x33);
+        assert_eq!(GpioOutput::new().into_bits(), 0xff00);
         check_bits!(GpioOutput {
             disabled0[14] = true,
             disabled1[13] = true,
@@ -882,6 +884,7 @@ mod test {
     #[test]
     fn r36_pa_control() {
         assert_eq!(PaControl::ADDRESS, 0x36);
+        assert_eq!(PaControl::new().into_bits(), 0x003f);
         check_bits!(PaControl {
             bias[15:8] = 0x00,
             pactl_enable[7] = false,
@@ -901,6 +904,7 @@ mod test {
     #[test]
     fn r37_power_control() {
         assert_eq!(PowerControl::ADDRESS, 0x37);
+        assert_eq!(PowerControl::new().into_bits(), 0x1f00);
         check_bits!(PowerControl {
             dsp_voltage[14:12] = 0b001,
             ana_ldo_select[11] = LdoVoltage::V2_7,
@@ -932,6 +936,7 @@ mod test {
     #[test]
     fn r49_unknown() {
         assert_eq!(Unknown49::ADDRESS, 0x49);
+        assert_eq!(Unknown49::new().into_bits(), 0x2830);
         check_bits!(Unknown49 {
             unknown_b15_14[15:14],
             unknown_b13_7[13:7],
@@ -951,6 +956,7 @@ mod test {
     #[test]
     fn r7b_unknown() {
         assert_eq!(Unknown7b::ADDRESS, 0x7b);
+        assert_eq!(Unknown7b::new().into_bits(), 0xae34);
         check_bits!(Unknown7b {
             data[15:0],
         });
@@ -961,6 +967,7 @@ mod test {
     #[test]
     fn r7e_agc_filters() {
         assert_eq!(AgcFilters::ADDRESS, 0x7e);
+        assert_eq!(AgcFilters::new().into_bits(), 0x302e);
         check_bits!(AgcFilters {
             agc_mode[15] = AgcMode::Auto,
             agc_index[14:12] = 0b011,
