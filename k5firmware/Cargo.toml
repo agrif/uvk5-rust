@@ -16,6 +16,7 @@ bench = false
 
 [dependencies]
 alloc-cortex-m = "0.4"
+bk4819 = { path = "../bk4819", features = ["defmt"] }
 bytemuck = "1.16"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"

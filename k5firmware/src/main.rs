@@ -2,6 +2,7 @@
 #![no_main]
 
 extern crate alloc;
+
 use panic_halt as _;
 
 use k5board::hal;
@@ -125,19 +126,31 @@ fn go() -> error::Result<()> {
     let mut fm_enable = pins_b.b15.into_push_pull_output();
 
     // PC0 BK4819 scn
+    let bk4819_scn = pins_c.c0.into_push_pull_output();
     // PC1 BK4819 scl
+    let bk4819_scl = pins_c.c1.into_push_pull_output();
     // PC2 BK4819 sda
+    let bk4819_sda =
+        hal::gpio::InputOutputPin::new_from_output(pins_c.c2.into_push_pull_output(), |p| {
+            p.into_floating_input()
+        });
 
     // PC3 flashlight
     let mut flashlight = k5board::flashlight::new(pins_c.c3.into_mode());
     // PC4 speaker amp on
     let mut speaker_enable = pins_c.c4.into_push_pull_output();
 
-    // get a timer going at 1MHz for i2c
+    // get a timer going at 1MHz for i2c and bk4819
     let timer1m = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
         .frequency::<{ Hertz::MHz(1).to_Hz() }>(&clocks)?
         .split(&clocks);
-    let mut delay = timer1m.high.timing();
+
+    // get a timer going at 1MHz for general delays
+    let mut delay = hal::timer::new(p.TIMER_BASE1, power.gates.timer_base1)
+        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&clocks)?
+        .split(&clocks)
+        .low
+        .timing();
 
     // get a timer going at 1kHz for blinks and frames
     let timer1k = hal::timer::new(p.TIMER_BASE2, power.gates.timer_base2)
@@ -155,6 +168,28 @@ fn go() -> error::Result<()> {
     let i2c = k5board::shared_i2c::new(i2c_parts);
     let mut fm = bk1080::Bk1080::new(i2c.acquire())?;
     let mut eeprom = k5board::eeprom::new(i2c.acquire());
+
+    // bk4819
+    let bk4819_timer = timer1m.high.timing();
+    let mut radio = bk4819::Bk4819::new(bk4819_scn, bk4819_scl, bk4819_sda, bk4819_timer)?;
+
+    // bk4819 setup (very opaque)
+    radio.reset()?;
+    radio.write(
+        bk4819::registers::PowerControl::new()
+            .with_band_gap_enabled(true)
+            .with_xtal_enabled(true)
+            .with_dsp_enabled(true)
+            .with_unknown_b3(true)
+            .with_rf_ldo_select(bk4819::registers::LdoVoltage::V2_4),
+    )?;
+    radio.write(
+        bk4819::registers::PaControl::new()
+            .with_gain2(0b010)
+            .with_gain1(0b100),
+    )?;
+    radio.gpio_set_output_enabled(6, true)?; // green led
+    radio.gpio_set_output_enabled(5, true)?; // red led
 
     // the lcd display
     let mut lcd = k5board::lcd::new(&mut delay, lcd_parts)?;
@@ -193,6 +228,7 @@ fn go() -> error::Result<()> {
     fm.tune(freq)?;
 
     let mut rssi = 0;
+    let mut vox = 0;
 
     let mut rssi_update = timer1k.low.timing();
     rssi_update.start(500.millis())?;
@@ -249,6 +285,7 @@ fn go() -> error::Result<()> {
         if let Ok(()) = rssi_update.wait() {
             // update rssi
             rssi = fm.read(bk1080::REG_RSSI)?;
+            vox = radio.read_raw(0x64)?;
         }
 
         if let Ok(()) = poll_keypad.wait() {
@@ -256,6 +293,7 @@ fn go() -> error::Result<()> {
 
             if keys.is_ptt() {
                 flashlight.toggle();
+                radio.gpio_toggle(6)?;
             }
 
             if keys.is_up() {
@@ -270,7 +308,12 @@ fn go() -> error::Result<()> {
         }
 
         if let Ok(()) = update_display.wait() {
-            let text = alloc::format!("freq {:?} rssi {:04x?}", 875 + 2 * freq, rssi,);
+            let text = alloc::format!(
+                "freq {:?} rssi {:04x?} vox {:04x?}",
+                875 + 2 * freq,
+                rssi,
+                vox
+            );
 
             let text = Text::with_alignment(
                 &text,
@@ -319,6 +362,21 @@ fn go() -> error::Result<()> {
                     }
                     ("reset", _) => {
                         reset();
+                    }
+                    ("bkall", _) => {
+                        radio.reset()?;
+                        for addr in 0..0x80 {
+                            defmt::println!("bk: {:02x} {:04x}", addr, radio.read_raw(addr));
+                        }
+                    }
+                    ("bk", led) => {
+                        let pin = match led {
+                            "green" => 6,
+                            "red" => 5,
+                            _ => 0xff,
+                        };
+                        let res = radio.gpio_toggle(pin);
+                        defmt::println!("bk: {:?}", res);
                     }
                     ("speaker", state) => {
                         let Some(state) = pin_state(state) else {
