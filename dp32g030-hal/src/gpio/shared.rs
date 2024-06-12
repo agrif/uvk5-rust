@@ -9,7 +9,7 @@ use super::{
 
 /// A pin that can be shared between users.
 ///
-/// Reads and writes to pins are atomic, and thus can be
+/// Reads and writes to pins are non-reentrant, and thus can be
 /// shared. However, using the same pin at the same time will likely
 /// confuse whatever the pin is used for, and so you may wish to avoid
 /// this by acquiring a
@@ -35,10 +35,10 @@ pub struct SharedPin<P> {
 // a note on safety:
 //
 // reads from many places are already fine. writes from many places
-// are atomic, and so are fine (though they may behave
-// confusingly). Changing modes is *not* fine, but holds a critical
-// section for the duration, and so returns to normal before anything
-// else can touch it.
+// are guarded by a critical section, and so are fine (though they may
+// behave confusingly). Changing modes is *not* fine, but holds a
+// critical section for the duration, and so returns to normal before
+// anything else can touch it.
 //
 // it is possible to grab multiple critical sections and then use two
 // copies of a shared pin to change modes. This will make the pin
@@ -200,8 +200,8 @@ where
 {
     fn clone(&self) -> Self {
         unsafe {
-            // safety: reads and writes are atomic, and we guard mode
-            // changes with a critical section
+            // safety: reads, writes, and mode changes are guarded
+            // with a critical section
             Self { pin: Pin::steal() }
         }
     }
@@ -222,8 +222,8 @@ where
 {
     fn clone(&self) -> Self {
         unsafe {
-            // safety: reads and writes are atomic, and we guard mode
-            // changes with a critical section
+            // safety: reads, writes, and mode changes are guarded
+            // with a critical section
             Self {
                 pin: PartiallyErasedPin::steal(self.pin.pin()),
             }
@@ -247,8 +247,8 @@ where
 {
     fn clone(&self) -> Self {
         unsafe {
-            // safety: reads and writes are atomic, and we guard mode
-            // changes with a critical section
+            // safety: reads, writes, and mode changes are guarded
+            // with a critical section
             Self {
                 pin: ErasedPin::steal(self.pin.pin(), self.pin.port()),
             }

@@ -90,21 +90,24 @@ where
     where
         M: PinMode,
     {
-        // safety: we will consume this pin and return a new one
-        // with valid type state, so we can access these register
-        unsafe {
-            use super::pin::change_mode;
-            if P == 'A' {
-                change_mode!(pac::GPIOA, porta, self.n, Mode, M);
-            } else if P == 'B' {
-                change_mode!(pac::GPIOB, portb, self.n, Mode, M);
-            } else if P == 'C' {
-                change_mode!(pac::GPIOC, portc, self.n, Mode, M);
-            } else {
-                // we never build these, someone did a naughty transmute
-                panic!();
+        critical_section::with(|_cs| {
+            // safety: we will consume this pin and return a new one
+            // with valid type state, so we can access these register
+            // Modifies occur inside a critical section.
+            unsafe {
+                use super::pin::change_mode;
+                if P == 'A' {
+                    change_mode!(pac::GPIOA, porta, self.n, Mode, M);
+                } else if P == 'B' {
+                    change_mode!(pac::GPIOB, portb, self.n, Mode, M);
+                } else if P == 'C' {
+                    change_mode!(pac::GPIOC, portc, self.n, Mode, M);
+                } else {
+                    // we never build these, someone did a naughty transmute
+                    panic!();
+                }
             }
-        }
+        });
 
         // safety: we changed the mode above, and are consuming self
         unsafe { PartiallyErasedPin::steal(self.n) }
@@ -194,34 +197,28 @@ where
 
     // internal helper to write data register
     pub(super) fn write_data(&mut self, state: PinState) {
-        // safety: we control these registers and can write them
-        unsafe {
-            if P == 'A' {
-                let gpio = pac::GPIOA::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
+        critical_section::with(|_cs| {
+            // safety: we control these registers and can write them
+            // and we are inside a critical section so we can modify
+            unsafe {
+                if P == 'A' {
+                    let gpio = pac::GPIOA::steal();
+                    gpio.data()
+                        .modify(|_r, w| w.data(self.n).bit(state.is_high()));
+                } else if P == 'B' {
+                    let gpio = pac::GPIOB::steal();
+                    gpio.data()
+                        .modify(|_r, w| w.data(self.n).bit(state.is_high()));
+                } else if P == 'C' {
+                    let gpio = pac::GPIOC::steal();
+                    gpio.data()
+                        .modify(|_r, w| w.data(self.n).bit(state.is_high()));
                 } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
+                    // we never build these, someone did a naughty transmute
+                    panic!();
                 }
-            } else if P == 'B' {
-                let gpio = pac::GPIOB::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
-                } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
-                }
-            } else if P == 'C' {
-                let gpio = pac::GPIOC::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(self.n).high());
-                } else {
-                    gpio.data().clear_bits(|w| w.data(self.n).low());
-                }
-            } else {
-                // we never build these, someone did a naughty transmute
-                panic!();
             }
-        }
+        });
     }
 
     super::mode::into_mode_aliases!(vis pub, (PartiallyErasedPin), (P,));
@@ -268,7 +265,7 @@ impl<const P: char> PartiallyErasedPin<P, Output<OpenDrain>> {
         if self.read_data().is_high() {
             // high means high-Z, turn into an input briefly to see
             // if something else is pulling us low
-            // safety: these are atomic changes, undone at the end
+            // safety: we own this pin, and it's undone at the end
             unsafe {
                 let mut pin = Self::steal(self.n);
                 let r = pin.with_floating_input(|p| p.read());
@@ -329,7 +326,7 @@ where
 
     /// Toggle the output.
     pub fn toggle(&mut self) {
-        // FIXME this could be done with atomic xor
+        // FIXME this could be done with xor
         self.set_state(!self.get_state());
     }
 }

@@ -88,7 +88,7 @@ where
 }
 
 // avoid repetitive code, unfortunately the Gpio registers have no
-// generic interface.
+// generic interface. You *must* call this inside a critical section.
 macro_rules! change_mode {
     ($Gpio:ty, $port:ident, $N:expr, $From:ty, $To:ty) => {
         <$To>::static_assert_valid();
@@ -115,9 +115,9 @@ macro_rules! change_mode {
         }
         if force || <$From>::DIR != <$To>::DIR {
             if <$To>::DIR {
-                port.dir().set_bits(|w| w.dir($N).output());
+                port.dir().modify(|_r, w| w.dir($N).output());
             } else {
-                port.dir().clear_bits(|w| w.dir($N).input());
+                port.dir().modify(|_r, w| w.dir($N).input());
             }
         }
     };
@@ -126,11 +126,7 @@ macro_rules! change_mode {
     // accesses port_name, index N, and then enables/disables based on val
     (change $portcon:expr, $port:ident, $name:ident, $N:expr, $val:expr) => {
         paste::paste! {
-            if $val {
-                $portcon.[<$port _ $name>]().set_bits(|w| w.[<$port _ $name>]($N).enabled());
-            } else {
-                $portcon.[<$port _ $name>]().clear_bits(|w| w.[<$port _ $name>]($N).disabled());
-            }
+            $portcon.[<$port _ $name>]().modify(|_r, w| w.[<$port _ $name>]($N).bit($val));
         }
     };
 
@@ -184,8 +180,7 @@ macro_rules! change_mode {
     (func-one $portcon:expr, $port:ident, $sel:ident, $pin:tt, $val:expr) => {
         paste::paste! {
             {
-                $portcon.[<$port _ $sel>]().clear_bits(|w| w.[<$port $pin>]().bits(0));
-                $portcon.[<$port _ $sel>]().set_bits(|w| w.[<$port $pin>]().bits($val));
+                $portcon.[<$port _ $sel>]().modify(|_r, w| w.[<$port $pin>]().bits($val));
             }
         }
     };
@@ -232,20 +227,23 @@ where
     where
         M: PinMode,
     {
-        // safety: we will be immediately returning a pin with valid
-        // type state, and consuming this pin.
-        unsafe {
-            if P == 'A' {
-                change_mode!(pac::GPIOA, porta, N, Mode, M);
-            } else if P == 'B' {
-                change_mode!(pac::GPIOB, portb, N, Mode, M);
-            } else if P == 'C' {
-                change_mode!(pac::GPIOC, portc, N, Mode, M);
-            } else {
-                // we never build these, someone did a naughty transmute
-                panic!();
+        critical_section::with(|_cs| {
+            // safety: we will be immediately returning a pin with valid
+            // type state, and consuming this pin. Modifies are inside
+            // critical section.
+            unsafe {
+                if P == 'A' {
+                    change_mode!(pac::GPIOA, porta, N, Mode, M);
+                } else if P == 'B' {
+                    change_mode!(pac::GPIOB, portb, N, Mode, M);
+                } else if P == 'C' {
+                    change_mode!(pac::GPIOC, portc, N, Mode, M);
+                } else {
+                    // we never build these, someone did a naughty transmute
+                    panic!();
+                }
             }
-        }
+        });
         // safety: we have changed the mode above, and we are consuming
         // the existing token owning this pin (self)
         unsafe { Pin::steal() }
@@ -320,34 +318,25 @@ where
 
     // internal helper to write data register
     pub(super) fn write_data(&mut self, state: PinState) {
-        // safety: we control these registers and can write them
-        unsafe {
-            if P == 'A' {
-                let gpio = pac::GPIOA::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(N).high());
+        critical_section::with(|_cs| {
+            // safety: we control these registers and can write them
+            // and we are inside a critical section so we can modify
+            unsafe {
+                if P == 'A' {
+                    let gpio = pac::GPIOA::steal();
+                    gpio.data().modify(|_r, w| w.data(N).bit(state.is_high()));
+                } else if P == 'B' {
+                    let gpio = pac::GPIOB::steal();
+                    gpio.data().modify(|_r, w| w.data(N).bit(state.is_high()));
+                } else if P == 'C' {
+                    let gpio = pac::GPIOC::steal();
+                    gpio.data().modify(|_r, w| w.data(N).bit(state.is_high()));
                 } else {
-                    gpio.data().clear_bits(|w| w.data(N).low());
+                    // we never build these, someone did a naughty transmute
+                    panic!();
                 }
-            } else if P == 'B' {
-                let gpio = pac::GPIOB::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(N).high());
-                } else {
-                    gpio.data().clear_bits(|w| w.data(N).low());
-                }
-            } else if P == 'C' {
-                let gpio = pac::GPIOC::steal();
-                if state.is_high() {
-                    gpio.data().set_bits(|w| w.data(N).high());
-                } else {
-                    gpio.data().clear_bits(|w| w.data(N).low());
-                }
-            } else {
-                // we never build these, someone did a naughty transmute
-                panic!();
             }
-        }
+        });
     }
 
     super::mode::into_mode_aliases!(vis pub, (Pin), (P, N,));
@@ -394,7 +383,7 @@ impl<const P: char, const N: u8> Pin<P, N, Output<OpenDrain>> {
         if self.read_data().is_high() {
             // high means high-Z, turn into an input briefly to see
             // if something else is pulling us low
-            // safety: these are atomic changes, undone at the end
+            // safety: we own this pin, and it's undone at the end
             unsafe {
                 let mut pin = Self::steal();
                 let r = pin.with_floating_input(|p| p.read());
@@ -455,7 +444,7 @@ where
 
     /// Toggle the output.
     pub fn toggle(&mut self) {
-        // FIXME this could be done with atomic xor
+        // FIXME this could be done with xor
         self.set_state(!self.get_state());
     }
 }
