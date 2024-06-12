@@ -242,7 +242,7 @@ impl PinModeSealed for Output<OpenDrain> {
     const VALID: () = ();
     const UNSPECIFIED: bool = false;
 
-    const IE: bool = false;
+    const IE: bool = true;
     const PD: bool = false;
     const PU: bool = false;
 

@@ -129,7 +129,7 @@ macro_rules! change_mode {
             if $val {
                 $portcon.[<$port _ $name>]().set_bits(|w| w.[<$port _ $name>]($N).enabled());
             } else {
-                $portcon.[<$port _ $name>]().set_bits(|w| w.[<$port _ $name>]($N).disabled());
+                $portcon.[<$port _ $name>]().clear_bits(|w| w.[<$port _ $name>]($N).disabled());
             }
         }
     };
