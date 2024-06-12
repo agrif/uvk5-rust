@@ -119,6 +119,9 @@ jobs:
 
       - run: cargo build --release --examples --all-features
         working-directory: k5board
+      # rebuild those that don't need all features without them, for smaller bins
+      - run: cargo build --release --examples
+        working-directory: k5board
       - run: cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "k5board") | .targets[] | select(.kind[] | contains("example")) | .name' | tee ../github-work/board-examples.txt
         working-directory: k5board
 
