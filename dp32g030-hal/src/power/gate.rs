@@ -119,13 +119,12 @@ macro_rules! dev_gate_impl {
             const NAME: &'static str = stringify!($dev);
 
             unsafe fn set_enabled(enabled: bool) {
-                // safety: we only access our bit in dev_clk_gate, atomically
-                let syscon = pac::SYSCON::steal();
-                if enabled {
-                    syscon.dev_clk_gate().set_bits(|w| w.$field().enabled())
-                } else {
-                    syscon.dev_clk_gate().clear_bits(|w| w.$field().disabled())
-                }
+                critical_section::with(|_cs| {
+                    // safety: we only access our bit in dev_clk_gate, in
+                    // a critical section
+                    let syscon = pac::SYSCON::steal();
+                    syscon.dev_clk_gate().modify(|_r, w| w.$field().bit(enabled));
+                });
             }
 
             fn is_enabled() -> bool {

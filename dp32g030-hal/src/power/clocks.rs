@@ -414,6 +414,13 @@ impl ClockConfig {
 
     /// Freeze the clock configuration and return the clock frequencies.
     pub fn freeze(self) -> Clocks {
+        // not strictly needed, as we own all of these registers and
+        // should be able to modify them safely. however, this section is
+        // indeed quite cricital, and we'd rather not be interrupted.
+        critical_section::with(|cs| self.freeze_critical(cs))
+    }
+
+    fn freeze_critical(self, _cs: critical_section::CriticalSection) -> Clocks {
         // This is mission-critical code written by using a machine-translated
         // PDF as reference.
 
@@ -425,21 +432,19 @@ impl ClockConfig {
         let pmu = unsafe { pac::PMU::steal() };
 
         // ok, lets get us running on the internal oscillator safely
-        // safety: both all of these bits are valid to set/unset
-        unsafe {
-            // turn on RCHF at 24MHz
-            pmu.src_cfg()
-                .set_bits(|w| w.rchf_fsel().f_24mhz().rchf_en().enabled());
 
-            // switch the system clock to use RCHF
-            syscon.clk_sel().clear_bits(|w| w.sys_clk_sel().rchf());
+        // turn on RCHF at 24MHz
+        pmu.src_cfg()
+            .modify(|_r, w| w.rchf_fsel().f_24mhz().rchf_en().enabled());
 
-            // make sure we're on the new clock before continuing
-            cortex_m::asm::dsb();
+        // switch the system clock to use RCHF
+        syscon.clk_sel().modify(|_r, w| w.sys_clk_sel().rchf());
 
-            // turn off the PLL for sure, in case we configure it later
-            syscon.pll_ctrl().clear_bits(|w| w.pll_en().disabled());
-        }
+        // make sure we're on the new clock before continuing
+        cortex_m::asm::dsb();
+
+        // turn off the PLL for sure, in case we configure it later
+        syscon.pll_ctrl().modify(|_r, w| w.pll_en().disabled());
 
         // no matter what, we want div_clk_gate off for now
         syscon.div_clk_gate().write(|w| w.div_clk_gate().disabled());
@@ -519,10 +524,7 @@ impl ClockConfig {
             cortex_m::asm::dsb();
 
             // enable the pll
-            // safety: setting this bit is ok
-            unsafe {
-                syscon.pll_ctrl().set_bits(|w| w.pll_en().enabled());
-            }
+            syscon.pll_ctrl().modify(|_r, w| w.pll_en().enabled());
 
             // make sure the pll got the enable
             cortex_m::asm::dsb();
@@ -557,10 +559,7 @@ impl ClockConfig {
             // make sure our config above takes effect
             cortex_m::asm::dsb();
 
-            // safety: clearing this bit is fine, we're not using RCHF
-            unsafe {
-                pmu.src_cfg().clear_bits(|w| w.rchf_en().disabled());
-            }
+            pmu.src_cfg().modify(|_r, w| w.rchf_en().disabled());
         }
 
         // we should be all set. now just return the frequencies.
