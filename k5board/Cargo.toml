@@ -29,6 +29,7 @@ embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["un
 embedded-hal-1 = { package = "embedded-hal", version = "1" }
 embedded-io = "0.6"
 k5lib = { path = "../k5lib", default-features = false }
+portable-atomic = { version = "1", default-features = false, features = ["unsafe-assume-single-core"]}
 spin = { version = "0.9", features = ["portable_atomic"] }
 st7565 = "0.5"
 void = { version = "1", default-features = false }

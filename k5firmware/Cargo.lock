@@ -184,7 +184,6 @@ dependencies = [
  "cortex-m-rt",
  "critical-section",
  "defmt",
- "portable-atomic",
  "vcell",
 ]
 
@@ -338,6 +337,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-io",
  "k5lib",
+ "portable-atomic",
  "spin",
  "st7565",
  "void",
