@@ -27,19 +27,17 @@ where
     pub fn new(config: Config<Uart, Data>, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
         // safety: we have configured the uart
         unsafe {
-            config.uart.ctrl().set_bits(|w| w.uarten().enabled());
+            config.uart.ctrl().modify(|_r, w| w.uarten().enabled());
             Self::setup(config.uart, rx, rts)
         }
     }
 
     /// Recover a configurator from an [RxOnly].
     pub fn free(self) -> (Config<Uart, Data>, Uart::Rx, Flow<Uart::Rts>) {
-        let (uart, rx, rts) = self.teardown();
+        // safety: we are the only user of this uart
+        let (uart, rx, rts) = unsafe { self.teardown() };
 
-        // safety: we have closed this lonely half
-        unsafe {
-            uart.ctrl().clear_bits(|w| w.uarten().disabled());
-        }
+        uart.ctrl().modify(|_r, w| w.uarten().disabled());
 
         (
             Config {
@@ -58,17 +56,20 @@ where
     Data: UartData,
 {
     /// # Safety
-    /// This half of the port must not be in use anywhere else.
+    /// This entire port must not be in use anywhere else, and this half
+    /// must not be owned anywhere else.
     pub(super) unsafe fn setup(uart: Uart, rx: Uart::Rx, rts: Flow<Uart::Rts>) -> Self {
+        // we know the port is not in use anywhere else, so no critical section
+        // even though these registers are shared between halves
         match rts {
-            Flow::None => uart.fc().clear_bits(|w| w.rtsen().disabled()),
+            Flow::None => uart.fc().modify(|_r, w| w.rtsen().disabled()),
             Flow::ActiveHigh(_) => {
-                uart.fc().set_bits(|w| w.rtspol().active_high());
-                uart.fc().set_bits(|w| w.rtsen().enabled());
+                uart.fc()
+                    .modify(|_r, w| w.rtspol().active_high().rtsen().enabled());
             }
             Flow::ActiveLow(_) => {
-                uart.fc().clear_bits(|w| w.rtspol().active_low());
-                uart.fc().set_bits(|w| w.rtsen().enabled());
+                uart.fc()
+                    .modify(|_r, w| w.rtspol().active_low().rtsen().enabled());
             }
         }
 
@@ -80,26 +81,26 @@ where
         };
 
         rx.clear();
-        rx.uart.ctrl().set_bits(|w| w.rxen().enabled());
+        rx.uart.ctrl().modify(|_r, w| w.rxen().enabled());
 
         rx
     }
 
-    pub(super) fn teardown(self) -> (Uart, Uart::Rx, Flow<Uart::Rts>) {
-        // safety: we're consuming self, so turn this off
-        unsafe {
-            self.uart.ctrl().clear_bits(|w| w.rxen().disabled());
-            self.uart.fc().clear_bits(|w| w.rtsen().disabled());
-        }
+    /// # Safety
+    /// This entire port must not be in use anywhere else, and this half
+    /// must not be owned anywhere else.
+    pub(super) unsafe fn teardown(self) -> (Uart, Uart::Rx, Flow<Uart::Rts>) {
+        self.uart.ctrl().modify(|_r, w| w.rxen().disabled());
+        self.uart.fc().modify(|_r, w| w.rtsen().disabled());
         (self.uart, self.rx, self.rts)
     }
 
     /// Clear the FIFO.
     pub fn clear(&mut self) {
-        // safety: we control this half, so we can clear the fifo
-        unsafe {
-            self.uart.fifo().set_bits(|w| w.rf_clr().clear());
-        }
+        critical_section::with(|_cs| {
+            // this register is shared but we're in a critical section
+            self.uart.fifo().modify(|_r, w| w.rf_clr().clear());
+        });
     }
 
     /// Is the FIFO full?

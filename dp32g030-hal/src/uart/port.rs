@@ -31,10 +31,8 @@ where
         rts: Flow<Uart::Rts>,
         cts: Flow<Uart::Cts>,
     ) -> Self {
-        // safety: we have configured the uart
-        unsafe {
-            config.uart.ctrl().set_bits(|w| w.uarten().enabled());
-        }
+        config.uart.ctrl().modify(|_r, w| w.uarten().enabled());
+
         Self {
             // safety: we are only using this on exclusive rx/tx sides
             rx: unsafe { Rx::setup(config.uart.steal(), rx, rts) },
@@ -53,13 +51,11 @@ where
         Flow<Uart::Rts>,
         Flow<Uart::Cts>,
     ) {
-        let (uart, rx, rts) = self.rx.teardown();
-        let (_, tx, cts) = self.tx.teardown();
+        // safety: we are the only user of this port, we own both rx and tx
+        let (uart, rx, rts) = unsafe { self.rx.teardown() };
+        let (_, tx, cts) = unsafe { self.tx.teardown() };
 
-        // safety: we have closed both halves of the uart
-        unsafe {
-            uart.ctrl().clear_bits(|w| w.uarten().disabled());
-        }
+        uart.ctrl().modify(|_r, w| w.uarten().disabled());
 
         (
             Config {

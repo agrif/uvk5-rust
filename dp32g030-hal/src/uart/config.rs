@@ -113,11 +113,7 @@ where
 
     /// Set delay in bits between stop and start bits.
     pub fn tx_delay(self, delay: TxDelay) -> Self {
-        // safety: we are sole owner of uart
-        unsafe {
-            self.uart.ctrl().clear_bits(|w| w.tx_dly().bits(0));
-            self.uart.ctrl().set_bits(|w| w.tx_dly().variant(delay));
-        }
+        self.uart.ctrl().modify(|_r, w| w.tx_dly().variant(delay));
         self
     }
 
@@ -128,11 +124,7 @@ where
 
     /// Set the automatic baud rate detection length.
     pub fn auto_baud_len(self, len: AutoBaudLen) -> Self {
-        // safety: we are sole owner of uart
-        unsafe {
-            self.uart.ctrl().clear_bits(|w| w.abrdbit().bits(0));
-            self.uart.ctrl().set_bits(|w| w.abrdbit().variant(len))
-        }
+        self.uart.ctrl().modify(|_r, w| w.abrdbit().variant(len));
         self
     }
 
@@ -143,17 +135,14 @@ where
 
     /// Set parity mode. [None] means no parity bit.
     pub fn parity(self, parity: Option<Parity>) -> Self {
-        // safety: we are sole owner of uart
-        unsafe {
-            match parity {
-                Some(par) => {
-                    self.uart.ctrl().clear_bits(|w| w.parmd().bits(0));
-                    self.uart.ctrl().set_bits(|w| w.parmd().variant(par));
-                    self.uart.ctrl().set_bits(|w| w.paren().enabled())
-                }
-                None => {
-                    self.uart.ctrl().clear_bits(|w| w.paren().disabled());
-                }
+        match parity {
+            Some(par) => {
+                self.uart
+                    .ctrl()
+                    .modify(|_r, w| w.parmd().variant(par).paren().enabled());
+            }
+            None => {
+                self.uart.ctrl().modify(|_r, w| w.paren().disabled());
             }
         }
         self
@@ -170,10 +159,7 @@ where
 
     /// Set nine-bit mode.
     pub fn ninebit(self) -> Config<Uart, u16> {
-        // safety: we are sole owner of uart
-        unsafe {
-            self.uart.ctrl().set_bits(|w| w.ninebit().enabled());
-        }
+        self.uart.ctrl().modify(|_r, w| w.ninebit().enabled());
         Config {
             uart: self.uart,
             _marker: Default::default(),
@@ -182,10 +168,7 @@ where
 
     /// Set eight-bit mode.
     pub fn eightbit(self) -> Config<Uart, u8> {
-        // safety: we are sole owner of uart
-        unsafe {
-            self.uart.ctrl().clear_bits(|w| w.ninebit().disabled());
-        }
+        self.uart.ctrl().modify(|_r, w| w.ninebit().disabled());
         Config {
             uart: self.uart,
             _marker: Default::default(),
