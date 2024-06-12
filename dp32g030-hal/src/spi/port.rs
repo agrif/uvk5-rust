@@ -171,10 +171,7 @@ where
 {
     /// Recover the port into a configurator.
     pub fn free(self) -> (Config<Spi>, Spi::Clk, Miso, Mosi, Ssn) {
-        // safety: we have closed both halves of the spi
-        unsafe {
-            self.spi.cr().clear_bits(|w| w.spe().disabled());
-        }
+        self.spi.cr().modify(|_r, w| w.spe().disabled());
 
         (
             Config { spi: self.spi },
@@ -191,13 +188,8 @@ where
     Spi: Instance,
 {
     fn setup(mut self) -> Self {
-        // safety: we have configured the spi
-        unsafe {
-            self.spi.cr().set_bits(|w| w.spe().enabled());
-        }
-
+        self.spi.cr().modify(|_r, w| w.spe().enabled());
         self.clear();
-
         self
     }
 
@@ -209,10 +201,7 @@ where
 
     /// Clear the RX FIFO.
     pub fn clear_rx(&mut self) {
-        // safety: we control this half, so we can clear the fifo
-        unsafe {
-            self.spi.cr().set_bits(|w| w.rf_clr().clear());
-        }
+        self.spi.cr().modify(|_r, w| w.rf_clr().clear());
     }
 
     /// Is the RX FIFO full?
@@ -246,10 +235,7 @@ where
 
     /// Clear the TX FIFO.
     pub fn clear_tx(&mut self) {
-        // safety: we control this half, so we can clear the fifo
-        unsafe {
-            self.spi.cr().set_bits(|w| w.tf_clr().clear());
-        }
+        self.spi.cr().modify(|_r, w| w.tf_clr().clear());
     }
 
     /// Is the TX FIFO full?
@@ -454,15 +440,11 @@ where
 {
     /// Set the slave select line active (low).
     pub fn slave_select_active(&mut self) {
-        unsafe {
-            self.spi.cr().clear_bits(|w| w.msr_ssn().low());
-        }
+        self.spi.cr().modify(|_r, w| w.msr_ssn().low());
     }
 
     /// Set the slave select line inactive (high).
     pub fn slave_select_inactive(&mut self) {
-        unsafe {
-            self.spi.cr().set_bits(|w| w.msr_ssn().high());
-        }
+        self.spi.cr().modify(|_r, w| w.msr_ssn().high());
     }
 }

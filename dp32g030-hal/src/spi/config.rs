@@ -93,11 +93,7 @@ where
 
     /// Set the clock divider.
     pub fn divider(self, div: ClockDivider) -> Self {
-        // safety: we are sole owner of this spi, writing valid bits
-        unsafe {
-            self.spi.cr().clear_bits(|w| w.spr().bits(0));
-            self.spi.cr().set_bits(|w| w.spr().variant(div));
-        }
+        self.spi.cr().modify(|_r, w| w.spr().variant(div));
         self
     }
 
@@ -108,14 +104,7 @@ where
 
     /// Set the clock phase.
     pub fn phase(self, phase: Phase) -> Self {
-        // safety: we are sole owner of this spi, writing valid bits
-        unsafe {
-            if phase as u8 > 0 {
-                self.spi.cr().set_bits(|w| w.cpha().variant(phase));
-            } else {
-                self.spi.cr().clear_bits(|w| w.cpha().variant(phase));
-            }
-        }
+        self.spi.cr().modify(|_r, w| w.cpha().variant(phase));
         self
     }
 
@@ -126,14 +115,7 @@ where
 
     /// Set the clock polarity.
     pub fn polarity(self, polarity: Polarity) -> Self {
-        // safety: we are sole owner of this spi, writing valid bits
-        unsafe {
-            if polarity as u8 > 0 {
-                self.spi.cr().set_bits(|w| w.cpol().variant(polarity));
-            } else {
-                self.spi.cr().clear_bits(|w| w.cpol().variant(polarity));
-            }
-        }
+        self.spi.cr().modify(|_r, w| w.cpol().variant(polarity));
         self
     }
 
@@ -157,14 +139,7 @@ where
 
     /// Set the bit order.
     pub fn bit_order(self, bit_order: BitOrder) -> Self {
-        // safety: we are sole owner of this spi, writing valid bits
-        unsafe {
-            if bit_order as u8 > 0 {
-                self.spi.cr().set_bits(|w| w.lsb().variant(bit_order));
-            } else {
-                self.spi.cr().clear_bits(|w| w.lsb().variant(bit_order));
-            }
-        }
+        self.spi.cr().modify(|_r, w| w.lsb().variant(bit_order));
         self
     }
 
@@ -174,10 +149,7 @@ where
     }
 
     fn master_mode(self) -> Self {
-        // safety: we are the sole owner of this spi, writing valid bits
-        unsafe {
-            self.spi.cr().set_bits(|w| w.mstr().master());
-        }
+        self.spi.cr().modify(|_r, w| w.mstr().master());
         self
     }
 
