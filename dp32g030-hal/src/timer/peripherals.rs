@@ -67,6 +67,7 @@ macro_rules! impl_base {
 
         impl BaseInstanceSealed for $timer {
             unsafe fn reset(&mut self) {
+                // only called when both halves are owned
                 self.en().reset();
                 self.div().reset();
                 self.ie().reset();
@@ -76,8 +77,8 @@ macro_rules! impl_base {
             }
 
             unsafe fn set_div(&mut self, div: u16) {
-                self.div().clear_bits(|w| w.div().bits(0));
-                self.div().set_bits(|w| w.div().bits(div));
+                // only called when both halves are owned
+                self.div().modify(|_r, w| w.div().bits(div));
             }
 
             fn get_div(&self) -> u16 {
@@ -89,19 +90,14 @@ macro_rules! impl_base {
             }
 
             unsafe fn set_enabled(&mut self, high: bool, enable: bool) {
-                if high {
-                    if enable {
-                        self.en().set_bits(|w| w.high_en().enabled())
+                // use a critical section, as this register is shared
+                critical_section::with(|_cs| {
+                    if high {
+                        self.en().modify(|_r, w| w.high_en().bit(enable));
                     } else {
-                        self.en().clear_bits(|w| w.high_en().disabled())
+                        self.en().modify(|_r, w| w.low_en().bit(enable));
                     }
-                } else {
-                    if enable {
-                        self.en().set_bits(|w| w.low_en().enabled())
-                    } else {
-                        self.en().clear_bits(|w| w.low_en().disabled())
-                    }
-                }
+                });
             }
 
             fn get_enabled(&self, high: bool) -> bool {
@@ -121,12 +117,15 @@ macro_rules! impl_base {
             }
 
             unsafe fn clear_flag(&mut self, high: bool) {
-                // write 1 to clear
-                if high {
-                    self.if_().set_bits(|w| w.high_if().set_())
-                } else {
-                    self.if_().set_bits(|w| w.low_if().set_())
-                }
+                // use a critical section, as this register is shared
+                critical_section::with(|_cs| {
+                    // write 1 to clear
+                    if high {
+                        self.if_().modify(|_r, w| w.high_if().set_())
+                    } else {
+                        self.if_().modify(|_r, w| w.low_if().set_())
+                    }
+                });
             }
 
             fn get_load(&self, high: bool) -> u16 {
@@ -138,6 +137,8 @@ macro_rules! impl_base {
             }
 
             unsafe fn set_load(&mut self, high: bool, load: u16) {
+                // registers are not shared between high/low, so now
+                // critical section
                 if high {
                     self.high_load().write(|w| w.high_load().bits(load))
                 } else {
