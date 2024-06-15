@@ -1,0 +1,188 @@
+# section 5.22, page 358
+
+FLASH_CTRL:
+  _modify:
+    # fix up some names, reset, and access
+    FLASH_CFG:
+      name: "CFG"
+    FLASH_ADDR:
+      name: "ADDR"
+    FLASH_WDATA:
+      name: "WDATA"
+      access: write-only
+    FLASH_RDATA:
+      # this is undocumented!!
+      name: "RDATA"
+      access: read-only
+    FLASH_START:
+      name: "START"
+    FLASH_STATUS:
+      name: "STATUS"
+      access: read-only
+    FLASH_LOCK:
+      name: "LOCK"
+      access: write-only
+    FLASH_UNLOCK:
+      name: "UNLOCK"
+      access: write-only
+    FLASH_MASK:
+      name: "MASK"
+      resetValue: 0x0000_0004
+    FLASH_ERASETIME:
+      name: "ERASETIME"
+    FLASH_PROGTIME:
+      name: "PROGTIME"
+
+  CFG:
+    _add:
+      DEEP_PD:
+        description: "Configure flash to enter low power mode."
+        bitRange: "[31:31]"
+      MODE:
+        description: "Operating mode configuration register."
+        bitRange: "[4:2]"
+      NVR_SEL:
+        description: "NVR zone selection."
+        bitRange: "[1:1]"
+      READ_MD:
+        description: "Read rate mode selection."
+        bitRange: "[0:0]"
+
+    DEEP_PD:
+      NORMAL: [0, "Normal working mode."]
+      LOW_POWER: [1, "Low power consumption mode."]
+
+    MODE:
+      NORMAL: [0b000, "Normal read operation. Operating mode for AHB reading."]
+      PROGRAM: [0b001, "Programming operation, half sector (256 bytes)."]
+      ERASE: [0b010, "Sector erase operation, full sector (512 bytes)."]
+
+    NVR_SEL:
+      MAIN: [0, "Select main array (128 sectors, 512 bytes per sector)."]
+      NVR: [1, "Select NVR sectors (4 sectors, 512 bytes per sector)."]
+
+    READ_MD:
+      WAIT1: [0, "1 system clock cycle wait (sys_clk <= 56MHz)."]
+      WAIT2: [1, "2 system clock cycle wait (56MHz < sys_clk < 84MHz)."]
+
+  ADDR:
+    _add:
+      ADDR:
+        description: "Address register for program half-sector / erase sector operations, in 32-bit words."
+        bitRange: "[13:0]"
+
+    ADDR: [0x0000, 0x3fff]
+
+  WDATA:
+    _add:
+      WORD:
+        description: "Data register for programming operations."
+        bitRange: "[31:0]"
+
+    WORD: [0x00000000, 0xffffffff]
+
+  # totally undocumented!
+  RDATA:
+    _add:
+      WORD:
+        description: "Data register for read operations."
+        bitRange: "[31:0]"
+
+    WORD: [0x00000000, 0xffffffff]
+
+  START:
+    _add:
+      START:
+        description: "Operation start control bit."
+        bitRange: "[0:0]"
+
+    START:
+      NOT_STARTED: [0, "The flash is idle."]
+      STARTED: [1, "The flash operation is started."]
+
+  STATUS:
+    _add:
+      PROG_BUF_EMPTY:
+        description: "Programming data cache register empty status flag."
+        bitRange: "[2:2]"
+      BUSY:
+        description: "Controller busy flag."
+        bitRange: "[1:1]"
+      INIT_BUSY:
+        description: "Initialization busy flag."
+        bitRange: "[0:0]"
+
+    PROG_BUF_EMPTY:
+      NOT_EMPTY: [0, "Indicates the cache register is not empty, the next data word cannot be written."]
+      EMPTY: [1, "Indicates the cache register is empty. The next data word can be written."]
+
+    BUSY:
+      READY: [0, "The controller is waiting for a command."]
+      BUSY: [1, "The controller is busy with a command."]
+
+    INIT_BUSY:
+      READY: [0, "Initialization is complete."]
+      BUSY: [1, "Initialization is in progress."]
+
+  LOCK:
+    _add:
+      LOCK:
+        description: "Write 0x55 to lock flash control."
+        bitRange: "[7:0]"
+
+    LOCK:
+      LOCKED: [0x55, "Lock the flash control."]
+
+  UNLOCK:
+    _add:
+      UNLOCK:
+        description: "Write 0xaa to unlock flash control."
+        bitRange: "[7:0]"
+
+    UNLOCK:
+      UNLOCKED: [0xaa, "Unlock the flash control."]
+
+  MASK:
+    _add:
+      LOCK:
+        description: "Mask select lock control."
+        bitRange: "[2:2]"
+      SEL:
+        description: "Mask selection."
+        bitRange: "[1:0]"
+
+    LOCK:
+      UNLOCKED: [0, "Mask select can be modified."]
+      LOCKED: [1, "Mask select cannot be modified."]
+
+    SEL:
+      NONE: [0b00, "No masking."]
+      BOTTOM_2K: [0b01, "The bottom 2KiB are masked."]
+      BOTTOM_4K: [0b10, "The bottom 4KiB are masked."]
+      BOTTOM_8K: [0b11, "The bottom 8KiB are masked."]
+
+  ERASETIME:
+    _add:
+      TRCV:
+        description: "Clock cycles, must be greater than 50us."
+        bitRange: "[30:19]"
+      TERASE:
+        description: "Clock cycles, must be between 3.2ms - 4.0ms."
+        bitRange: "[18:0]"
+
+    TRCV: [0x000, 0xfff]
+
+    TERASE: [0x00000, 0x7ffff]
+
+  PROGTIME:
+    _add:
+      TPGS:
+        description: "Clock cycles, must be greater than 20us."
+        bitRange: "[21:11]"
+      TPROG:
+        description: "Clock cycles, must be between 16us - 20us."
+        bitRange: "[10:0]"
+
+    TPGS: [0x000, 0x7ff]
+
+    TPROG: [0x000, 0x7ff]

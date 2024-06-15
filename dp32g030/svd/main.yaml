@@ -19,6 +19,7 @@ _modify:
     vendorSystickConfig: "false"
 
 _include:
+  - flash.yaml
   - gpioa.yaml
   - gpiob.yaml
   - gpioc.yaml
