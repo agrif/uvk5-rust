@@ -56,6 +56,7 @@ FLASH_CTRL:
       NORMAL: [0b000, "Normal read operation. Operating mode for AHB reading."]
       PROGRAM: [0b001, "Programming operation, half sector (256 bytes)."]
       ERASE: [0b010, "Sector erase operation, full sector (512 bytes)."]
+      READ_APB: [0b101, "APB read operation, undocumented."]
 
     NVR_SEL:
       MAIN: [0, "Select main array (128 sectors, 512 bytes per sector)."]
