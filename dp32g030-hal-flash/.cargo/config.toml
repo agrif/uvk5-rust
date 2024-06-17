@@ -1,0 +1,9 @@
+[build]
+# Cortex-M0
+target = "thumbv6m-none-eabi"
+
+# build position-independent
+rustflags = "-C relocation-model=pic"
+
+# note both of these are overridden in build.rs for building the blobs
+# these are just here so you can build the blobs yourself also

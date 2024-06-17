@@ -1,0 +1,41 @@
+[package]
+name = "dp32g030-hal-flash"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Aaron Griffith <aargri@gmail.com>"]
+
+[package.metadata.docs.rs]
+default-target = "thumbv6m-none-eabi"
+targets = []
+
+[[bin]]
+name = "dp32g030-hal-flash"
+required-features = ["intern-compile"]
+test = false
+bench = false
+
+[dependencies]
+cortex-m = { version = "0.7", optional = true }
+dp32g030 = { path = "../dp32g030", optional = true, default-features = false }
+panic-halt = { version = "0.2", optional = true }
+
+[build-dependencies]
+llvm-tools = "0.1"
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
+opt-level = "z"
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+
+[features]
+default = []
+
+# internal flag used when building the code that lives in RAM
+# set by build.rs
+intern-compile = ["dep:cortex-m", "dep:dp32g030", "dep:panic-halt"]
