@@ -23,7 +23,7 @@ dp32g030_hal_flash::header! {
     read_nvr_apb,
 }
 
-pub fn init(clock_mhz: u8) {
+pub unsafe fn init(clock_mhz: u8) {
     Flash::with(|flash| {
         flash.leave_low_power_and_wait_init();
         flash.set_mode(MODE_A::Normal);

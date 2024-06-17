@@ -39,7 +39,7 @@ impl<F> HeaderEntry<F> {
 pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
-    pub init: HeaderEntry<fn(u8)>,
+    pub init: HeaderEntry<unsafe fn(u8)>,
     pub read_nvr: HeaderEntry<fn(u16, &mut [u8])>,
     pub erase: HeaderEntry<unsafe fn(*mut u32)>,
     pub program_word: HeaderEntry<unsafe fn(u32, *mut u32)>,
@@ -213,8 +213,18 @@ mod same_target {
         ///
         /// If you don't know your clock frequency, use an upper
         /// bound, then run this function again later once you know.
-        pub fn init(&self, clock_mhz: u8) {
-            unsafe { self.resolve(&HEADER.init)(clock_mhz) }
+        ///
+        /// # Safety
+        ///
+        /// Passing a frequency lower than the true frequency can
+        /// result in the flash failing to read the program, either by
+        /// stalling or reading incorrect bytes.
+        ///
+        /// Passing an incorrect frequency can cause erase and
+        /// programming operations to fail, either by stalling or
+        /// writing incorrect bytes.
+        pub unsafe fn init(&self, clock_mhz: u8) {
+            self.resolve(&HEADER.init)(clock_mhz)
         }
 
         /// Read a block of bytes from NVR flash.
