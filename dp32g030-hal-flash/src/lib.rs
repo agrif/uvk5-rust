@@ -204,26 +204,75 @@ mod same_target {
             f.as_function(self.data())
         }
 
+        /// Initialize the flash peripheral.
+        ///
+        /// This brings the flash out of low-power mode and waits for
+        /// initialization to complete.  This also sets up the read,
+        /// erase, and programming timings based on the given system
+        /// clock frequency (in MHz).
+        ///
+        /// If you don't know your clock frequency, use an upper
+        /// bound, then run this function again later once you know.
         pub fn init(&self, clock_mhz: u8) {
             unsafe { self.resolve(&HEADER.init)(clock_mhz) }
         }
 
+        /// Read a block of bytes from NVR flash.
         pub fn read_nvr(&self, src: u16, dest: &mut [u8]) {
             unsafe { self.resolve(&HEADER.read_nvr)(src, dest) }
         }
 
+        /// Erase (set to 0xff) the 512 byte sector containing `sector`.
+        ///
+        /// # Safety
+        ///
+        /// Make sure any references held to data inside this sector
+        /// are ok with the data changing to 0xff underneath.
         pub unsafe fn erase(&self, sector: *mut u32) {
             self.resolve(&HEADER.erase)(sector)
         }
 
+        /// Program a single word.
+        ///
+        /// This is effectively `*dest &= word`.
+        ///
+        /// # Safety
+        ///
+        /// Make sure any references that include `dest` are ok with
+        /// the data changing underneath.
         pub unsafe fn program_word(&self, word: u32, dest: *mut u32) {
             self.resolve(&HEADER.program_word)(word, dest)
         }
 
+        /// Program multiple words.
+        ///
+        /// This is effectively multiple calls to
+        /// [Self::program_word()] for each word in `src`,
+        /// incrementing `dest` each time, but implemented more
+        /// efficiently.
+        ///
+        /// This returns `false` if an error occurred. Possible
+        /// sources for error are:
+        ///
+        /// * Only one half-sector (256 bytes) can be programmed at once.
+        /// * Programming cannot pass half-sector boundaries.
+        /// * `src` must reside in RAM, not flash.
+        ///
+        /// # Safety
+        ///
+        /// Make sure any references that overlap with the written
+        /// area are ok with data changing underneath.
         pub unsafe fn program(&self, src: &[u32], dest: *mut u32) -> bool {
             self.resolve(&HEADER.program)(src, dest)
         }
 
+        /// Read a single word from NVR flash, using the APB bus.
+        ///
+        /// This is an undocumented feature of the flash.
+        ///
+        /// This seems to read the same data as [Self::read_nvr()],
+        /// but official code seems to use this method to read the
+        /// CHIP_ID registers for some reason.
         pub fn read_nvr_apb(&self, src: u16) -> u32 {
             unsafe { self.resolve(&HEADER.read_nvr_apb)(src) }
         }
