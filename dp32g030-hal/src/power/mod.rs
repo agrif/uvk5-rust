@@ -11,9 +11,9 @@ pub use clocks::*;
 mod gate;
 pub use gate::*;
 
-/// Split the [pac::SYSCON] and [pac::PMU] registers into usable parts.
-pub fn new(syscon: pac::SYSCON, pmu: pac::PMU) -> Power {
-    Power::new(syscon, pmu)
+/// Create a clock and power configurator from the relevant registers.
+pub fn new(syscon: pac::SYSCON, pmu: pac::PMU) -> Config {
+    Config::new(syscon, pmu)
 }
 
 /// Peripherals that control power and the clock.
@@ -21,27 +21,27 @@ pub fn new(syscon: pac::SYSCON, pmu: pac::PMU) -> Power {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Power {
     pub chip_id: ChipId,
-    pub clocks: ClockConfig,
+    pub clocks: Clocks,
     pub gates: Gates,
 }
 
 impl Power {
     /// # Safety
-    /// This accesses [pac::SYSCON] and [pac::PMU] registers. Notably,
-    /// having this allows you to change the clock speed out from under
-    /// all other peripherals.
-    unsafe fn steal() -> Self {
+    /// This will duplicate access to [pac::SYSCON] and
+    /// [pac::PMU] unless those are known to not yet exist or have
+    /// been dropped.
+    unsafe fn steal(clocks: Clocks) -> Self {
         Self {
             chip_id: ChipId::steal(),
-            clocks: ClockConfig::steal(),
+            clocks,
             gates: Gates::steal(),
         }
     }
 
-    /// Split the [pac::SYSCON] and [pac::PMU] registers into usable parts.
-    pub fn new(_syscon: pac::SYSCON, _pmu: pac::PMU) -> Self {
-        // safety: all of these operate on disjoint registers of these blocks
-        // which we are now owners of
-        unsafe { Self::steal() }
+    /// Freeze the configuration to obtain the HAL peripherals.
+    pub fn new(config: Config) -> Self {
+        config.freeze()
     }
+
+    // hmm... free?
 }

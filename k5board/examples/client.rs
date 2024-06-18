@@ -16,8 +16,9 @@ k5board::version!(concat!(env!("CARGO_PKG_VERSION"), "client"));
 fn main() -> ! {
     // grab peripherals and initialize the clock
     let p = hal::pac::Peripherals::take().unwrap();
-    let power = hal::power::new(p.SYSCON, p.PMU);
-    let clocks = power.clocks.sys_internal_24mhz().freeze();
+    let power = hal::power::new(p.SYSCON, p.PMU)
+        .sys_internal_24mhz()
+        .freeze();
 
     // turn on GPIOA
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
@@ -30,7 +31,7 @@ fn main() -> ! {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&clocks, BAUD_RATE.Hz(), uart_parts).unwrap();
+    let uart = k5board::uart::new(&power.clocks, BAUD_RATE.Hz(), uart_parts).unwrap();
     let mut client = k5board::uart::install(uart).client();
 
     let mut session_id = 0;

@@ -8,8 +8,9 @@ use panic_halt as _;
 fn main() -> ! {
     // grab peripherals and initialize the clock
     let p = hal::pac::Peripherals::take().unwrap();
-    let power = hal::power::new(p.SYSCON, p.PMU);
-    let _clocks = power.clocks.sys_internal_24mhz().freeze();
+    let _power = hal::power::new(p.SYSCON, p.PMU)
+        .sys_internal_24mhz()
+        .freeze();
 
     loop {
         cortex_m::asm::wfi();

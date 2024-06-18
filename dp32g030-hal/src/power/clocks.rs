@@ -3,6 +3,8 @@ use crate::pac;
 use crate::gpio::alt::{xtah, xtal};
 use crate::time::{Hertz, RateExtU32};
 
+use super::Power;
+
 /// Holding this token means the XTAL port is configured and
 /// has a known frequency.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -270,7 +272,7 @@ impl PllSel {
 /// Clock configuration.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct ClockConfig {
+pub struct Config {
     xtal: Option<Hertz>,
     xtah: Option<Hertz>,
 
@@ -279,7 +281,7 @@ pub struct ClockConfig {
     sys: SysSel,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Represents frozen, complete information about system clock frequencies.
 pub struct Clocks {
@@ -311,12 +313,14 @@ impl Clocks {
     }
 }
 
-impl ClockConfig {
+impl Config {
     /// # Safety:
     /// This peripheral reads and writes:
     ///  * `SYSCON`: `clk_sel`, `div_clk_gate`, `rc_freq_delta`, `pll_ctrl`, `pll_st`
     ///  * `PMU`: `src_cfg`
-    pub(crate) unsafe fn steal() -> Self {
+    /// Notably, owning this allows you to change the clock out from
+    /// under running peripherals.
+    unsafe fn steal() -> Self {
         Self {
             xtal: None,
             xtah: None,
@@ -325,6 +329,12 @@ impl ClockConfig {
             rtc: RtcSel::Rclf,
             sys: SysSel::Rchf24,
         }
+    }
+
+    /// Create a clock configurator.
+    pub fn new(_syscon: pac::SYSCON, _pmu: pac::PMU) -> Self {
+        // safety: we have ownership of syscon and pmu registers
+        unsafe { Self::steal() }
     }
 
     /// Set the ADC sample divisor applied to the system clock.
@@ -413,11 +423,14 @@ impl ClockConfig {
     }
 
     /// Freeze the clock configuration and return the clock frequencies.
-    pub fn freeze(self) -> Clocks {
+    pub fn freeze(self) -> Power {
         // not strictly needed, as we own all of these registers and
         // should be able to modify them safely. however, this section is
         // indeed quite cricital, and we'd rather not be interrupted.
-        critical_section::with(|cs| self.freeze_critical(cs))
+        let clocks = critical_section::with(|cs| self.freeze_critical(cs));
+
+        // safety: we own (from new) the registers controlled here
+        unsafe { Power::steal(clocks) }
     }
 
     fn freeze_critical(self, _cs: critical_section::CriticalSection) -> Clocks {

@@ -13,8 +13,9 @@ k5board::version!(concat!(env!("CARGO_PKG_VERSION"), "eeprom"));
 fn main() -> ! {
     // grab peripherals and initialize the clock
     let p = hal::pac::Peripherals::take().unwrap();
-    let power = hal::power::new(p.SYSCON, p.PMU);
-    let clocks = power.clocks.sys_internal_24mhz().freeze();
+    let power = hal::power::new(p.SYSCON, p.PMU)
+        .sys_internal_24mhz()
+        .freeze();
 
     // turn on GPIOA and GPIOC
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
@@ -27,15 +28,15 @@ fn main() -> ! {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&clocks, 38_400.Hz(), uart_parts).unwrap();
+    let uart = k5board::uart::new(&power.clocks, 38_400.Hz(), uart_parts).unwrap();
     k5board::uart::install(uart);
 
     // bit-bang i2c needs a timer at twice the desired frequency
     // we'll use TIMER_BASE0 at 200kHz
     let mut i2c_timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(200).to_Hz() }>(&clocks)
+        .frequency::<{ Hertz::kHz(200).to_Hz() }>(&power.clocks)
         .unwrap()
-        .split(&clocks)
+        .split(&power.clocks)
         .low
         .timing();
     i2c_timer.start_native().unwrap();
@@ -88,7 +89,7 @@ fn main() -> ! {
         if addr >= k5board::eeprom::SIZE {
             addr = 0;
             println!();
-            cortex_m::asm::delay(clocks.sys_clk().to_Hz());
+            cortex_m::asm::delay(power.clocks.sys_clk().to_Hz());
         }
     }
 }

@@ -19,8 +19,9 @@ k5board::version!(concat!(env!("CARGO_PKG_VERSION"), "lcd"));
 fn main() -> ! {
     // grab peripherals and initialize the clock
     let p = hal::pac::Peripherals::take().unwrap();
-    let power = hal::power::new(p.SYSCON, p.PMU);
-    let clocks = power.clocks.sys_internal_24mhz().freeze();
+    let power = hal::power::new(p.SYSCON, p.PMU)
+        .sys_internal_24mhz()
+        .freeze();
 
     // turn on GPIOB
     let ports = hal::gpio::new(p.PORTCON, p.GPIOA, p.GPIOB, p.GPIOC);
@@ -28,9 +29,9 @@ fn main() -> ! {
 
     // turn TIMER_BASE0 into a 1kHz resolution timer for delays
     let mut delay = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&clocks)
+        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&power.clocks)
         .unwrap()
-        .split(&clocks)
+        .split(&power.clocks)
         .low
         .timing();
 
