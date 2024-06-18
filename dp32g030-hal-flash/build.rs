@@ -70,6 +70,13 @@ fn build_and_flatten_bins(out: &Path) {
         .tool(&llvm_tools::exe("llvm-objcopy"))
         .expect("llvm-objcopy not found");
 
+    // I would love to forward feature flags here, but there does not
+    // appear to be any way to grab a comma-seperated list of them.
+    // I would have to manually build such a list... and the bins don't
+    // yet use any features.
+    //
+    // If you add this capability, change the CI script to also build
+    // with features.
     let targetdir = out.join(TARGETDIR);
     Command::new(cargo)
         .env_remove("RUSTFLAGS")

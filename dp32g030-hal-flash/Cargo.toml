@@ -17,6 +17,7 @@ bench = false
 
 [dependencies]
 cortex-m = { version = "0.7", optional = true }
+defmt = { version = "0.3", optional = true }
 dp32g030 = { path = "../dp32g030", optional = true, default-features = false }
 panic-halt = { version = "0.2", optional = true }
 
@@ -39,3 +40,5 @@ default = []
 # internal flag used when building the code that lives in RAM
 # set by build.rs
 intern-compile = ["dep:cortex-m", "dep:dp32g030", "dep:panic-halt"]
+
+defmt = ["dep:defmt"]

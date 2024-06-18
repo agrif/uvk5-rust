@@ -20,6 +20,7 @@ const HEADER: Header = Header::from_code();
 
 /// An entry in the [Header] pointing to a function.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HeaderEntry<F>(*const core::marker::PhantomData<F>);
 
 impl<F> HeaderEntry<F> {
@@ -36,6 +37,7 @@ impl<F> HeaderEntry<F> {
 
 /// A header describing each function in our [Code].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
@@ -91,6 +93,15 @@ pub struct Code {
     // we don't use interior mutability, but we *do* want the linker
     // to put us somewhere where mutation is possible, i.e. not flash
     data: UnsafeCell<[u8; CODE.len()]>,
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Code {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "Code {{ data: {=[u8]:x} }}", unsafe {
+            self.data.get().as_ref().unwrap().as_slice()
+        })
+    }
 }
 
 // we never write to Code itself, and writes to the flash peripheral
