@@ -500,7 +500,7 @@ impl<'code> Config<'code> {
         // first, initialize flash with a very high estimate of the clock
         // so that it uses 2 wait cycles for reads
         // safety: we own FLASH_CTRL and are overestimating
-        unsafe { self.flash_code.init(72u8) }
+        unsafe { self.flash_code.init(cs, 72u8) }
 
         // FIXME here is where we should read NVR
 
@@ -676,7 +676,7 @@ impl<'code> Config<'code> {
 
         // use these frequencies to configure flash for real this time
         // safety: we own FLASH_CTRL and are using the correct clock value
-        unsafe { self.flash_code.init(clocks.sys_clk.to_MHz() as u8) }
+        unsafe { self.flash_code.init(cs, clocks.sys_clk.to_MHz() as u8) }
 
         // safety: this is where Clocks is constructed to begin with, so no
         // others exist.

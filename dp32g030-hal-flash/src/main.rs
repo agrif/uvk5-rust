@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use critical_section::CriticalSection;
 use dp32g030::flash_ctrl::cfg::MODE_A;
 use panic_halt as _;
 
@@ -24,58 +25,58 @@ dp32g030_hal_flash::header! {
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn init(clock_mhz: u8) {
-    Flash::with(|flash| {
-        flash.leave_low_power_and_wait_init();
-        flash.set_mode(MODE_A::Normal);
-        flash.set_read_md(clock_mhz);
-        flash.set_erasetime(clock_mhz);
-        flash.set_progtime(clock_mhz);
-        flash.lock();
-    });
+pub unsafe fn init(cs: CriticalSection, clock_mhz: u8) {
+    let mut flash = Flash::get(cs);
+
+    flash.leave_low_power_and_wait_init();
+    flash.set_mode(MODE_A::Normal);
+    flash.set_read_md(clock_mhz);
+    flash.set_erasetime(clock_mhz);
+    flash.set_progtime(clock_mhz);
+    flash.lock();
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn read_nvr(src: u16, dest: &mut [u8]) {
-    Flash::with(|flash| {
-        flash.with_nvr(true, |_flash| unsafe {
-            let src = core::slice::from_raw_parts(src as *const u8, dest.len());
-            dest.copy_from_slice(src);
-        })
+pub unsafe fn read_nvr(cs: CriticalSection, src: u16, dest: &mut [u8]) {
+    let mut flash = Flash::get(cs);
+
+    flash.with_nvr(true, |_flash| unsafe {
+        let src = core::slice::from_raw_parts(src as *const u8, dest.len());
+        dest.copy_from_slice(src);
     })
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn erase(sector: *mut u32) {
-    Flash::with(|flash| {
-        flash.execute(
-            |flash| {
-                flash.set_mode(MODE_A::Erase);
-                flash.set_address(sector);
-            },
-            |_| {},
-            |_| {},
-        );
-    })
+pub unsafe fn erase(cs: CriticalSection, sector: *mut u32) {
+    let mut flash = Flash::get(cs);
+
+    flash.execute(
+        |flash| {
+            flash.set_mode(MODE_A::Erase);
+            flash.set_address(sector);
+        },
+        |_| {},
+        |_| {},
+    );
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn program_word(word: u32, dest: *mut u32) {
-    Flash::with(|flash| {
-        flash.execute(
-            |flash| {
-                flash.set_mode(MODE_A::Program);
-                flash.set_address(dest);
-                flash.set_wdata(word);
-            },
-            |_| {},
-            |_| {},
-        )
-    })
+pub unsafe fn program_word(cs: CriticalSection, word: u32, dest: *mut u32) {
+    let mut flash = Flash::get(cs);
+
+    flash.execute(
+        |flash| {
+            flash.set_mode(MODE_A::Program);
+            flash.set_address(dest);
+            flash.set_wdata(word);
+        },
+        |_| {},
+        |_| {},
+    )
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn program(src: &[u32], dest: *mut u32) -> bool {
+pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) -> bool {
     // can't read from flash while writing to flash
     if (src.as_ptr() as usize) < FLASH_TOP {
         return false;
@@ -97,39 +98,39 @@ pub unsafe fn program(src: &[u32], dest: *mut u32) -> bool {
         return true;
     }
 
-    Flash::with(|flash| {
-        flash.execute(
-            |flash| {
-                flash.set_mode(MODE_A::Program);
-                flash.set_address(dest);
-                flash.set_wdata(src[0]);
-            },
-            |flash| {
-                for word in &src[1..] {
-                    flash.wait_prog_buf_empty();
-                    flash.set_wdata(*word);
-                }
-            },
-            |_| {},
-        )
-    });
+    let mut flash = Flash::get(cs);
+
+    flash.execute(
+        |flash| {
+            flash.set_mode(MODE_A::Program);
+            flash.set_address(dest);
+            flash.set_wdata(src[0]);
+        },
+        |flash| {
+            for word in &src[1..] {
+                flash.wait_prog_buf_empty();
+                flash.set_wdata(*word);
+            }
+        },
+        |_| {},
+    );
 
     true
 }
 
 // safety: see Code in lib.rs
-pub fn read_nvr_apb(src: u16) -> u32 {
-    Flash::with(|flash| {
-        flash.with_nvr(true, |flash| {
-            flash.execute(
-                |flash| {
-                    flash.set_mode(MODE_A::ReadApb);
-                    flash.set_address(src as *mut u32);
-                },
-                |_| {},
-                |flash| flash.rdata(),
-            )
-        })
+pub unsafe fn read_nvr_apb(cs: CriticalSection, src: u16) -> u32 {
+    let mut flash = Flash::get(cs);
+
+    flash.with_nvr(true, |flash| {
+        flash.execute(
+            |flash| {
+                flash.set_mode(MODE_A::ReadApb);
+                flash.set_address(src as *mut u32);
+            },
+            |_| {},
+            |flash| flash.rdata(),
+        )
     })
 }
 
@@ -138,15 +139,11 @@ pub struct Flash {
 }
 
 impl Flash {
-    pub fn steal(_cs: &cortex_m::interrupt::CriticalSection) -> Self {
+    pub fn get(_cs: critical_section::CriticalSection) -> Self {
         // safety: we have a critical section, only we can be talking to flash
         Flash {
             ctrl: unsafe { dp32g030::FLASH_CTRL::steal() },
         }
-    }
-
-    pub fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
-        cortex_m::interrupt::free(|cs| f(&mut Self::steal(cs)))
     }
 
     pub fn leave_low_power_and_wait_init(&mut self) {

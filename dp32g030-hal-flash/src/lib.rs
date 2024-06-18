@@ -7,6 +7,8 @@
 
 use core::cell::UnsafeCell;
 
+use critical_section::CriticalSection;
+
 // helper to use include_bytes! to define an array (not a slice)
 macro_rules! define_included_bytes {
     ($name:ident, $path:expr) => {
@@ -41,12 +43,12 @@ impl<F> HeaderEntry<F> {
 pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
-    pub init: HeaderEntry<unsafe fn(u8)>,
-    pub read_nvr: HeaderEntry<unsafe fn(u16, &mut [u8])>,
-    pub erase: HeaderEntry<unsafe fn(*mut u32)>,
-    pub program_word: HeaderEntry<unsafe fn(u32, *mut u32)>,
-    pub program: HeaderEntry<unsafe fn(&[u32], *mut u32) -> bool>,
-    pub read_nvr_apb: HeaderEntry<unsafe fn(u16) -> u32>,
+    pub init: HeaderEntry<unsafe fn(CriticalSection, u8)>,
+    pub read_nvr: HeaderEntry<unsafe fn(CriticalSection, u16, &mut [u8])>,
+    pub erase: HeaderEntry<unsafe fn(CriticalSection, *mut u32)>,
+    pub program_word: HeaderEntry<unsafe fn(CriticalSection, u32, *mut u32)>,
+    pub program: HeaderEntry<unsafe fn(CriticalSection, &[u32], *mut u32) -> bool>,
+    pub read_nvr_apb: HeaderEntry<unsafe fn(CriticalSection, u16) -> u32>,
 }
 
 // we never write to Header
@@ -236,8 +238,8 @@ mod same_target {
         /// Passing an incorrect frequency can cause erase and
         /// programming operations to fail, either by stalling or
         /// writing incorrect bytes.
-        pub unsafe fn init(&self, clock_mhz: u8) {
-            self.resolve(&HEADER.init)(clock_mhz)
+        pub unsafe fn init(&self, cs: CriticalSection, clock_mhz: u8) {
+            self.resolve(&HEADER.init)(cs, clock_mhz)
         }
 
         /// Read a block of bytes from NVR flash.
@@ -245,8 +247,8 @@ mod same_target {
         /// # Safety
         ///
         /// The flash must not be in use anywhere else.
-        pub unsafe fn read_nvr(&self, src: u16, dest: &mut [u8]) {
-            unsafe { self.resolve(&HEADER.read_nvr)(src, dest) }
+        pub unsafe fn read_nvr(&self, cs: CriticalSection, src: u16, dest: &mut [u8]) {
+            unsafe { self.resolve(&HEADER.read_nvr)(cs, src, dest) }
         }
 
         /// Erase (set to 0xff) the 512 byte sector containing `sector`.
@@ -257,8 +259,8 @@ mod same_target {
         ///
         /// Make sure any references held to data inside this sector
         /// are ok with the data changing to 0xff underneath.
-        pub unsafe fn erase(&self, sector: *mut u32) {
-            self.resolve(&HEADER.erase)(sector)
+        pub unsafe fn erase(&self, cs: CriticalSection, sector: *mut u32) {
+            self.resolve(&HEADER.erase)(cs, sector)
         }
 
         /// Program a single word.
@@ -271,8 +273,8 @@ mod same_target {
         ///
         /// Make sure any references that include `dest` are ok with
         /// the data changing underneath.
-        pub unsafe fn program_word(&self, word: u32, dest: *mut u32) {
-            self.resolve(&HEADER.program_word)(word, dest)
+        pub unsafe fn program_word(&self, cs: CriticalSection, word: u32, dest: *mut u32) {
+            self.resolve(&HEADER.program_word)(cs, word, dest)
         }
 
         /// Program multiple words.
@@ -295,8 +297,8 @@ mod same_target {
         ///
         /// Make sure any references that overlap with the written
         /// area are ok with data changing underneath.
-        pub unsafe fn program(&self, src: &[u32], dest: *mut u32) -> bool {
-            self.resolve(&HEADER.program)(src, dest)
+        pub unsafe fn program(&self, cs: CriticalSection, src: &[u32], dest: *mut u32) -> bool {
+            self.resolve(&HEADER.program)(cs, src, dest)
         }
 
         /// Read a single word from NVR flash, using the APB bus.
@@ -310,8 +312,8 @@ mod same_target {
         /// # Safety
         ///
         /// The flash must not be in use anywhere else.
-        pub unsafe fn read_nvr_apb(&self, src: u16) -> u32 {
-            unsafe { self.resolve(&HEADER.read_nvr_apb)(src) }
+        pub unsafe fn read_nvr_apb(&self, cs: CriticalSection, src: u16) -> u32 {
+            unsafe { self.resolve(&HEADER.read_nvr_apb)(cs, src) }
         }
     }
 }
