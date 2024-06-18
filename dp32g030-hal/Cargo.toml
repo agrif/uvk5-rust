@@ -19,6 +19,7 @@ cortex-m = "0.7.6"
 critical-section = "1"
 defmt = { version = "0.3.5", optional = true }
 dp32g030 = { path = "../dp32g030" }
+dp32g030-hal-flash = { path = "../dp32g030-hal-flash" }
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"]}
 embedded-hal-1 = { package = "embedded-hal", version = "1" }
 embedded-hal-nb = "1"
@@ -45,6 +46,7 @@ panic = "abort"
 defmt = [
       "dep:defmt",
       "dp32g030/defmt",
+      "dp32g030-hal-flash/defmt",
       "embedded-hal-1/defmt-03",
       "fugit/defmt",
       "nb/defmt-0-3",

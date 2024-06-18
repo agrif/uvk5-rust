@@ -1,5 +1,7 @@
 use core::cell::UnsafeCell;
 
+use dp32g030_hal_flash::Code;
+
 use crate::pac;
 
 use crate::gpio::alt::{xtah, xtal};
@@ -274,7 +276,8 @@ impl PllSel {
 /// Clock configuration.
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Config {
+pub struct Config<'code> {
+    flash_code: &'code Code,
     xtal: Option<Hertz>,
     xtah: Option<Hertz>,
 
@@ -356,15 +359,17 @@ impl Clocks {
     }
 }
 
-impl Config {
+impl<'code> Config<'code> {
     /// # Safety:
     /// This peripheral reads and writes:
     ///  * `SYSCON`: `clk_sel`, `div_clk_gate`, `rc_freq_delta`, `pll_ctrl`, `pll_st`
     ///  * `PMU`: `src_cfg`
+    ///  * various `FLASH_CTRL` registers via [Code].
     /// Notably, owning this allows you to change the clock out from
     /// under running peripherals.
-    unsafe fn steal() -> Self {
+    unsafe fn steal(flash_code: &'code Code) -> Self {
         Self {
+            flash_code,
             xtal: None,
             xtah: None,
 
@@ -375,9 +380,14 @@ impl Config {
     }
 
     /// Create a clock configurator.
-    pub fn new(_syscon: pac::SYSCON, _pmu: pac::PMU) -> Self {
-        // safety: we have ownership of syscon and pmu registers
-        unsafe { Self::steal() }
+    pub fn new(
+        _syscon: pac::SYSCON,
+        _pmu: pac::PMU,
+        _flash: pac::FLASH_CTRL,
+        flash_code: &'code Code,
+    ) -> Self {
+        // safety: we have ownership of syscon, pmu, and flash registers
+        unsafe { Self::steal(flash_code) }
     }
 
     /// Set the ADC sample divisor applied to the system clock.
@@ -486,6 +496,13 @@ impl Config {
         // which we own
         let syscon = unsafe { pac::SYSCON::steal() };
         let pmu = unsafe { pac::PMU::steal() };
+
+        // first, initialize flash with a very high estimate of the clock
+        // so that it uses 2 wait cycles for reads
+        // safety: we own FLASH_CTRL and are overestimating
+        unsafe { self.flash_code.init(72u8) }
+
+        // FIXME here is where we should read NVR
 
         // ok, lets get us running on the internal oscillator safely
 
@@ -618,8 +635,7 @@ impl Config {
             pmu.src_cfg().modify(|_r, w| w.rchf_en().disabled());
         }
 
-        // we should be all set. now just return the frequencies.
-        // first, figure out the reference clocks
+        // we should be all set. now just calculate the frequencies.
         let freqs = {
             let delta = syscon.rc_freq_delta().read();
 
@@ -657,6 +673,10 @@ impl Config {
             rtc_clk: self.rtc.freq(&freqs),
             iwdt_clk: freqs.rclf,
         };
+
+        // use these frequencies to configure flash for real this time
+        // safety: we own FLASH_CTRL and are using the correct clock value
+        unsafe { self.flash_code.init(clocks.sys_clk.to_MHz() as u8) }
 
         // safety: this is where Clocks is constructed to begin with, so no
         // others exist.

@@ -53,7 +53,7 @@ fn go() -> error::Result<()> {
     unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
 
     let p = hal::pac::Peripherals::take().unwrap();
-    let power = hal::power::new(p.SYSCON, p.PMU)
+    let power = hal::power::new(p.SYSCON, p.PMU, p.FLASH_CTRL)
         .sys_internal_48mhz()
         .freeze();
 

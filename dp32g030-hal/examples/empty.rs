@@ -8,7 +8,7 @@ use panic_halt as _;
 fn main() -> ! {
     // grab peripherals and initialize the clock
     let p = hal::pac::Peripherals::take().unwrap();
-    let _power = hal::power::new(p.SYSCON, p.PMU)
+    let _power = hal::power::new(p.SYSCON, p.PMU, p.FLASH_CTRL)
         .sys_internal_24mhz()
         .freeze();
 
