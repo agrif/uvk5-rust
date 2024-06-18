@@ -29,9 +29,9 @@ fn main() -> ! {
 
     // turn TIMER_BASE0 into a 1kHz resolution timer for delays
     let mut delay = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&power.clocks)
+        .frequency::<{ Hertz::kHz(1).to_Hz() }>()
         .unwrap()
-        .split(&power.clocks)
+        .split()
         .low
         .timing();
 

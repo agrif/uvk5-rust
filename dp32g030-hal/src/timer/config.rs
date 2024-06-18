@@ -1,4 +1,4 @@
-use crate::power::{Clocks, Gate};
+use crate::power::Gate;
 use crate::time::Hertz;
 
 use super::{static_assert_timer_hz_not_zero, BaseInstance, Error, High, Low, Timer};
@@ -47,7 +47,13 @@ impl<T, const HZ: u32> Config<T, HZ>
 where
     T: BaseInstance,
 {
-    /// Recover the raw itmer register from this configurator.
+    fn sys_clk(&self) -> Hertz {
+        // safety: we own self, which gives us control of this gate
+        let gate = unsafe { Gate::<T>::steal() };
+        gate.clocks().sys_clk()
+    }
+
+    /// Recover the raw timer register from this configurator.
     pub fn free(self) -> (T, Gate<T>) {
         // safety: we own self, which gives us control of this gate
         let mut gate = unsafe { Gate::steal() };
@@ -74,8 +80,8 @@ where
     /// match the given frequency.
     ///
     /// If the frequency is too or high to be matched, returns [Err].
-    pub fn frequency<const C_HZ: u32>(self, clocks: &Clocks) -> Result<Config<T, C_HZ>, Error> {
-        let div = clocks
+    pub fn frequency<const C_HZ: u32>(self) -> Result<Config<T, C_HZ>, Error> {
+        let div = self
             .sys_clk()
             .to_Hz()
             .checked_add(C_HZ / 2)
@@ -95,16 +101,16 @@ where
     ///
     /// This may differ from the statically known frequency, as this
     /// uses run-time corrections to the system clock.
-    pub fn input_clk(&self, clocks: &Clocks) -> Hertz {
-        clocks.sys_clk() / (self.timer.get_div() as u32 + 1)
+    pub fn input_clk(&self) -> Hertz {
+        self.sys_clk() / (self.timer.get_div() as u32 + 1)
     }
 
     /// Split the configured timer into [Low] and [High] parts.
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Self::frequency()] to configure HZ.
-    pub fn split(self, clocks: &Clocks) -> Pair<T, HZ> {
-        Pair::new(self, clocks)
+    pub fn split(self) -> Pair<T, HZ> {
+        Pair::new(self)
     }
 }
 
@@ -116,10 +122,10 @@ where
     ///
     /// Note: This will fail at compile-time if HZ is 0. Use
     /// [Config::frequency()] to configure HZ.
-    pub fn new(config: Config<T, HZ>, clocks: &Clocks) -> Self {
+    pub fn new(config: Config<T, HZ>) -> Self {
         static_assert_timer_hz_not_zero::<HZ>();
 
-        let input_clk = config.input_clk(clocks);
+        let input_clk = config.input_clk();
         // safety: we are splitting into exclusive high/low parts
         let timer = unsafe { config.timer.steal() };
 

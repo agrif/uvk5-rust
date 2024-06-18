@@ -28,15 +28,15 @@ fn main() -> ! {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&power.clocks, 38_400.Hz(), uart_parts).unwrap();
+    let uart = k5board::uart::new(38_400.Hz(), uart_parts).unwrap();
     k5board::uart::install(uart);
 
     // bit-bang i2c needs a timer at twice the desired frequency
     // we'll use TIMER_BASE0 at 200kHz
     let mut i2c_timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(200).to_Hz() }>(&power.clocks)
+        .frequency::<{ Hertz::kHz(200).to_Hz() }>()
         .unwrap()
-        .split(&power.clocks)
+        .split()
         .low
         .timing();
     i2c_timer.start_native().unwrap();

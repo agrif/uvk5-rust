@@ -27,7 +27,7 @@ fn main() -> ! {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&power.clocks, 38_400.Hz(), uart_parts).unwrap();
+    let uart = k5board::uart::new(38_400.Hz(), uart_parts).unwrap();
     k5board::uart::install(uart);
 
     let mut counter = 0;

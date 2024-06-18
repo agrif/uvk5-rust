@@ -1,4 +1,4 @@
-use crate::power::{Clocks, Gate};
+use crate::power::Gate;
 use crate::time::Hertz;
 
 use crate::pac;
@@ -7,16 +7,11 @@ use super::{Instance, Port, RxOnly, TxOnly, UartData};
 
 /// Wrap a UART register into a configurator. Returns [Err] if baud
 /// rate is not achievable.
-pub fn new<Uart>(
-    uart: Uart,
-    gate: Gate<Uart>,
-    clocks: &Clocks,
-    baud: Hertz,
-) -> Result<Config<Uart>, Error>
+pub fn new<Uart>(uart: Uart, gate: Gate<Uart>, baud: Hertz) -> Result<Config<Uart>, Error>
 where
     Uart: Instance,
 {
-    Config::new(uart, gate, clocks, baud)
+    Config::new(uart, gate, baud)
 }
 
 /// UART configuration error.
@@ -69,12 +64,7 @@ where
 {
     /// Wrap a UART register into a configurator. Returns [Err] if baud
     /// rate is not achievable.
-    pub fn new(
-        uart: Uart,
-        mut gate: Gate<Uart>,
-        clocks: &Clocks,
-        baud: Hertz,
-    ) -> Result<Self, Error> {
+    pub fn new(uart: Uart, mut gate: Gate<Uart>, baud: Hertz) -> Result<Self, Error> {
         gate.enable();
 
         // safety: we now own this uart, we can reset what we want
@@ -92,7 +82,7 @@ where
         };
 
         // must set baud here, otherwise it's 0 which is meaningless
-        config.baud(clocks, baud)
+        config.baud(baud)
     }
 }
 
@@ -101,6 +91,12 @@ where
     Uart: Instance,
     Data: UartData,
 {
+    fn sys_clk(&self) -> Hertz {
+        // safety: we own this peripheral, and can access this gate
+        let gate = unsafe { Gate::<Uart>::steal() };
+        gate.clocks().sys_clk()
+    }
+
     /// Recover the UART register from a configurator.
     pub fn free(self) -> (Uart, Gate<Uart>) {
         // safety: we own this peripheral in self, and are dropping self
@@ -181,8 +177,8 @@ where
     }
 
     /// Set the baud rate. Returns none if `baud` is not achievable.
-    pub fn baud(self, clocks: &Clocks, baud: Hertz) -> Result<Self, Error> {
-        let counter = clocks
+    pub fn baud(self, baud: Hertz) -> Result<Self, Error> {
+        let counter = self
             .sys_clk()
             .checked_add(baud / 2)
             .ok_or(Error::OutOfRange)?
@@ -203,8 +199,8 @@ where
     }
 
     /// Get the baud rate.
-    pub fn get_baud(&self, clocks: &Clocks) -> Hertz {
-        clocks.sys_clk() / self.uart.baud().read().baud().bits() as u32
+    pub fn get_baud(&self) -> Hertz {
+        self.sys_clk() / self.uart.baud().read().baud().bits() as u32
     }
 
     /// Get the configured [Port] using the provided pins.

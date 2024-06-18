@@ -1,9 +1,11 @@
+use core::cell::UnsafeCell;
+
 use crate::pac;
 
 use crate::gpio::alt::{xtah, xtal};
 use crate::time::{Hertz, RateExtU32};
 
-use super::Power;
+use super::{Gate, Power};
 
 /// Holding this token means the XTAL port is configured and
 /// has a known frequency.
@@ -291,7 +293,48 @@ pub struct Clocks {
     iwdt_clk: Hertz,
 }
 
+// safety: a global configured clock is too handy. This is entirely
+// used by Gate<T>, which can't be obtained until a Clocks is created
+// (and this is set).
+static mut CLOCKS_CONFIGURED: UnsafeCell<Clocks> = unsafe { UnsafeCell::new(Clocks::zero()) };
+
 impl Clocks {
+    /// # Safety
+    /// This token might be used to unconfigure the clocks,
+    /// and should be unique.
+    const unsafe fn zero() -> Self {
+        Self {
+            sys_clk: Hertz::from_raw(0),
+            saradc_sample_clk: Hertz::from_raw(0),
+            rtc_clk: Hertz::from_raw(0),
+            iwdt_clk: Hertz::from_raw(0),
+        }
+    }
+
+    /// # Safety
+    /// This token might be used to unconfigure the clocks,
+    /// and should be unique.
+    unsafe fn clone(&self) -> Self {
+        Self { ..*self }
+    }
+
+    /// # Safety
+    /// This should only be used if no Gates or Clocks currently exist.
+    unsafe fn install(&self, _cs: critical_section::CriticalSection) {
+        *CLOCKS_CONFIGURED.get() = self.clone();
+    }
+
+    /// Get the global configured clock from any [Gate].
+    pub fn configured<T>(_gate: &Gate<T>) -> &Self {
+        // the gate parameter makes this safe, and also restricts the lifetime
+        // to never outlive the gate, and therefore, never outlive the
+        // original Clocks object.
+
+        // safety: this is only valid after an install(), but you can only
+        // get a Gate<T> via freeze(), which calls install(), so this is ok.
+        unsafe { CLOCKS_CONFIGURED.get().as_ref().unwrap() }
+    }
+
     /// Get the system clock, in Hz.
     pub fn sys_clk(&self) -> Hertz {
         self.sys_clk
@@ -433,7 +476,7 @@ impl Config {
         unsafe { Power::steal(clocks) }
     }
 
-    fn freeze_critical(self, _cs: critical_section::CriticalSection) -> Clocks {
+    fn freeze_critical(self, cs: critical_section::CriticalSection) -> Clocks {
         // This is mission-critical code written by using a machine-translated
         // PDF as reference.
 
@@ -608,11 +651,18 @@ impl Config {
 
         let sys_clk = self.sys.freq(&freqs);
 
-        Clocks {
+        let clocks = Clocks {
             sys_clk,
             saradc_sample_clk: sys_clk / saradc_div(self.saradc_sample),
             rtc_clk: self.rtc.freq(&freqs),
             iwdt_clk: freqs.rclf,
+        };
+
+        // safety: this is where Clocks is constructed to begin with, so no
+        // others exist.
+        unsafe {
+            clocks.install(cs);
         }
+        clocks
     }
 }

@@ -31,7 +31,7 @@ fn main() -> ! {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&power.clocks, BAUD_RATE.Hz(), uart_parts).unwrap();
+    let uart = k5board::uart::new(BAUD_RATE.Hz(), uart_parts).unwrap();
     let mut client = k5board::uart::install(uart).client();
 
     let mut session_id = 0;

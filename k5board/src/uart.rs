@@ -8,7 +8,7 @@ use k5lib::{ArrayBuffer, ClientBuffer};
 
 use crate::hal::block;
 use crate::hal::gpio::{Alternate, Floating, Input, Output, PushPull, PA7, PA8};
-use crate::hal::power::{Clocks, Gate};
+use crate::hal::power::Gate;
 use crate::hal::time::Hertz;
 use crate::hal::uart;
 use crate::pac::portcon::{porta_sel0, porta_sel1};
@@ -43,8 +43,8 @@ pub type Tx = uart::Tx<UART1>;
 pub type ClientRadio = k5lib::ClientRadio<GlobalUart, &'static mut ArrayBuffer>;
 
 /// Create a new UART from parts.
-pub fn new(clocks: &Clocks, baud: Hertz, parts: Parts) -> Result<Uart, Error> {
-    Ok(uart::new(parts.uart, parts.gate, clocks, baud)?.port(parts.rx.into(), parts.tx.into()))
+pub fn new(baud: Hertz, parts: Parts) -> Result<Uart, Error> {
+    Ok(uart::new(parts.uart, parts.gate, baud)?.port(parts.rx.into(), parts.tx.into()))
 }
 
 // the global UART

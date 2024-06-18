@@ -1,5 +1,7 @@
 use crate::pac;
 
+use super::Clocks;
+
 /// A control to power an individual device.
 pub struct Gate<Dev> {
     _marker: core::marker::PhantomData<Dev>,
@@ -59,7 +61,9 @@ where
     Dev: Device,
 {
     /// # Safety
-    /// This reads and writes the bit for Dev in `dev_clk_gate`.
+    /// This reads and writes the bit for Dev in `dev_clk_gate`, and
+    /// provides accessed to the configured clocks (which must be
+    /// valid).
     pub(crate) unsafe fn steal() -> Self {
         Self {
             _marker: Default::default(),
@@ -85,6 +89,11 @@ where
     /// Is this device enabled?
     pub fn is_enabled(&self) -> bool {
         Dev::is_enabled()
+    }
+
+    /// Get access to the configured clocks.
+    pub fn clocks(&self) -> &Clocks {
+        Clocks::configured(self)
     }
 }
 

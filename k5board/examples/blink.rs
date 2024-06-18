@@ -25,9 +25,9 @@ fn main() -> ! {
 
     // turn TIMER_BASE0 into a 1kHz resolution timer, and use the Low half
     let mut timer = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&power.clocks)
+        .frequency::<{ Hertz::kHz(1).to_Hz() }>()
         .unwrap()
-        .split(&power.clocks)
+        .split()
         .low
         .timing();
 

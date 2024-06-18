@@ -69,7 +69,7 @@ fn go() -> error::Result<()> {
         tx: pins_a.a7.into_mode(),
         rx: pins_a.a8.into_mode(),
     };
-    let uart = k5board::uart::new(&power.clocks, 38_400.Hz(), uart_parts)?;
+    let uart = k5board::uart::new(38_400.Hz(), uart_parts)?;
     let mut client = k5board::uart::install(uart).client();
 
     // set up the keypad
@@ -142,20 +142,20 @@ fn go() -> error::Result<()> {
 
     // get a timer going at 1MHz for i2c and bk4819
     let timer1m = hal::timer::new(p.TIMER_BASE0, power.gates.timer_base0)
-        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&power.clocks)?
-        .split(&power.clocks);
+        .frequency::<{ Hertz::MHz(1).to_Hz() }>()?
+        .split();
 
     // get a timer going at 1MHz for general delays
     let mut delay = hal::timer::new(p.TIMER_BASE1, power.gates.timer_base1)
-        .frequency::<{ Hertz::MHz(1).to_Hz() }>(&power.clocks)?
-        .split(&power.clocks)
+        .frequency::<{ Hertz::MHz(1).to_Hz() }>()?
+        .split()
         .low
         .timing();
 
     // get a timer going at 1kHz for blinks and frames
     let timer1k = hal::timer::new(p.TIMER_BASE2, power.gates.timer_base2)
-        .frequency::<{ Hertz::kHz(1).to_Hz() }>(&power.clocks)?
-        .split(&power.clocks);
+        .frequency::<{ Hertz::kHz(1).to_Hz() }>()?
+        .split();
 
     // bitbang eeprom i2c at 500kHz (half the timer frequency)
     let mut i2c_timer = timer1m.low.timing();
