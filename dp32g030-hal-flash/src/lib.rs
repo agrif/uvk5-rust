@@ -47,7 +47,7 @@ pub struct Header {
     pub read_nvr: HeaderEntry<unsafe fn(CriticalSection, u16, &mut [u8])>,
     pub erase: HeaderEntry<unsafe fn(CriticalSection, *mut u32)>,
     pub program_word: HeaderEntry<unsafe fn(CriticalSection, u32, *mut u32)>,
-    pub program: HeaderEntry<unsafe fn(CriticalSection, &[u32], *mut u32) -> bool>,
+    pub program: HeaderEntry<unsafe fn(CriticalSection, &[u32], *mut u32)>,
     pub read_nvr_apb: HeaderEntry<unsafe fn(CriticalSection, u16) -> u32>,
 }
 
@@ -284,20 +284,20 @@ mod same_target {
         /// incrementing `dest` each time, but implemented more
         /// efficiently.
         ///
-        /// This returns `false` if an error occurred. Possible
-        /// sources for error are:
-        ///
-        /// * Only one half-sector (256 bytes) can be programmed at once.
-        /// * Programming cannot pass half-sector boundaries.
-        /// * `src` must reside in RAM, not flash.
-        ///
         /// # Safety
         ///
         /// The flash must not be in use anywhere else.
         ///
         /// Make sure any references that overlap with the written
         /// area are ok with data changing underneath.
-        pub unsafe fn program(&self, cs: CriticalSection, src: &[u32], dest: *mut u32) -> bool {
+        ///
+        /// Additionally, flash programming must obey these rules or
+        /// the peripheral may misbehave or stall:
+        ///
+        /// * Only one half-sector (256 bytes) can be programmed at once.
+        /// * Programming cannot pass half-sector boundaries.
+        /// * `src` must reside in RAM, not flash.
+        pub unsafe fn program(&self, cs: CriticalSection, src: &[u32], dest: *mut u32) {
             self.resolve(&HEADER.program)(cs, src, dest)
         }
 

@@ -5,16 +5,6 @@ use critical_section::CriticalSection;
 use dp32g030::flash_ctrl::cfg::MODE_A;
 use panic_halt as _;
 
-const SECTOR_LEN: usize = 512;
-const SECTOR_MASK: usize = !(SECTOR_LEN - 1);
-const SECTOR_WORDS: usize = SECTOR_LEN / core::mem::size_of::<usize>();
-
-const HALF_SECTOR_LEN: usize = SECTOR_LEN / 2;
-const HALF_SECTOR_MASK: usize = !(HALF_SECTOR_LEN - 1);
-const HALF_SECTOR_WORDS: usize = HALF_SECTOR_LEN / core::mem::size_of::<usize>();
-
-const FLASH_TOP: usize = 0x1_0000;
-
 dp32g030_hal_flash::header! {
     init,
     read_nvr,
@@ -76,26 +66,10 @@ pub unsafe fn program_word(cs: CriticalSection, word: u32, dest: *mut u32) {
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) -> bool {
-    // can't read from flash while writing to flash
-    if (src.as_ptr() as usize) < FLASH_TOP {
-        return false;
-    }
-
-    // can only program one half-sector at a time
-    if src.len() > HALF_SECTOR_WORDS {
-        return false;
-    }
-
-    // can't cross half-sector boundaries
-    let destaddr = dest as usize;
-    if (destaddr & HALF_SECTOR_MASK) != ((destaddr + src.len()) & HALF_SECTOR_MASK) {
-        return false;
-    }
-
+pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) {
     // empty succeeds automatically
     if src.is_empty() {
-        return true;
+        return;
     }
 
     let mut flash = Flash::get(cs);
@@ -114,8 +88,6 @@ pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) -> bool 
         },
         |_| {},
     );
-
-    true
 }
 
 // safety: see Code in lib.rs
