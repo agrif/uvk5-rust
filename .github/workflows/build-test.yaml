@@ -48,6 +48,26 @@ jobs:
           name: memorymap.txt
           path: dp32g030/svd/memorymap.txt
 
+  hal-flash:
+    name: HAL (Flash)
+    runs-on: ubuntu-latest
+    needs: generate-pac
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+          components: llvm-tools
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-pac.zip
+          path: dp32g030
+
+      - run: cargo build --no-default-features --features "intern-compile" --bins --release
+        working-directory: dp32g030-hal-flash
+      - run: cargo build --no-default-features
+        working-directory: dp32g030-hal-flash
+
   hal:
     name: HAL
     runs-on: ubuntu-latest
