@@ -23,6 +23,7 @@ dp32g030_hal_flash::header! {
     read_nvr_apb,
 }
 
+// safety: see Code in lib.rs
 pub unsafe fn init(clock_mhz: u8) {
     Flash::with(|flash| {
         flash.leave_low_power_and_wait_init();
@@ -34,7 +35,8 @@ pub unsafe fn init(clock_mhz: u8) {
     });
 }
 
-pub fn read_nvr(src: u16, dest: &mut [u8]) {
+// safety: see Code in lib.rs
+pub unsafe fn read_nvr(src: u16, dest: &mut [u8]) {
     Flash::with(|flash| {
         flash.with_nvr(true, |_flash| unsafe {
             let src = core::slice::from_raw_parts(src as *const u8, dest.len());
@@ -43,6 +45,7 @@ pub fn read_nvr(src: u16, dest: &mut [u8]) {
     })
 }
 
+// safety: see Code in lib.rs
 pub unsafe fn erase(sector: *mut u32) {
     Flash::with(|flash| {
         flash.execute(
@@ -56,6 +59,7 @@ pub unsafe fn erase(sector: *mut u32) {
     })
 }
 
+// safety: see Code in lib.rs
 pub unsafe fn program_word(word: u32, dest: *mut u32) {
     Flash::with(|flash| {
         flash.execute(
@@ -70,6 +74,7 @@ pub unsafe fn program_word(word: u32, dest: *mut u32) {
     })
 }
 
+// safety: see Code in lib.rs
 pub unsafe fn program(src: &[u32], dest: *mut u32) -> bool {
     // can't read from flash while writing to flash
     if (src.as_ptr() as usize) < FLASH_TOP {
@@ -112,6 +117,7 @@ pub unsafe fn program(src: &[u32], dest: *mut u32) -> bool {
     true
 }
 
+// safety: see Code in lib.rs
 pub fn read_nvr_apb(src: u16) -> u32 {
     Flash::with(|flash| {
         flash.with_nvr(true, |flash| {

@@ -42,11 +42,11 @@ pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
     pub init: HeaderEntry<unsafe fn(u8)>,
-    pub read_nvr: HeaderEntry<fn(u16, &mut [u8])>,
+    pub read_nvr: HeaderEntry<unsafe fn(u16, &mut [u8])>,
     pub erase: HeaderEntry<unsafe fn(*mut u32)>,
     pub program_word: HeaderEntry<unsafe fn(u32, *mut u32)>,
     pub program: HeaderEntry<unsafe fn(&[u32], *mut u32) -> bool>,
-    pub read_nvr_apb: HeaderEntry<fn(u16) -> u32>,
+    pub read_nvr_apb: HeaderEntry<unsafe fn(u16) -> u32>,
 }
 
 // we never write to Header
@@ -227,6 +227,8 @@ mod same_target {
         ///
         /// # Safety
         ///
+        /// The flash must not be in use anywhere else.
+        ///
         /// Passing a frequency lower than the true frequency can
         /// result in the flash failing to read the program, either by
         /// stalling or reading incorrect bytes.
@@ -239,13 +241,19 @@ mod same_target {
         }
 
         /// Read a block of bytes from NVR flash.
-        pub fn read_nvr(&self, src: u16, dest: &mut [u8]) {
+        ///
+        /// # Safety
+        ///
+        /// The flash must not be in use anywhere else.
+        pub unsafe fn read_nvr(&self, src: u16, dest: &mut [u8]) {
             unsafe { self.resolve(&HEADER.read_nvr)(src, dest) }
         }
 
         /// Erase (set to 0xff) the 512 byte sector containing `sector`.
         ///
         /// # Safety
+        ///
+        /// The flash must not be in use anywhere else.
         ///
         /// Make sure any references held to data inside this sector
         /// are ok with the data changing to 0xff underneath.
@@ -258,6 +266,8 @@ mod same_target {
         /// This is effectively `*dest &= word`.
         ///
         /// # Safety
+        ///
+        /// The flash must not be in use anywhere else.
         ///
         /// Make sure any references that include `dest` are ok with
         /// the data changing underneath.
@@ -281,6 +291,8 @@ mod same_target {
         ///
         /// # Safety
         ///
+        /// The flash must not be in use anywhere else.
+        ///
         /// Make sure any references that overlap with the written
         /// area are ok with data changing underneath.
         pub unsafe fn program(&self, src: &[u32], dest: *mut u32) -> bool {
@@ -294,7 +306,11 @@ mod same_target {
         /// This seems to read the same data as [Self::read_nvr()],
         /// but official code seems to use this method to read the
         /// CHIP_ID registers for some reason.
-        pub fn read_nvr_apb(&self, src: u16) -> u32 {
+        ///
+        /// # Safety
+        ///
+        /// The flash must not be in use anywhere else.
+        pub unsafe fn read_nvr_apb(&self, src: u16) -> u32 {
             unsafe { self.resolve(&HEADER.read_nvr_apb)(src) }
         }
     }
