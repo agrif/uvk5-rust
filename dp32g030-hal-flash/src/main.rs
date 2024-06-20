@@ -40,8 +40,14 @@ pub unsafe fn read_nvr(cs: CriticalSection, src: u16, dest: &mut [u8]) {
     let mut flash = Flash::get(cs);
 
     flash.with_area(Area::Nvr, |_flash| unsafe {
+        // we do this the simple way, via iteration
+        // smarter ways to do this, which also take up way more space:
+        // * core::ptr::copy_nonoverlapping(src, dest, dest.len())
+        // * dest.copy_from_slice(src)
         let src = core::slice::from_raw_parts(src as *const u8, dest.len());
-        dest.copy_from_slice(src);
+        for (d, s) in dest.iter_mut().zip(src.iter()) {
+            *d = *s;
+        }
     })
 }
 
@@ -162,13 +168,17 @@ impl Flash {
             .write(|w| w.addr().set((address as u16) >> 2))
     }
 
-    pub fn with_area<R>(&mut self, area: Area, f: impl FnOnce(&mut Self) -> R) -> R {
+    pub fn set_area(&mut self, area: Area) {
         match area {
             Area::Main => self.ctrl.cfg().modify(|_, w| w.nvr_sel().main()),
             Area::Nvr => self.ctrl.cfg().modify(|_, w| w.nvr_sel().nvr()),
         }
+    }
+
+    pub fn with_area<R>(&mut self, area: Area, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.set_area(area);
         let r = f(self);
-        self.ctrl.cfg().modify(|_, w| w.nvr_sel().main());
+        self.set_area(Area::Main);
         r
     }
 
