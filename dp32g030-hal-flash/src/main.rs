@@ -3,9 +3,11 @@
 
 use critical_section::CriticalSection;
 use dp32g030::flash_ctrl::cfg::MODE_A;
+use dp32g030::FLASH_CTRL;
+use dp32g030_hal_flash::{header, Times};
 use panic_halt as _;
 
-dp32g030_hal_flash::header! {
+header! {
     init,
     set_times,
     read_nvr,
@@ -26,11 +28,10 @@ pub unsafe fn init(cs: CriticalSection, read_md: bool) {
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn set_times(cs: CriticalSection, clock_mhz: u8) {
+pub unsafe fn set_times(cs: CriticalSection, times: &Times) {
     let mut flash = Flash::get(cs);
 
-    flash.set_erasetime(clock_mhz);
-    flash.set_progtime(clock_mhz);
+    flash.set_times(times);
     flash.lock();
 }
 
@@ -115,14 +116,14 @@ pub unsafe fn read_nvr_apb(cs: CriticalSection, src: u16) -> u32 {
 }
 
 pub struct Flash {
-    ctrl: dp32g030::FLASH_CTRL,
+    ctrl: FLASH_CTRL,
 }
 
 impl Flash {
     pub fn get(_cs: critical_section::CriticalSection) -> Self {
         // safety: we have a critical section, only we can be talking to flash
         Flash {
-            ctrl: unsafe { dp32g030::FLASH_CTRL::steal() },
+            ctrl: unsafe { FLASH_CTRL::steal() },
         }
     }
 
@@ -174,26 +175,13 @@ impl Flash {
         }
     }
 
-    pub fn set_erasetime(&mut self, clock_mhz: u8) {
-        self.ctrl.erasetime().write(|w| {
-            // terase = 3.6ms = 3600ns
-            w.terase()
-                .set(3600 * clock_mhz as u32)
-                // trcv = 52ns
-                .trcv()
-                .set(52 * clock_mhz as u16)
-        })
-    }
-
-    pub fn set_progtime(&mut self, clock_mhz: u8) {
-        self.ctrl.progtime().write(|w| {
-            // tprog = 18ns
-            w.tprog()
-                .set(18 * clock_mhz as u16)
-                // tpgs = 22ns
-                .tpgs()
-                .set(22 * clock_mhz as u16)
-        })
+    pub fn set_times(&mut self, times: &Times) {
+        self.ctrl
+            .erasetime()
+            .write(|w| w.terase().set(times.terase).trcv().set(times.trcv));
+        self.ctrl
+            .progtime()
+            .write(|w| w.tprog().set(times.tprog).tpgs().set(times.tpgs));
     }
 
     pub fn lock(&mut self) {

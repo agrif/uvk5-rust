@@ -9,6 +9,30 @@ use core::cell::UnsafeCell;
 
 use critical_section::CriticalSection;
 
+/// Flash erase and programming times.
+///
+/// These values are measured in cycles of the system clock, and must
+/// be set appropriately so they end up having the required times. See
+/// the datasheet for more details.
+///
+/// Setting these incorrectly can cause the flash to misbehave.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(C)]
+pub struct Times {
+    /// 3200 - 4000 us.
+    pub terase: u32,
+
+    /// At least 50 us.
+    pub trcv: u16,
+
+    /// At least 20 us.
+    pub tpgs: u16,
+
+    /// 16 - 20 us.
+    pub tprog: u16,
+}
+
 // helper to use include_bytes! to define an array (not a slice)
 macro_rules! define_included_bytes {
     ($name:ident, $path:expr) => {
@@ -46,7 +70,7 @@ pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
     pub init: HeaderEntry<unsafe fn(CriticalSection, bool)>,
-    pub set_times: HeaderEntry<unsafe fn(CriticalSection, u8)>,
+    pub set_times: HeaderEntry<unsafe fn(CriticalSection, &Times)>,
     pub read_nvr: HeaderEntry<unsafe fn(CriticalSection, u16, &mut [u8])>,
     pub erase: HeaderEntry<unsafe fn(CriticalSection, *mut u32)>,
     pub program_word: HeaderEntry<unsafe fn(CriticalSection, u32, *mut u32)>,
@@ -246,13 +270,13 @@ mod same_target {
         ///
         /// The flash must not be in use anywhere else.
         ///
-        /// Passing an incorrect frequency can cause erase and
+        /// Configuring incorrect times can cause erase and
         /// programming operations to fail, either by stalling or
         /// writing incorrect bytes.
         ///
-        /// Consult the datasheet for more details.
-        pub unsafe fn set_times(&self, cs: CriticalSection, clock_mhz: u8) {
-            self.resolve(&HEADER.set_times)(cs, clock_mhz)
+        /// Consult [Times] and the datasheet for more details.
+        pub unsafe fn set_times(&self, cs: CriticalSection, times: &Times) {
+            self.resolve(&HEADER.set_times)(cs, times)
         }
 
         /// Read a block of bytes from NVR flash.

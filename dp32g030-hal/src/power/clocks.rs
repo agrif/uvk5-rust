@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
 
-use dp32g030_hal_flash::Code;
+use dp32g030_hal_flash::{Code, Times};
 
 use crate::pac;
 
@@ -674,10 +674,24 @@ impl<'code> Config<'code> {
         };
 
         // use these frequencies to configure flash for real this time
-        // safety: we own FLASH_CTRL and are using the correct clock value
+        // safety: we own FLASH_CTRL and are using the correct timings
         unsafe {
             self.flash_code.init(cs, clocks.sys_clk() >= Hertz::MHz(56));
-            self.flash_code.set_times(cs, clocks.sys_clk.to_MHz() as u8);
+
+            let clock_mhz = clocks.sys_clk().to_MHz();
+            self.flash_code.set_times(
+                cs,
+                &Times {
+                    // 3.6ms = 3600us
+                    terase: 3600 * clock_mhz,
+                    // 52us
+                    trcv: 52 * clock_mhz as u16,
+                    // 18us
+                    tprog: 18 * clock_mhz as u16,
+                    // 22us
+                    tpgs: 22 * clock_mhz as u16,
+                },
+            );
         }
 
         // safety: this is where Clocks is constructed to begin with, so no
