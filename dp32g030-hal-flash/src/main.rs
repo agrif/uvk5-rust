@@ -4,7 +4,7 @@
 use critical_section::CriticalSection;
 use dp32g030::flash_ctrl::cfg::MODE_A;
 use dp32g030::FLASH_CTRL;
-use dp32g030_hal_flash::{header, Times};
+use dp32g030_hal_flash::{header, Area, Times};
 use panic_halt as _;
 
 header! {
@@ -39,43 +39,47 @@ pub unsafe fn set_times(cs: CriticalSection, times: &Times) {
 pub unsafe fn read_nvr(cs: CriticalSection, src: u16, dest: &mut [u8]) {
     let mut flash = Flash::get(cs);
 
-    flash.with_nvr(true, |_flash| unsafe {
+    flash.with_area(Area::Nvr, |_flash| unsafe {
         let src = core::slice::from_raw_parts(src as *const u8, dest.len());
         dest.copy_from_slice(src);
     })
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn erase(cs: CriticalSection, sector: *mut u32) {
+pub unsafe fn erase(cs: CriticalSection, area: Area, sector: *mut u32) {
     let mut flash = Flash::get(cs);
 
-    flash.execute(
-        |flash| {
-            flash.set_mode(MODE_A::Erase);
-            flash.set_address(sector);
-        },
-        |_| {},
-        |_| {},
-    );
+    flash.with_area(area, |flash| {
+        flash.execute(
+            |flash| {
+                flash.set_mode(MODE_A::Erase);
+                flash.set_address(sector);
+            },
+            |_| {},
+            |_| {},
+        );
+    });
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn program_word(cs: CriticalSection, word: u32, dest: *mut u32) {
+pub unsafe fn program_word(cs: CriticalSection, area: Area, word: u32, dest: *mut u32) {
     let mut flash = Flash::get(cs);
 
-    flash.execute(
-        |flash| {
-            flash.set_mode(MODE_A::Program);
-            flash.set_address(dest);
-            flash.set_wdata(word);
-        },
-        |_| {},
-        |_| {},
-    )
+    flash.with_area(area, |flash| {
+        flash.execute(
+            |flash| {
+                flash.set_mode(MODE_A::Program);
+                flash.set_address(dest);
+                flash.set_wdata(word);
+            },
+            |_| {},
+            |_| {},
+        );
+    });
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) {
+pub unsafe fn program(cs: CriticalSection, area: Area, src: &[u32], dest: *mut u32) {
     // empty succeeds automatically
     if src.is_empty() {
         return;
@@ -83,27 +87,29 @@ pub unsafe fn program(cs: CriticalSection, src: &[u32], dest: *mut u32) {
 
     let mut flash = Flash::get(cs);
 
-    flash.execute(
-        |flash| {
-            flash.set_mode(MODE_A::Program);
-            flash.set_address(dest);
-            flash.set_wdata(src[0]);
-        },
-        |flash| {
-            for word in &src[1..] {
-                flash.wait_prog_buf_empty();
-                flash.set_wdata(*word);
-            }
-        },
-        |_| {},
-    );
+    flash.with_area(area, |flash| {
+        flash.execute(
+            |flash| {
+                flash.set_mode(MODE_A::Program);
+                flash.set_address(dest);
+                flash.set_wdata(src[0]);
+            },
+            |flash| {
+                for word in &src[1..] {
+                    flash.wait_prog_buf_empty();
+                    flash.set_wdata(*word);
+                }
+            },
+            |_| {},
+        );
+    });
 }
 
 // safety: see Code in lib.rs
 pub unsafe fn read_nvr_apb(cs: CriticalSection, src: u16) -> u32 {
     let mut flash = Flash::get(cs);
 
-    flash.with_nvr(true, |flash| {
+    flash.with_area(Area::Nvr, |flash| {
         flash.execute(
             |flash| {
                 flash.set_mode(MODE_A::ReadApb);
@@ -156,11 +162,10 @@ impl Flash {
             .write(|w| w.addr().set((address as u16) >> 2))
     }
 
-    pub fn with_nvr<R>(&mut self, nvr: bool, f: impl FnOnce(&mut Self) -> R) -> R {
-        if nvr {
-            self.ctrl.cfg().modify(|_, w| w.nvr_sel().nvr());
-        } else {
-            self.ctrl.cfg().modify(|_, w| w.nvr_sel().main());
+    pub fn with_area<R>(&mut self, area: Area, f: impl FnOnce(&mut Self) -> R) -> R {
+        match area {
+            Area::Main => self.ctrl.cfg().modify(|_, w| w.nvr_sel().main()),
+            Area::Nvr => self.ctrl.cfg().modify(|_, w| w.nvr_sel().nvr()),
         }
         let r = f(self);
         self.ctrl.cfg().modify(|_, w| w.nvr_sel().main());

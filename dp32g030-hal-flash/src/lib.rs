@@ -33,6 +33,17 @@ pub struct Times {
     pub tprog: u16,
 }
 
+/// Which area of flash to operate on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub enum Area {
+    /// Main program area.
+    Main = 0,
+    /// NVR configuration area.
+    Nvr = 1,
+}
+
 // helper to use include_bytes! to define an array (not a slice)
 macro_rules! define_included_bytes {
     ($name:ident, $path:expr) => {
@@ -72,9 +83,9 @@ pub struct Header {
     pub init: HeaderEntry<unsafe fn(CriticalSection, bool)>,
     pub set_times: HeaderEntry<unsafe fn(CriticalSection, &Times)>,
     pub read_nvr: HeaderEntry<unsafe fn(CriticalSection, u16, &mut [u8])>,
-    pub erase: HeaderEntry<unsafe fn(CriticalSection, *mut u32)>,
-    pub program_word: HeaderEntry<unsafe fn(CriticalSection, u32, *mut u32)>,
-    pub program: HeaderEntry<unsafe fn(CriticalSection, &[u32], *mut u32)>,
+    pub erase: HeaderEntry<unsafe fn(CriticalSection, Area, *mut u32)>,
+    pub program_word: HeaderEntry<unsafe fn(CriticalSection, Area, u32, *mut u32)>,
+    pub program: HeaderEntry<unsafe fn(CriticalSection, Area, &[u32], *mut u32)>,
     pub read_nvr_apb: HeaderEntry<unsafe fn(CriticalSection, u16) -> u32>,
 }
 
@@ -294,10 +305,14 @@ mod same_target {
         ///
         /// The flash must not be in use anywhere else.
         ///
+        /// The NVR area contains critical configuration data for the
+        /// chip. If you overwrite this, make sure you know what
+        /// you're doing.
+        ///
         /// Make sure any references held to data inside this sector
         /// are ok with the data changing to 0xff underneath.
-        pub unsafe fn erase(&self, cs: CriticalSection, sector: *mut u32) {
-            self.resolve(&HEADER.erase)(cs, sector)
+        pub unsafe fn erase(&self, cs: CriticalSection, area: Area, sector: *mut u32) {
+            self.resolve(&HEADER.erase)(cs, area, sector)
         }
 
         /// Program a single word.
@@ -308,10 +323,20 @@ mod same_target {
         ///
         /// The flash must not be in use anywhere else.
         ///
+        /// The NVR area contains critical configuration data for the
+        /// chip. If you overwrite this, make sure you know what
+        /// you're doing.
+        ///
         /// Make sure any references that include `dest` are ok with
         /// the data changing underneath.
-        pub unsafe fn program_word(&self, cs: CriticalSection, word: u32, dest: *mut u32) {
-            self.resolve(&HEADER.program_word)(cs, word, dest)
+        pub unsafe fn program_word(
+            &self,
+            cs: CriticalSection,
+            area: Area,
+            word: u32,
+            dest: *mut u32,
+        ) {
+            self.resolve(&HEADER.program_word)(cs, area, word, dest)
         }
 
         /// Program multiple words.
@@ -328,14 +353,18 @@ mod same_target {
         /// Make sure any references that overlap with the written
         /// area are ok with data changing underneath.
         ///
+        /// The NVR area contains critical configuration data for the
+        /// chip. If you overwrite this, make sure you know what
+        /// you're doing.
+        ///
         /// Additionally, flash programming must obey these rules or
         /// the peripheral may misbehave or stall:
         ///
         /// * Only one half-sector (256 bytes) can be programmed at once.
         /// * Programming cannot pass half-sector boundaries.
         /// * `src` must reside in RAM, not flash.
-        pub unsafe fn program(&self, cs: CriticalSection, src: &[u32], dest: *mut u32) {
-            self.resolve(&HEADER.program)(cs, src, dest)
+        pub unsafe fn program(&self, cs: CriticalSection, area: Area, src: &[u32], dest: *mut u32) {
+            self.resolve(&HEADER.program)(cs, area, src, dest)
         }
 
         /// Read a single word from NVR flash, using the APB bus.
