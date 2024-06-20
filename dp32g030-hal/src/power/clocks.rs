@@ -497,10 +497,9 @@ impl<'code> Config<'code> {
         let syscon = unsafe { pac::SYSCON::steal() };
         let pmu = unsafe { pac::PMU::steal() };
 
-        // first, initialize flash with a very high estimate of the clock
-        // so that it uses 2 wait cycles for reads
+        // first, initialize flash with 2 wait cycle reads
         // safety: we own FLASH_CTRL and are overestimating
-        unsafe { self.flash_code.init(cs, 72u8) }
+        unsafe { self.flash_code.init(cs, true) }
 
         // FIXME here is where we should read NVR
 
@@ -676,7 +675,10 @@ impl<'code> Config<'code> {
 
         // use these frequencies to configure flash for real this time
         // safety: we own FLASH_CTRL and are using the correct clock value
-        unsafe { self.flash_code.init(cs, clocks.sys_clk.to_MHz() as u8) }
+        unsafe {
+            self.flash_code.init(cs, clocks.sys_clk() >= Hertz::MHz(56));
+            self.flash_code.set_times(cs, clocks.sys_clk.to_MHz() as u8);
+        }
 
         // safety: this is where Clocks is constructed to begin with, so no
         // others exist.

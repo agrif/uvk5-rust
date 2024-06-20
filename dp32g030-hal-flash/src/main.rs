@@ -7,6 +7,7 @@ use panic_halt as _;
 
 dp32g030_hal_flash::header! {
     init,
+    set_times,
     read_nvr,
     erase,
     program_word,
@@ -15,12 +16,19 @@ dp32g030_hal_flash::header! {
 }
 
 // safety: see Code in lib.rs
-pub unsafe fn init(cs: CriticalSection, clock_mhz: u8) {
+pub unsafe fn init(cs: CriticalSection, read_md: bool) {
     let mut flash = Flash::get(cs);
 
     flash.leave_low_power_and_wait_init();
     flash.set_mode(MODE_A::Normal);
-    flash.set_read_md(clock_mhz);
+    flash.set_read_md(read_md);
+    flash.lock();
+}
+
+// safety: see Code in lib.rs
+pub unsafe fn set_times(cs: CriticalSection, clock_mhz: u8) {
+    let mut flash = Flash::get(cs);
+
     flash.set_erasetime(clock_mhz);
     flash.set_progtime(clock_mhz);
     flash.lock();
@@ -158,8 +166,8 @@ impl Flash {
         r
     }
 
-    pub fn set_read_md(&mut self, clock_mhz: u8) {
-        if clock_mhz >= 56 {
+    pub fn set_read_md(&mut self, read_md: bool) {
+        if read_md {
             self.ctrl.cfg().modify(|_, w| w.read_md().wait2());
         } else {
             self.ctrl.cfg().modify(|_, w| w.read_md().wait1());

@@ -45,7 +45,8 @@ impl<F> HeaderEntry<F> {
 pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
-    pub init: HeaderEntry<unsafe fn(CriticalSection, u8)>,
+    pub init: HeaderEntry<unsafe fn(CriticalSection, bool)>,
+    pub set_times: HeaderEntry<unsafe fn(CriticalSection, u8)>,
     pub read_nvr: HeaderEntry<unsafe fn(CriticalSection, u16, &mut [u8])>,
     pub erase: HeaderEntry<unsafe fn(CriticalSection, *mut u32)>,
     pub program_word: HeaderEntry<unsafe fn(CriticalSection, u32, *mut u32)>,
@@ -61,11 +62,12 @@ impl Header {
     const fn from_code() -> Self {
         Self {
             init: HeaderEntry::from_offset(Self::read_u32le(0) as usize),
-            read_nvr: HeaderEntry::from_offset(Self::read_u32le(1) as usize),
-            erase: HeaderEntry::from_offset(Self::read_u32le(2) as usize),
-            program_word: HeaderEntry::from_offset(Self::read_u32le(3) as usize),
-            program: HeaderEntry::from_offset(Self::read_u32le(4) as usize),
-            read_nvr_apb: HeaderEntry::from_offset(Self::read_u32le(5) as usize),
+            set_times: HeaderEntry::from_offset(Self::read_u32le(1) as usize),
+            read_nvr: HeaderEntry::from_offset(Self::read_u32le(2) as usize),
+            erase: HeaderEntry::from_offset(Self::read_u32le(3) as usize),
+            program_word: HeaderEntry::from_offset(Self::read_u32le(4) as usize),
+            program: HeaderEntry::from_offset(Self::read_u32le(5) as usize),
+            read_nvr_apb: HeaderEntry::from_offset(Self::read_u32le(6) as usize),
         }
     }
 
@@ -222,26 +224,35 @@ mod same_target {
         /// Initialize the flash peripheral.
         ///
         /// This brings the flash out of low-power mode and waits for
-        /// initialization to complete.  This also sets up the read,
-        /// erase, and programming timings based on the given system
-        /// clock frequency (in MHz).
+        /// initialization to complete. This also sets the read timing.
         ///
-        /// If you don't know your clock frequency, use an upper
-        /// bound, then run this function again later once you know.
+        /// Pass `true` if the system clock is above 56 MHz or if you
+        /// are unsure. Otherwise, pass `false`.
         ///
         /// # Safety
         ///
         /// The flash must not be in use anywhere else.
         ///
-        /// Passing a frequency lower than the true frequency can
+        /// Passing `false` when the system clock is above 56 MHz can
         /// result in the flash failing to read the program, either by
         /// stalling or reading incorrect bytes.
+        pub unsafe fn init(&self, cs: CriticalSection, read_md: bool) {
+            self.resolve(&HEADER.init)(cs, read_md)
+        }
+
+        /// Set the program and erase times.
+        ///
+        /// # Safety
+        ///
+        /// The flash must not be in use anywhere else.
         ///
         /// Passing an incorrect frequency can cause erase and
         /// programming operations to fail, either by stalling or
         /// writing incorrect bytes.
-        pub unsafe fn init(&self, cs: CriticalSection, clock_mhz: u8) {
-            self.resolve(&HEADER.init)(cs, clock_mhz)
+        ///
+        /// Consult the datasheet for more details.
+        pub unsafe fn set_times(&self, cs: CriticalSection, clock_mhz: u8) {
+            self.resolve(&HEADER.set_times)(cs, clock_mhz)
         }
 
         /// Read a block of bytes from NVR flash.
