@@ -23,6 +23,7 @@ const HEADER: Header = Header::from_code();
 /// An entry in the [Header] pointing to a function.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(transparent)]
 pub struct HeaderEntry<F>(*const core::marker::PhantomData<F>);
 
 impl<F> HeaderEntry<F> {
@@ -40,6 +41,7 @@ impl<F> HeaderEntry<F> {
 /// A header describing each function in our [Code].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(C)]
 pub struct Header {
     // note: if you re-order these structs, you must also re-order
     // and update offsets in Header::from_code().
