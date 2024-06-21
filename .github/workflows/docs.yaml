@@ -22,6 +22,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv6m-none-eabi
+          components: llvm-tools
 
       # not really sure what pulls this in, maybe serialport
       - run: sudo apt-get install -y libudev-dev
